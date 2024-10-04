@@ -518,7 +518,7 @@ class BlockExplorerWidget {
     }
     /** @param {BlockData} blockData */
     saveBlockData(blockData) {
-        if (!blockData || !blockData.hash || !blockData.index) { 
+        if (!blockData || !blockData.hash || isNaN(blockData.index)) { 
             console.error('saveBlockData() error: blockData hash or index not found');
             console.info(blockData);
             return; 
