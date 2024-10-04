@@ -1,0 +1,139 @@
+[
+  {
+    "timestamp": "2024-09-23T11:47:45.072Z",
+    "diffs": [
+      {
+        "id": "luid-26a3359e",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "test\\test-logger-sync.mjs",
+          "line": 47,
+          "type": "info",
+          "content": "This is a test log message without ID"
+        }
+      },
+      {
+        "id": "luid-12345678",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "test\\test-logger-sync.mjs",
+          "line": 63,
+          "type": "error",
+          "content": "This is a test error message with ID"
+        }
+      },
+      {
+        "id": "Finding ",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\block-tree.mjs",
+          "line": 195,
+          "type": "debug",
+          "content": "Finding heaviest leaf"
+        }
+      },
+      {
+        "id": "Initiali",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\blockchain.mjs",
+          "line": 74,
+          "type": "info",
+          "content": "Initializing blockchain"
+        }
+      },
+      {
+        "id": "Loading ",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\blockchain.mjs",
+          "line": 84,
+          "type": "info",
+          "content": "Loading blockchain from disk..."
+        }
+      },
+      {
+        "id": "No block",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\blockchain.mjs",
+          "line": 96,
+          "type": "info",
+          "content": "No blocks loaded from disk"
+        }
+      },
+      {
+        "id": "Failed t",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\blockchain.mjs",
+          "line": 281,
+          "type": "error",
+          "content": "Failed to get reorganization path"
+        }
+      },
+      {
+        "id": "Connecte",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 134,
+          "type": "info",
+          "content": "Connected to bootstrap node"
+        }
+      },
+      {
+        "id": "aaFailed",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 136,
+          "type": "error",
+          "content": "aaFailed to connect to bootstrap node"
+        }
+      },
+      {
+        "id": "Peer con",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 152,
+          "type": "debug",
+          "content": "Peer connected"
+        }
+      },
+      {
+        "id": "Sync nod",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\sync.mjs",
+          "line": 51,
+          "type": "info",
+          "content": "Sync node stopped"
+        }
+      },
+      {
+        "id": "No sync ",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\sync.mjs",
+          "line": 194,
+          "type": "info",
+          "content": "No sync needed, local blockchain is up-to-date"
+        }
+      }
+    ]
+  }
+]

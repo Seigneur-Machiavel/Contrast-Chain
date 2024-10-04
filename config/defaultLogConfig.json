@@ -1,0 +1,16 @@
+{
+  "luid-26a3359e": {
+    "active": true,
+    "file": "test\\test-logger-sync.mjs",
+    "line": 47,
+    "type": "info",
+    "content": "This is a test log message without ID"
+  },
+  "luid-12345678": {
+    "active": true,
+    "file": "test\\test-logger-sync.mjs",
+    "line": 63,
+    "type": "error",
+    "content": "This is a test error message with ID"
+  }
+}

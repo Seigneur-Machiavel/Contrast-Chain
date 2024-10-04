@@ -1,0 +1,8 @@
+node_modules
+illustrations/videos
+storage/accounts
+storage/accounts(dev)
+storage/blocks
+storage/blockchainInfo.csv
+nodes-data
+config/config.json

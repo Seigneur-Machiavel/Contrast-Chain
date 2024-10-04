@@ -1,0 +1,58 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>UTXO Database Viewer</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+    }
+    #utxo-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    #utxo-table th, #utxo-table td {
+      border: 1px solid #ddd;
+      padding: 8px;
+    }
+    #utxo-table th {
+      background-color: #f2f2f2;
+      text-align: left;
+    }
+    .loader {
+      display: none;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<h1>UTXO Database Viewer</h1>
+
+<div>
+  <h2>Statistics</h2>
+  <p>Total Supply: <span id="total-supply">Loading...</span></p>
+  <p>Total of Balances: <span id="total-balances">Loading...</span></p>
+</div>
+
+<div>
+  <h2>UTXOs</h2>
+  <p class="loader" id="utxo-loader">Loading UTXOs...</p>
+  <table id="utxo-table">
+    <thead>
+      <tr>
+        <th>Anchor (Key)</th>
+        <th>Value</th>
+      </tr>
+    </thead>
+    <tbody id="utxo-tbody">
+      <!-- UTXO rows will be added here -->
+    </tbody>
+  </table>
+</div>
+
+<script src="main.js"></script>
+
+</body>
+</html>
