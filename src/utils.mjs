@@ -96,7 +96,7 @@ const MINING_PARAMS = {
     blocksBeforeAdjustment: 30, // ~120sec * 30 = ~3600 sec = ~1 hour
     thresholdPerDiffIncrement: 3.2, // meaning 3.4% threshold for 1 diff point
     maxDiffIncrementPerAdjustment: 32, // 32 diff points = 100% of diff
-    maxTimeDifferenceAdjustment: 32, // in difficutly points, affect max penalty, but max bonus is infinite
+    maxTimeDifferenceAdjustment: 128, // in difficutly points, affect max penalty, but max bonus is infinite
 };
 
 class ProgressLogger {
