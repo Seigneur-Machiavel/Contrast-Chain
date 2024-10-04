@@ -132,9 +132,11 @@ export class Miner {
     /** @param {number} hashTime - ms */
     #hashRateNew(hashTime = 50, hashBeforeAveraging = 20) {
         this.hashTimings.push(hashTime);
-        if (this.hashTimings.length < hashBeforeAveraging - 1) { return; } // wait for 10 hash timings to be collected
+        if (this.hashTimings.length < hashBeforeAveraging) { return; } // wait for 10 hash timings to be collected
 
-        const hashRate = 1000 / (this.hashTimings.reduce((acc, timing) => acc + timing, 0) / this.hashTimings.length);
+        const hashRate = this.hashTimings.length > 0
+        ? 1000 / (this.hashTimings.reduce((acc, timing) => acc + timing, 0) / this.hashTimings.length)
+        : 0; // convert to seconds
         this.hashRate = hashRate;
         this.hashTimings = [];
         if (this.wsCallbacks.onHashRateUpdated) { this.wsCallbacks.onHashRateUpdated.execute(hashRate); }

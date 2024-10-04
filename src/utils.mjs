@@ -87,7 +87,7 @@ const MINING_PARAMS = {
     // a difference of 1 difficulty means 3.125% harder to find a valid hash
     argon2: {
         time: 1,
-        mem: 2 ** 18,
+        mem: 2 ** 20,
         parallelism: 1,
         type: 2,
         hashLen: 32,
