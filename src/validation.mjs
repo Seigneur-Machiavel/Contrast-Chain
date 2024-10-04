@@ -56,7 +56,6 @@ export class TxValidation {
             if (output.rule === "sigOrSlash") {
                 if (i !== 0) { throw new Error('sigOrSlash must be the first output'); }
                 if (await this.calculateRemainingAmount(involvedUTXOs, transaction) < output.amount) { throw new Error('SigOrSlash requires fee > amount'); }
-                return;
             }
         }
 
