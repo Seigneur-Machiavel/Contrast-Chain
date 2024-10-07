@@ -13,7 +13,6 @@ import { multiaddr } from 'multiaddr';
 import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
 import { yamux } from '@chainsafe/libp2p-yamux';
-import { peerIdFromString } from '@libp2p/peer-id'
 
 class P2PNetwork extends EventEmitter {
     /** @param {Object} [options={}] */
