@@ -7,7 +7,7 @@ export class ConfigManager {
         if (!configPath) throw new Error('Configuration file path must be provided.');
         this.configPath = path.resolve(configPath);
         this.config = {
-            bootstrapNodes: ['/dns4/pinkparrot.science/tcp/27260', '/ip4/82.126.155.210/tcp/7777'], // '/dns4/pariah.monster/tcp/27260'
+            bootstrapNodes: ['/dns4/pinkparrot.science/tcp/27260', '/dns4/pariah.monster/tcp/27260'], // '/dns4/pariah.monster/tcp/27260'
             isInitNode: false,
         };
     }
