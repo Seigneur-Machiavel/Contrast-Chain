@@ -306,7 +306,14 @@ class P2PNetwork extends EventEmitter {
         // Create a new stream
         let stream;
         try {
-            stream = await this.p2pNode.dialProtocol(peerMultiaddr, P2PNetwork.SYNC_PROTOCOL, { signal: AbortSignal.timeout(300_000) });
+            const abortController = new AbortController();
+            const timeout = setTimeout(() => {
+                abortController.abort();
+            }, 300_000); // 5 minutes
+
+            stream = await this.p2pNode.dialProtocol(peerMultiaddr, P2PNetwork.SYNC_PROTOCOL, { signal: abortController.signal });
+            clearTimeout(timeout);
+
             this.updatePeer(peerId, { stream });
             this.logger.debug({ component: 'P2PNetwork', peerId }, 'Created new stream');
             return stream;
