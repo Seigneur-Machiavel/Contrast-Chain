@@ -3,9 +3,10 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
+import localStorage_v1 from '../storage/local-storage-management.mjs';
+import contrast from '../src/contrast.mjs'; //? Not all libs needed
 
-import { CallBackManager, WebSocketCallBack } from '../src/websocketCallback.mjs';
-import { BlockUtils } from '../src/block.mjs';
+import { CallBackManager } from '../src/websocketCallback.mjs';
 import utils from '../src/utils.mjs';
 
 /**
@@ -13,8 +14,14 @@ import utils from '../src/utils.mjs';
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
 * @typedef {import("../src/node.mjs").Node} Node
 * @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("../src/block.mjs").BlockUtils} BlockUtils
 */
 
+function loadAddressesFromStorage() {
+    const privateKeysFolder = localStorage_v1.getItem('privateKeysFolder');
+    const addresses = localStorage_v1.getItem('addresses');
+    return addresses ? JSON.parse(addresses) : [];
+}
 
 const APPS_VARS = {
     __filename: fileURLToPath(import.meta.url),
@@ -55,7 +62,6 @@ class AppStaticFncs {
         
         return result;
     }
-
     /** @param {Node} node */
     extractPublicNodeInfo(node) {
         const result = {
@@ -72,6 +78,7 @@ class AppStaticFncs {
 }
 
 export class DashboardWsApp {
+    #privateKeys = [];
     /** @param {NodeFactory} factory */
     constructor(factory, port = 27271) {
         /** @type {NodeFactory} */
@@ -91,6 +98,8 @@ export class DashboardWsApp {
     get node() { return this.factory.getFirstNode(); }
     /** @param {string} domain - default 'localhost' @param {number} port - default 27271 */
     init() {
+        if (!this.node || this.#privateKeys.length === 0) { console.info("Node active Node & No private keys provided, can't auto init..."); return; }
+
         this.callBackManager = new CallBackManager(this.node);
 
         if (this.app === null) {
@@ -293,11 +302,11 @@ export class ObserverWsApp {
 }
 
 // GENERAL FUNCTIONS
-function synchronizeClock() {
+function synchronizeClock() { // DEPRECATED
     const platform = process.platform;
   
     let command;
-  
+
     switch (platform) {
       case 'win32': // Windows
         command = 'w32tm /resync';

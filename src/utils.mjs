@@ -140,10 +140,10 @@ const addressUtils = {
     },
     glossary: {
         W: { name: 'Weak', description: 'No condition', zeroBits: 0 },
-        C: { name: 'Contrast', description: '16 times harder to generate', zeroBits: 4 },
-        S: { name: 'Secure', description: '256 times harder to generate', zeroBits: 8 },
-        P: { name: 'Powerful', description: '4096 times harder to generate', zeroBits: 12 },
-        U: { name: 'Ultimate', description: '65536 times harder to generate', zeroBits: 16 },
+        C: { name: 'Contrast', description: '16 times harder to generate', zeroBits: 16 },
+        S: { name: 'Secure', description: '256 times harder to generate', zeroBits: 16 * 16 },
+        P: { name: 'Powerful', description: '4096 times harder to generate', zeroBits: 16 * 16 * 16 },
+        U: { name: 'Ultimate', description: '65536 times harder to generate', zeroBits: 16 * 16 * 16 * 16 },
         M: { name: 'MultiSig', description: 'Multi-signature address', zeroBits: 0 }
     },
 
