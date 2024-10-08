@@ -62,8 +62,9 @@ export class NodeFactory {
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
         
-        this.nodesCreationSettings[nodeId] = {
+        const nodeSettings = {
             account: targetNode.account,
+            validatorRewardAddress: targetNode.validatorRewardAddress,
             minerAddress: targetNode.minerAddress,
             roles: targetNode.roles,
             p2pOptions: targetNode.p2pOptions
@@ -76,19 +77,19 @@ export class NodeFactory {
         for (const worker of targetNode.workers) { await worker.terminateAsync(); }
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        
         // stop level db
         await targetNode.blockchain.db.close();
         await targetNode.p2pNetwork.stop();
         await new Promise(resolve => setTimeout(resolve, 2000));
 
         const newNode = await this.createNode(
-            targetNode.account,
-            targetNode.roles,
-            targetNode.p2pOptions,
-            targetNode.minerAddress
+            nodeSettings.account,
+            nodeSettings.roles,
+            nodeSettings.p2pOptions,
+            nodeSettings.minerAddress
         );
         await newNode.start(startFromScratch);
+        newNode.validatorRewardAddress = nodeSettings.validatorRewardAddress;
 
         this.nodes.set(nodeId, newNode);
     }

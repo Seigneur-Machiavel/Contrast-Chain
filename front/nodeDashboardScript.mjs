@@ -14,7 +14,7 @@ const WS_SETTINGS = {
     DOMAIN: window.location.hostname,
     PORT: window.location.port,
     RECONNECT_INTERVAL: 5000,
-    GET_NODE_INFO_INTERVAL: 10000,
+    GET_NODE_INFO_INTERVAL: 2000,
 }
 let pingInterval;
 let nodeId;
@@ -47,7 +47,7 @@ function connectWS() {
         switch (message.type) {
             case 'error':
                 if (data === 'No active node' && !modalOpen) {
-                    openModal("setupModalWrap");
+                    openModal("setup");
                     console.log('No active node, opening setup modal');
                 }
                 break;
@@ -96,6 +96,7 @@ const eHTML = {
 
     modals: {
 		wrap: document.getElementsByClassName('modalsWrap')[0],
+        modalsWrapBackground: document.getElementsByClassName('modalsWrapBackground')[0],
         setup: {
 			wrap : document.getElementById('setupModalWrap'),
 			modal: document.getElementById('setupModalWrap').getElementsByClassName('modal')[0],
@@ -105,9 +106,27 @@ const eHTML = {
             confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[0],
 			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
 		},
+        validatorAddress: {
+            wrap: document.getElementById('validatorAddressModalWrap'),
+            modal: document.getElementById('validatorAddressModalWrap').getElementsByClassName('modal')[0],
+            validatorAddressForm: document.getElementById('validatorAddressForm'),
+            validatorAddressInputWrap: document.getElementById('validatorAddressInputWrap'),
+            validatorAddressInput: document.getElementById('validatorAddressInputWrap').getElementsByTagName('input')[0],
+            confirmBtn: document.getElementById('validatorAddressInputWrap').getElementsByTagName('button')[0],
+        },
+        minerAddress: {
+            wrap: document.getElementById('minerAddressModalWrap'),
+            modal: document.getElementById('minerAddressModalWrap').getElementsByClassName('modal')[0],
+            minerAddressForm: document.getElementById('minerAddressForm'),
+            minerAddressInputWrap: document.getElementById('minerAddressInputWrap'),
+            minerAddressInput: document.getElementById('minerAddressInputWrap').getElementsByTagName('input')[0],
+            confirmBtn: document.getElementById('minerAddressInputWrap').getElementsByTagName('button')[0],
+        },
     },
 
     validatorAddress: document.getElementById('validatorAddress'),
+    validatorRewardAddress: document.getElementById('validatorRewardAddress'),
+    validatorAddressEditBtn: document.getElementById('validatorAddressEditBtn'),
     validatorHeight: document.getElementById('validatorHeight'),
     validatorBalance: document.getElementById('validatorBalance'),
     validatorStaked: document.getElementById('staked'),
@@ -118,6 +137,7 @@ const eHTML = {
     },
 
     minerAddress: document.getElementById('minerAddress'),
+    minerAddressEditBtn: document.getElementById('minerAddressEditBtn'),
     minerHeight: document.getElementById('minerHeight'),
     minerBalance: document.getElementById('minerBalance'),
     hashRate: document.getElementById('hashRate'),
@@ -140,6 +160,7 @@ function displayNodeInfo(data) {
     eHTML.roles.textContent = data.roles.join(' - ')
 
     eHTML.validatorAddress.textContent = data.validatorAddress ? data.validatorAddress : '', // utils.addressUtils.formatAddress(data.validatorAddress, " ");
+    eHTML.validatorRewardAddress.textContent = data.validatorRewardAddress ? data.validatorRewardAddress : '', // utils.addressUtils.formatAddress(data.validatorRewardAddress, " ");
     eHTML.validatorBalance.textContent = utils.convert.number.formatNumberAsCurrency(validatorBalance);
     eHTML.validatorHeight.textContent = data.currentHeight ? data.currentHeight : 0;
     eHTML.validatorStaked.textContent = utils.convert.number.formatNumberAsCurrency(validatorStaked);
@@ -154,10 +175,33 @@ function displayNodeInfo(data) {
 eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
 eHTML.RevalidateBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId })));
 eHTML.syncClock.addEventListener('click', () => ws.send(JSON.stringify({ type: 'sync_clock', data: Date.now() })));
+eHTML.modals.wrap.addEventListener('click', (event) => {
+	if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
+});
 eHTML.modals.setup.confirmBtn.addEventListener('click', () => {
     console.log('setupPrivateKeyForm confirmBtn clicked');
     console.log('privateKeyInput value:', eHTML.modals.setup.privateKeyInput.value);
     ws.send(JSON.stringify({ type: 'set_private_key', data: eHTML.modals.setup.privateKeyInput.value }));
+    closeModal();
+});
+eHTML.validatorAddressEditBtn.addEventListener('click', () => {
+    console.log('validatorAddressEditBtn clicked');
+    openModal('validatorAddress');
+});
+eHTML.modals.validatorAddress.confirmBtn.addEventListener('click', () => {
+    console.log('validatorAddressForm confirmBtn clicked');
+    console.log('validatorAddressInput value:', eHTML.modals.validatorAddress.validatorAddressInput.value);
+    ws.send(JSON.stringify({ type: 'set_validator_address', data: eHTML.modals.validatorAddress.validatorAddressInput.value }));
+    closeModal();
+});
+eHTML.minerAddressEditBtn.addEventListener('click', () => {
+    console.log('minerAddressEditBtn clicked');
+    openModal('minerAddress');
+});
+eHTML.modals.minerAddress.confirmBtn.addEventListener('click', () => {
+    console.log('minerAddressForm confirmBtn clicked');
+    console.log('minerAddressInput value:', eHTML.modals.minerAddress.minerAddressInput.value);
+    ws.send(JSON.stringify({ type: 'set_miner_address', data: eHTML.modals.minerAddress.minerAddressInput.value }));
     closeModal();
 });
 document.addEventListener('submit', function(event) { event.preventDefault(); });
@@ -186,7 +230,7 @@ eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue
 //#endregion
 
 //#region - UX FUNCTIONS
-function openModal(modalName = 'setupModalWrap') {
+function openModal(modalName = 'setup') {
     modalOpen = true;
 	const modals = eHTML.modals;
 	if (!modals.wrap.classList.contains('fold')) { return; }
@@ -195,7 +239,7 @@ function openModal(modalName = 'setupModalWrap') {
 	modals.wrap.classList.remove('fold');
 
 	for (let modalKey in modals) {
-		if (modalKey === 'wrap') { continue; }
+		if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
 		const modalWrap = modals[modalKey].wrap;
 		modalWrap.classList.add('hidden');
 		if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
@@ -251,7 +295,7 @@ function closeModal() {
 			modalsWrap.classList.add('hidden');
 			const modals = eHTML.modals;
 			for (let modalKey in modals) {
-				if (modalKey === 'wrap') { continue; }
+				if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
 				const modalWrap = modals[modalKey].wrap;
 				modalWrap.classList.add('hidden');
 			}

@@ -50,6 +50,7 @@ export class Node {
 
         /** @type {Account} */
         this.account = account;
+        this.validatorRewardAddress = account.address;
         /** @type {BlockData} */
         this.blockCandidate = null;
 
@@ -436,7 +437,7 @@ export class Node {
 
         // Sign the block candidate
         const { powReward, posReward } = await BlockUtils.calculateBlockReward(this.utxoCache, blockCandidate);
-        const posFeeTx = await Transaction_Builder.createPosReward(posReward, blockCandidate, this.account.address, this.account.address);
+        const posFeeTx = await Transaction_Builder.createPosReward(posReward, blockCandidate, this.validatorRewardAddress, this.account.address);
         const signedPosFeeTx = await this.account.signTransaction(posFeeTx);
         blockCandidate.Txs.unshift(signedPosFeeTx);
         blockCandidate.powReward = powReward; // for the miner
@@ -665,31 +666,3 @@ export class Node {
         return { spendableBalance, balance, UTXOs };
     }
 }
-
-//const terminateAllWorkers = () => workers.forEach(worker => worker.worker.postMessage({ type: 'terminate' }));
-/*async function terminateWorkers() {
-    const closedPromises = [];
-    for (const worker of workers) {
-        closedPromises.push(new Promise((resolve, reject) => {
-            worker.worker.terminate(() => {
-                console.log('Worker terminé proprement.');
-                resolve();
-            });
-        }));
-    }
-
-    await Promise.all(closedPromises);
-    return true;
-  }
-  
-  // Fonction pour gérer la fermeture propre de l'application
-  async function handleExit(signal) {
-    console.log(`Reçu ${signal}. Fermeture propre de l'application...`);
-    await terminateWorkers();
-    console.log('Tous les workers ont été terminés. Arrêt du processus.');
-    process.exit();
-  }
-  
-  // Écoute des signaux pour la fermeture propre
-  process.on('SIGINT', handleExit);
-  process.on('SIGTERM', handleExit);*/

@@ -37,6 +37,7 @@ class AppStaticFncs {
             node.account.setBalanceAndUTXOs(balance, UTXOs, spendableBalance);
             result.nodeId = node.id;
             result.validatorAddress = node.account.address;
+            result.validatorRewardAddress = node.validatorRewardAddress;
             result.validatorBalance = balance;
             result.validatorUTXOs = UTXOs;
             result.validatorSpendableBalance = spendableBalance;
@@ -75,7 +76,8 @@ class AppStaticFncs {
 }
 
 export class DashboardWsApp {
-    #privateKeys = [];
+    #nodesSettings = {};
+    #activeNodeId = '';
     /** @param {NodeFactory} factory */
     constructor(factory, port = 27271) {
         /** @type {NodeFactory} */
@@ -100,7 +102,7 @@ export class DashboardWsApp {
             return undefined;
         }
     }
-    async init() {
+    async init(privateKey) {
         if (this.app === null) {
             this.app = express();
             this.app.use(express.static(APPS_VARS.__parentDirname));
@@ -112,16 +114,31 @@ export class DashboardWsApp {
         this.wss.on('connection', this.#onConnection.bind(this));
         this.wss.on('close', () => { console.log('Server closed'); });
         
-        this.loadPrivateKey();
-        if (!this.node && this.#privateKeys.length !== 0) {
-            const defaultPrivKey = this.#privateKeys[0];
+        this.#loadNodeSettings();
+        const defaultNodeId = Object.keys(this.#nodesSettings)[0];
+        const defaultSettings = this.#nodesSettings[defaultNodeId];
+        const defaultPrivKey = defaultSettings ? defaultSettings.privateKey : null;
+        const usablePrivKey = privateKey || defaultPrivKey;
+        if (!this.node && usablePrivKey) {
             /** @type {Node} */
-            const multiNode = await this.initMultiNode(defaultPrivKey);
+            const multiNode = await this.initMultiNode(usablePrivKey);
             this.factory.nodes.set(multiNode.id, multiNode);
         }
 
         if (!this.node) { console.info("Node active Node and No private keys provided, can't auto init node..."); return; }
         
+        this.#activeNodeId = this.node.id;
+        const activeNodeAssociatedSettings = this.#nodesSettings[this.node.id];
+        if (!activeNodeAssociatedSettings) { // Save the settings for the new node
+            this.#nodesSettings[this.node.id] = {
+                privateKey: usablePrivKey,
+                validatorRewardAddress: this.node.validatorRewardAddress,
+                minerAddress: this.node.minerAddress,
+            };
+        }
+
+        this.#injectNodeSettings(this.node.account.address);
+
         const callbacksModes = []; // we will add the modes related to the callbacks we want to init
         if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
         if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
@@ -132,15 +149,28 @@ export class DashboardWsApp {
         const clientIp = req.socket.remoteAddress === '::1' ? 'localhost' : req.socket.remoteAddress;
         console.log(`[DASHBOARD] ${this.readableNow()} Client connected: ${clientIp}`);
         ws.on('close', function close() { console.log('Connection closed'); });
-        //ws.on('ping', function incoming(data) { console.log('received: %s', data); });
-        
-        //ws.onmessage = this.onMessage(event);
+
         const messageHandler = (message) => { this.#onMessage(message, ws); };
         ws.on('message', messageHandler);
 
         if (!this.node) {
             console.info("Node active Node and No private keys provided, can't auto init node...");
             ws.send(JSON.stringify({ type: 'error', data: 'No active node' }));
+        }
+    }
+    #injectNodeSettings(nodeId) {
+        const node = this.factory.getNode(nodeId);
+        if (!node) { console.error(`Node ${nodeId} not found`); return; }
+
+        const associatedValidatorRewardAddress = this.#nodesSettings[nodeId].validatorRewardAddress;
+        if (associatedValidatorRewardAddress) { 
+            node.validatorRewardAddress = associatedValidatorRewardAddress;
+        }
+        
+        const associatedMinerAddress = this.#nodesSettings[nodeId].minerAddress;
+        if (associatedMinerAddress) { 
+            node.minerAddress = associatedMinerAddress;
+            node.miner.address = associatedMinerAddress;
         }
     }
     /** @param {Buffer} message @param {WebSocket} ws */
@@ -154,9 +184,35 @@ export class DashboardWsApp {
                 ws.send(JSON.stringify({ type: 'pong', data: Date.now() }));
                 break;
             case 'set_private_key':
-                this.#privateKeys.push(data);
-                this.savePrivateKey();
-                this.init();
+                await this.init(data);
+                this.#nodesSettings[this.node.id].privateKey = data;
+                this.#saveNodeSettings();
+
+                break;
+            case 'set_validator_address':
+                if (!this.node) { console.error('No active node'); break; }
+                try {
+                    contrast.utils.addressUtils.conformityCheck(data)
+                    this.#nodesSettings[this.node.id].validatorRewardAddress = data;
+
+                    this.#injectNodeSettings(this.node.id);
+                    this.#saveNodeSettings();
+                } catch (error) {
+                    console.error(`Error setting validator address: ${data}, not conform`);
+                }
+                break;
+            case 'set_miner_address':
+                if (!this.node) { console.error('No active node'); break; }
+                if (!this.node.miner) { console.error('No miner found'); break; }
+                try {
+                    contrast.utils.addressUtils.conformityCheck(data)
+                    this.#nodesSettings[this.node.id].minerAddress = data;
+
+                    this.#injectNodeSettings(this.node.id);
+                    this.#saveNodeSettings();
+                } catch (error) {
+                    console.error(`Error setting miner address: ${data}, not conform`);
+                }
                 break;
             case 'force_restart':
                 ws.send(JSON.stringify({ type: 'node_restarting', data }));
@@ -206,15 +262,16 @@ export class DashboardWsApp {
                 break;
         }
     }
-    savePrivateKey() {
-        localStorage_v1.saveJSON('nodePrivateKeys', this.#privateKeys);
-        console.log(`Private keys saved: ${this.#privateKeys.length}`);
+    #saveNodeSettings() {
+        localStorage_v1.saveJSON('nodeSettings', this.#nodesSettings);
+        console.log(`Nodes settings saved: ${Object.keys(this.#nodesSettings).length}`);
     }
-    loadPrivateKey() {
-        const keys = localStorage_v1.loadJSON('nodePrivateKeys');
-        if (!keys) { console.log('No private keys found'); return; }
-        this.#privateKeys = keys;
-        console.log(`Private keys loaded: ${this.#privateKeys.length}`);
+    #loadNodeSettings() {
+        const nodeSettings = localStorage_v1.loadJSON('nodeSettings');
+        if (!nodeSettings) { console.log('No nodeSettings found'); return; }
+        
+        this.#nodesSettings = nodeSettings;
+        console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
     }
     async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
         const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
@@ -236,6 +293,7 @@ export class DashboardWsApp {
         await multiNode.start();
         multiNode.memPool.useDevArgon2 = useDevArgon2;
 
+        console.log(`Multi node started, account : ${multiNode.account.address}`);
         return multiNode;
     }
 }

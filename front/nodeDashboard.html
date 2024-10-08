@@ -56,6 +56,14 @@
             color: white;
             padding: 5px 10px;
         }
+        .editButton {
+            cursor: pointer;
+            font-size: 22px;
+            margin: 0 10px 0 -50px;
+        }
+        .editButton:hover {
+            transform: scale(1.1);
+        }
         input {
             background: var(--color3);
             color: white;
@@ -137,8 +145,12 @@
             box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
             background: var(--color2);
         }
-        #setupPrivateKeyForm .spacedText {
+        .modalWrap .spacedText {
             align-items: center;
+        }
+        .modalWrap .spacedText input {
+            width: 260px;
+            text-align: center;
         }
         #privateKeyInputWrap input {
             text-align: center;
@@ -208,10 +220,10 @@
         <h3>Node Dashboard v1.0</h3>
         <h3>roles: <span id="roles"></span></h3>
         <div class="btnWrap">
-            <div style="">
+            <div>
                 <button id="syncClock">Sync Clock</button>
             </div>
-            <div style="">
+            <div>
                 <button id="forceRestart">Restart</button>
                 <button id="Revalidate">Revalidate</button>
             </div>
@@ -225,9 +237,15 @@
                 <h3 class="heightText">Height: <span id="validatorHeight">0</span></h3>
             </div>
 
-            <div class="spacedText">
+            <div class="spacedText" style="align-items: center;">
                 <h3>Address:</h3>
                 <h3 id="validatorAddress"></h3>
+            </div>
+
+            <div class="spacedText" style="align-items: center;">
+                <h3>Reward address:</h3>
+                <h3 id="validatorRewardAddress"></h3>
+                <div id="validatorAddressEditBtn" class="editButton">✎</div>
             </div>
 
             <div class="spacedText">
@@ -254,9 +272,10 @@
                 <h3 class="heightText">Height: <span id="minerHeight">0</span></h3>
             </div>
             
-            <div class="spacedText">
+            <div class="spacedText" style="align-items: center;">
                 <h3>Address:</h3>
                 <h3 id="minerAddress"></h3>
+                <div id="minerAddressEditBtn" class="editButton">✎</div>
             </div>
 
             <div class="spacedText">
@@ -293,6 +312,32 @@
                         </div>
                     </div>
                     <!--<div class="loadingSvgDiv"></div>-->
+                </form>
+            </div>
+        </div>
+        <div class="modalWrap hidden" id="validatorAddressModalWrap">
+            <div class="modal">
+                <form id="validatorAddressForm">
+                    <div class="spacedText">
+                        <h3>Validator Address:</h3>
+                        <div id="validatorAddressInputWrap">
+                            <input type="text" value="" placeholder="Won8nzmo1wrocFRErkWj">
+                            <button>Confirm</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="modalWrap hidden" id="minerAddressModalWrap">
+            <div class="modal">
+                <form id="minerAddressForm">
+                    <div class="spacedText">
+                        <h3>Miner Address:</h3>
+                        <div id="minerAddressInputWrap">
+                            <input type="text" value="" placeholder="Won8nzmo1wrocFRErkWj">
+                            <button>Confirm</button>
+                        </div>
+                    </div>
                 </form>
             </div>
         </div>
