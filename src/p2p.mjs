@@ -216,6 +216,12 @@ class P2PNetwork extends EventEmitter {
     /** @param {string} topic @param {any} message - Can be any JavaScript object */
     async broadcast(topic, message) {
         //this.logger.debug({ component: 'P2PNetwork', topic }, 'Broadcasting message');
+
+        // if we have no peers return 
+        if (this.peers.size === 0) {
+            this.logger.error({ component: 'P2PNetwork', topic }, 'No peers to broadcast to');
+            return 'No peers to broadcast to';
+        }
         try {
             let serialized;
             switch (topic) {
@@ -237,7 +243,10 @@ class P2PNetwork extends EventEmitter {
             this.logger.debug({ component: 'P2PNetwork', topic }, 'Broadcast complete');
             return 'success';
         } catch (error) {
-            //console.error('Broadcast error:', error);
+            //check if error is PublishError.NoPeersSubscribedToTopic
+            if (error.message === "PublishError.NoPeersSubscribedToTopic") {
+                return error;
+            }
             this.logger.error({ component: 'P2PNetwork', topic, error: error.message }, 'Broadcast error');
             return error;
         }
