@@ -181,7 +181,7 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         // check if binary
-        if (!(data instanceof Buffer)) {  console.error(`Received non-binary data from ${from} dataset: ${data}`); return; }
+        if (!(data instanceof Buffer || data instanceof Uint8Array)) {  console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
         const byteLength = data.byteLength;
         try {
             let parsedMessage;
@@ -216,6 +216,9 @@ class P2PNetwork extends EventEmitter {
     /** @param {string} topic @param {any} message - Can be any JavaScript object */
     async broadcast(topic, message) {
         //this.logger.debug({ component: 'P2PNetwork', topic }, 'Broadcasting message');
+        if (this.peers.size === 0) {
+            return new Error("No peers to broadcast to");
+        }
         try {
             let serialized;
             switch (topic) {
@@ -237,7 +240,9 @@ class P2PNetwork extends EventEmitter {
             this.logger.debug({ component: 'P2PNetwork', topic }, 'Broadcast complete');
             return 'success';
         } catch (error) {
-            //console.error('Broadcast error:', error);
+            if (error.message === "PublishError.NoPeersSubscribedToTopic") {
+                return error;
+            }
             this.logger.error({ component: 'P2PNetwork', topic, error: error.message }, 'Broadcast error');
             return error;
         }
@@ -245,11 +250,13 @@ class P2PNetwork extends EventEmitter {
     /**
      * @param {string} peerMultiaddr - The multiaddress of the peer.
      * @param {Object} message - The message to send.
+     * @param {number} retries - Number of retry attempts before failing.
+     * @param {number} retryDelay - Base delay (in ms) between retries, which will increase exponentially.
      * @returns {Promise<Object>} The response from the peer.
      */
-    async sendMessage(peerMultiaddr, message) {
-        // Extract peerId using libp2p's multiaddr parsing for reliability
+    async sendMessage(peerMultiaddr, message, retries = 3, retryDelay = 1000) {
         let peerId;
+
         try {
             const ma = multiaddr(peerMultiaddr);
             const peerIdComponent = ma.getPeerId();
@@ -262,31 +269,51 @@ class P2PNetwork extends EventEmitter {
             throw err;
         }
 
-        try {
-            // Acquire a valid stream (reuse or create new)
-            const stream = await this.acquireStream(peerId, peerMultiaddr);
+        for (let attempt = 1; attempt <= retries; attempt++) {
+            try {
+                // Acquire a valid stream (reuse or create new)
+                const stream = await this.acquireStream(peerId, peerMultiaddr);
 
-            // Send the message over the acquired stream
-            const response = await this.sendOverStream(stream, message);
-            return response;
-        } catch (error) {
-            this.logger.error({ component: 'P2PNetwork', peerMultiaddr, peerId, error: error.message }, 'Failed to send message');
+                // Send the message over the acquired stream
+                const response = await this.sendOverStream(stream, message);
+                return response;
+            } catch (error) {
+                this.logger.error({ component: 'P2PNetwork', peerMultiaddr, peerId, error: error.message, attempt },
+                    `Attempt ${attempt} failed to send message`);
 
-            // Attempt to close the faulty stream if it exists
-            const peer = this.peers.get(peerId);
-            if (peer && peer.stream && !peer.stream.closed) {
-                try {
-                    await peer.stream.close();
-                    await peer.stream.reset();
-                    this.updatePeer(peerId, { stream: null });
-                    this.logger.debug({ component: 'P2PNetwork', peerId }, 'Closed faulty stream after error');
-                } catch (closeErr) {
-                    this.logger.error({ component: 'P2PNetwork', peerId, error: closeErr.message }, 'Failed to close stream after error');
+                if (attempt === retries) {
+                    // If this was the last attempt, handle the faulty stream and throw the error
+                    const peer = this.peers.get(peerId);
+                    if (peer && peer.stream && !peer.stream.closed) {
+                        try {
+                            await peer.stream.close();
+                            await peer.stream.reset();
+                            this.updatePeer(peerId, { stream: null });
+                            this.logger.debug({ component: 'P2PNetwork', peerId }, 'Closed faulty stream after error');
+                        } catch (closeErr) {
+                            this.logger.error({ component: 'P2PNetwork', peerId, error: closeErr.message }, 'Failed to close stream after error');
+                        }
+                    }
+                    throw error; // No more retries, rethrow the error
                 }
+
+                // Implement exponential backoff
+                const delay = retryDelay * (2 ** (attempt - 1)); // Double the delay after each attempt
+                this.logger.debug({ component: 'P2PNetwork', peerId, delay }, `Retrying in ${delay}ms...`);
+                await this.#sleep(delay); // Wait for the retry delay before the next attempt
             }
-            throw error;
         }
     }
+
+    /**
+     * Helper method to pause execution for a specified duration (used in retry backoff)
+     * @param {number} ms - The duration to sleep in milliseconds.
+     * @returns {Promise<void>}
+     */
+    #sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
 
     /**
      * Acquires a valid stream for the given peer. Reuses existing streams if available and open,
