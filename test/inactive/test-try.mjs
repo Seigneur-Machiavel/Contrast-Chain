@@ -1,5 +1,5 @@
-import { UtxoCache } from "../src/utxoCache.mjs";
-import { Blockchain } from "../src/blockchain.mjs";
+import { UtxoCache } from "../../src/utxoCache.mjs";
+import { Blockchain } from "../../src/blockchain.mjs";
 const utxoCache = new UtxoCache();
 utxoCache.blockchain = new Blockchain('nodeid');
 

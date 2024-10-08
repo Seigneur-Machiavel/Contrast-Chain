@@ -1,4 +1,4 @@
-import { Wallet } from "../src/wallet.mjs";
+import { Wallet } from "../../src/wallet.mjs";
 
 const nodePrivateKey = "22ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00";
 const useDevArgon2 = false;

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { BlockTree } from '../src/block-tree.mjs';
-import { ForkChoiceRule } from '../src/fork-rule.mjs';
+import { BlockTree } from '../../src/block-tree.mjs';
+import { ForkChoiceRule } from '../../src/fork-rule.mjs';
 
 describe('BlockTree and ForkChoiceRule', () => {
     let blockTree;

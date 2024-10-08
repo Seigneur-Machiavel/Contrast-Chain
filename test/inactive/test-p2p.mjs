@@ -1,199 +1,151 @@
-// Filename: test/p2pnetwork.test.js
+// test-p2p.mjs
+import { pipe } from 'it-pipe';
+import { encode, decode } from 'it-length-prefixed';
+import { createLibp2p } from 'libp2p';
+import { tcp } from '@libp2p/tcp';
+import { noise } from '@chainsafe/libp2p-noise';
+import { yamux } from '@chainsafe/libp2p-yamux';
+import { multiaddr } from 'multiaddr';
+import * as lp from 'it-length-prefixed';
 
-import { expect } from 'chai';
-import { P2PNetwork } from '../../src/p2p.mjs'; // Adjust the import path accordingly
-import utils from '../../src/utils.mjs'; // Adjust the import path accordingly
-
-describe('P2PNetwork', function () {
-  this.timeout(30000); // Increase timeout for async operations
-
-  let p2pNetwork;
-  let peerNetwork;
-
-  beforeEach(async () => {
-    // Initialize P2PNetwork instances with custom options for testing
-    p2pNetwork = new P2PNetwork({
-      bootstrapNodes: [],
-      maxPeers: 5,
-      listenAddress: '/ip4/127.0.0.1/tcp/0', // Use port 0 to get a random available port
-      logLevel: 'silent',
-      logging: false,
+async function createNode(peerName) {
+    const node = await createLibp2p({
+        addresses: { listen: ['/ip4/127.0.0.1/tcp/0'] }, // Listen on loopback with dynamic port
+        transports: [tcp()],
+        streamMuxers: [yamux()],
+        connectionEncryption: [noise()],
     });
 
-    peerNetwork = new P2PNetwork({
-      bootstrapNodes: [],
-      maxPeers: 5,
-      listenAddress: '/ip4/127.0.0.1/tcp/0',
-      logLevel: 'silent',
-      logging: false,
-    });
+    node.peerName = peerName; // Assign a name for easier identification
+    return node;
+}
 
-    // Start both networks
-    await p2pNetwork.start();
-    await peerNetwork.start();
+async function main() {
+    // Create Node A (Server)
+    const nodeA = await createNode('Node A');
 
-    // Connect the two nodes
-    await p2pNetwork.p2pNode.dial(peerNetwork.p2pNode.getMultiaddrs()[0]);
-  });
+    // Handle the '/test/1.0.0' protocol on Node A
+    nodeA.handle('/test/1.0.0', async ({ stream, connection }) => {
+        console.log(`[${nodeA.peerName}] Received a new stream from ${connection.remotePeer.toString()}`);
 
-  afterEach(async () => {
+        try {
+            await pipe(
+                stream.source,
+                lp.decode(),  // Decode the incoming message
+                async (source) => {
+                    for await (const msg of source) {
+                        const message = msg.toString();
+                        console.log(`[${nodeA.peerName}] Received message:`, message);
 
+                        // Prepare and send the response
+                        const response = { status: 'ok', received: message };
+                        const serializedResponse = Buffer.from(JSON.stringify(response));
 
-  });
+                        await pipe(
+                            [serializedResponse],  // Message needs to be an async iterable
+                            lp.encode(),           // Encode it for transmission
+                            stream.sink            // Send it back
+                        );
 
-  describe('Constructor', () => {
-    it('should initialize with default options', () => {
-      const defaultNetwork = new P2PNetwork();
-      expect(defaultNetwork.options).to.be.an('object');
-      expect(defaultNetwork.options.bootstrapNodes).to.be.an('array');
-      expect(defaultNetwork.options.maxPeers).to.equal(50);
-      expect(defaultNetwork.options.listenAddress).to.equal('/ip4/0.0.0.0/tcp/7777');
-    });
-
-    it('should override default options with provided options', () => {
-      const customOptions = {
-        maxPeers: 10,
-        listenAddress: '/ip4/127.0.0.1/tcp/8000',
-      };
-      const customNetwork = new P2PNetwork(customOptions);
-      expect(customNetwork.options.maxPeers).to.equal(10);
-      expect(customNetwork.options.listenAddress).to.equal('/ip4/127.0.0.1/tcp/8000');
-    });
-  });
-
-  describe('Start and Stop', () => {
-    it('should start the network', async () => {
-      expect(p2pNetwork.isStarted()).to.be.true;
-      expect(p2pNetwork.p2pNode).to.exist;
-    });
-
-
-  });
-
-  describe('PubSub Operations', () => {
-    it('should subscribe to a topic and receive messages', async () => {
-      const messageHandlerSpy = (topic, message) => {
-        expect(topic).to.equal('test_topic');
-        expect(message).to.deep.equal({ data: 'Hello, World!' });
-      };
-      await p2pNetwork.subscribe('test_topic', messageHandlerSpy);
-
-      // Wait a bit to ensure subscription is set up
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Have the peer send a message
-      await peerNetwork.broadcast('test_topic', { data: 'Hello, World!' });
-
-      // Wait for message to be received
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    });
-
-    it('should unsubscribe from a topic', async () => {
-      await p2pNetwork.subscribe('test_topic');
-      expect(p2pNetwork.subscriptions.has('test_topic')).to.be.true;
-
-      await p2pNetwork.unsubscribe('test_topic');
-      expect(p2pNetwork.subscriptions.has('test_topic')).to.be.false;
-    });
-
-    it('should broadcast a message to subscribed peers', async () => {
-      const messageHandlerSpy = (topic, message) => {
-        expect(topic).to.equal('test_topic');
-        expect(message).to.deep.equal({ data: 'Hello, Peers!' });
-      };
-      await peerNetwork.subscribe('test_topic', messageHandlerSpy);
-
-      // Wait a bit to ensure subscription is set up
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      // Broadcast message from p2pNetwork
-      await p2pNetwork.broadcast('test_topic', { data: 'Hello, Peers!' });
-
-      // Wait for message to be received
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    });
-  });
-
-  describe('Peer Management', () => {
-    it('should update peer information', () => {
-      const peerId = 'QmPeerId';
-      const data = { status: 'connected', address: '/ip4/127.0.0.1/tcp/8000' };
-      p2pNetwork.updatePeer(peerId, data);
-
-      expect(p2pNetwork.peers.has(peerId)).to.be.true;
-      const peerInfo = p2pNetwork.peers.get(peerId);
-      expect(peerInfo.status).to.equal('connected');
-      expect(peerInfo.address).to.equal('/ip4/127.0.0.1/tcp/8000');
-    });
-
-    it('should retrieve connected peers', () => {
-      const connectedPeers = p2pNetwork.getConnectedPeers();
-      expect(connectedPeers).to.be.an('array').that.is.not.empty;
-    });
-
-    it('should retrieve subscribed topics', async () => {
-      await p2pNetwork.subscribe('topic1');
-      await p2pNetwork.subscribe('topic2');
-
-      const topics = p2pNetwork.getSubscribedTopics();
-      expect(topics).to.include('topic1');
-      expect(topics).to.include('topic2');
-    });
-  });
-
-  describe('Status and Utility Methods', () => {
-    it('should retrieve network status', () => {
-      const status = p2pNetwork.getStatus();
-      expect(status).to.have.property('isSyncing', false);
-      expect(status).to.have.property('blockHeight', 0);
-      expect(status).to.have.property('version', '1.1.0');
-      expect(status).to.have.property('connectionCount');
-      expect(status).to.have.property('peerId');
-    });
-
-    it('should correctly report if the network is started', () => {
-      expect(p2pNetwork.isStarted()).to.be.true;
-      p2pNetwork.stop();
-      expect(p2pNetwork.isStarted()).to.be.false;
-    });
-  });
-
-  describe('Send and Receive Messages', () => {
-    it('should send a message to a specific peer and receive a response', async () => {
-      // For this test, we need to implement a simple protocol handler on the peer
-      const testProtocol = '/test-protocol/1.0.0';
-
-      // PeerNetwork handles incoming messages
-      peerNetwork.p2pNode.handle(testProtocol, async ({ stream }) => {
-        // Read the message
-        const chunks = [];
-        for await (const chunk of stream) {
-          chunks.push(chunk);
+                        console.log(`[${nodeA.peerName}] Sent response:`, response);
+                    }
+                }
+            );
+        } catch (error) {
+            console.error(`[${nodeA.peerName}] Error handling stream:`, error);
         }
-        const receivedData = Buffer.concat(chunks);
-        const message = utils.compression.msgpack_Zlib.rawData.fromBinary_v1(receivedData);
-
-        // Send a response
-        const response = utils.compression.msgpack_Zlib.rawData.toBinary_v1({ data: 'Response from peer' });
-        await stream.sink([response]);
-      });
-
-      // p2pNetwork sends a message
-      const peerAddr = peerNetwork.p2pNode.getMultiaddrs()[0];
-      const stream = await p2pNetwork.p2pNode.dialProtocol(peerAddr, testProtocol);
-
-      const message = utils.compression.msgpack_Zlib.rawData.toBinary_v1({ data: 'Hello, Peer!' });
-      await stream.sink([message]);
-
-      // Read the response
-      const chunks = [];
-      for await (const chunk of stream.source) {
-        chunks.push(chunk);
-      }
-      const receivedData = Buffer.concat(chunks);
-      const response = utils.compression.msgpack_Zlib.rawData.fromBinary_v1(receivedData);
-
-      expect(response).to.deep.equal({ data: 'Response from peer' });
     });
-  });
+
+    await nodeA.start();
+    console.log(`[${nodeA.peerName}] Started with ID ${nodeA.peerId.toString()}`);
+
+    // Retrieve Node A's listen multiaddresses before encapsulation
+    const nodeAListenAddrs = nodeA.getMultiaddrs();
+    console.log(`[${nodeA.peerName}] Node A listen addresses (before encapsulation):`);
+    nodeAListenAddrs.forEach(ma => {
+        console.log(` - ${ma.toString()}`);
+    });
+
+    // Encapsulate /p2p/<PeerID> once and store the full multiaddresses
+    const nodeAFullAddrs = nodeAListenAddrs.map(ma => {
+        const maStr = ma.toString();
+        const peerIdStr = nodeA.peerId.toString();
+        const p2pComponent = `/p2p/${peerIdStr}`;
+        if (maStr.includes(p2pComponent)) {
+            // Already has /p2p/<PeerID>, return as is
+            return ma;
+        } else {
+            // Encapsulate /p2p/<PeerID> once
+            return ma.encapsulate(p2pComponent);
+        }
+    });
+
+    console.log(`[${nodeA.peerName}] Node A listen addresses (after encapsulation):`);
+    nodeAFullAddrs.forEach(ma => {
+        console.log(` - ${ma.toString()}`);
+    });
+
+    // Create Node B (Client)
+    const nodeB = await createNode('Node B');
+
+    await nodeB.start();
+    console.log(`[${nodeB.peerName}] Started with ID ${nodeB.peerId.toString()}`);
+
+    // Wait a moment to ensure Node A is ready to accept connections
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
+    // Attempt to dial Node A using all available multiaddresses
+    let dialed = false;
+    for (const nodeAMultiaddr of nodeAFullAddrs) {
+        console.log(`[${nodeB.peerName}] Attempting to dial Node A at ${nodeAMultiaddr.toString()}`);
+        try {
+            // Dial Node A using the '/test/1.0.0' protocol
+            const { stream } = await nodeB.dialProtocol(nodeAMultiaddr, '/test/1.0.0');
+
+            console.log(`[${nodeB.peerName}] Successfully dialed Node A at ${nodeAMultiaddr.toString()}`);
+
+            // Prepare the message to send
+            const message = { type: 'test', content: 'Hello, World!' };
+            const serializedMessage = Buffer.from(JSON.stringify(message));
+
+            // Send the message
+            await pipe(
+                [serializedMessage],  // Message needs to be an async iterable
+                lp.encode(),          // Encode it
+                stream.sink           // Send it
+            );
+            console.log(`[${nodeB.peerName}] Sent message:`, message);
+
+            // Receive the response
+            const response = await pipe(
+                stream.source,
+                lp.decode(), // Decode the response from Node A
+                async (source) => {
+                    for await (const msg of source) {
+                        return JSON.parse(msg.toString());
+                    }
+                }
+            );
+
+            console.log(`[${nodeB.peerName}] Received response:`, response);
+            dialed = true;
+            break; // Exit the loop on successful dial
+        } catch (err) {
+            console.error(`[${nodeB.peerName}] Error dialing Node A at ${nodeAMultiaddr.toString()}:`, err);
+            // Continue to the next multiaddress
+        }
+    }
+
+    if (!dialed) {
+        console.error(`[${nodeB.peerName}] Failed to dial Node A on all available multiaddresses.`);
+    }
+
+    // Stop both nodes
+    await nodeB.stop();
+    await nodeA.stop();
+    console.log('Both nodes have been stopped.');
+}
+
+main().catch(err => {
+    console.error('An error occurred:', err);
 });
