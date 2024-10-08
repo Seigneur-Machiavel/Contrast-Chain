@@ -77,7 +77,6 @@ class AppStaticFncs {
 
 export class DashboardWsApp {
     #nodesSettings = {};
-    #activeNodeId = '';
     /** @param {NodeFactory} factory */
     constructor(factory, port = 27271) {
         /** @type {NodeFactory} */
@@ -127,7 +126,6 @@ export class DashboardWsApp {
 
         if (!this.node) { console.info("Node active Node and No private keys provided, can't auto init node..."); return; }
         
-        this.#activeNodeId = this.node.id;
         const activeNodeAssociatedSettings = this.#nodesSettings[this.node.id];
         if (!activeNodeAssociatedSettings) { // Save the settings for the new node
             this.#nodesSettings[this.node.id] = {
