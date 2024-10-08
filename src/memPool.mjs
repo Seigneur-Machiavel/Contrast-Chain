@@ -33,6 +33,7 @@ export class MemPool {
      * @param {Transaction} collidingTx
      */
     #addMempoolTransaction(transaction, collidingTx = false) {
+         // IMPORTANT : AT THIS STAGE WE HAVE ENSURED THAT THE TRANSACTION IS CONFORM
         if (collidingTx) { this.#removeMempoolTransaction(collidingTx); }
         
         // Add transaction to the priority queue
