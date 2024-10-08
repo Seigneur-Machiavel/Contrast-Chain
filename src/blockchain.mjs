@@ -21,7 +21,7 @@ const url = await import('url');
  */
 export class Blockchain {
     __parentFolderPath = path.dirname(url.fileURLToPath(import.meta.url));
-	__parentPath = path.join(this.__parentFolderPath, '..');
+    __parentPath = path.join(this.__parentFolderPath, '..');
     /**
      * Creates a new Blockchain instance.
      * @param {string} dbPath - The path to the LevelDB database.
@@ -94,10 +94,10 @@ export class Blockchain {
                     promises.push(this.db.put('currentHeight', this.currentHeight.toString()));
                     if (blockPubKeysAddresses) { promises.push(this.persistAddressesTransactionsToDisk(block, blockPubKeysAddresses)) }
                 }
-                
+
                 const blockInfo = saveBlockInfo ? await BlockUtils.getFinalizedBlockInfo(utxoCache, block, totalFees) : undefined;
                 if (saveBlockInfo) { promises.push(this.persistBlockInfoToDisk(blockInfo)) }
-                
+
                 this.logger.info({ blockHeight: block.index, blockHash: block.hash }, 'Block successfully added');
                 return blockInfo;
             } catch (error) {
@@ -181,7 +181,7 @@ export class Blockchain {
     /** @param {BlockData} finalizedBlock @param {Object<string, string>} blockPubKeysAddresses */
     async persistAddressesTransactionsToDisk(finalizedBlock, blockPubKeysAddresses) {
         const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(finalizedBlock, blockPubKeysAddresses);
-        
+
         Object.entries(transactionsReferencesSortedByAddress).forEach(async ([address, newTxReference]) => {
             const addressTransactions = await this.getTxsRefencesFromDiskByAddress(address);
             //TODO: can be optimized by serializing the array of txsIds and the txsIds themselves
@@ -223,7 +223,7 @@ export class Blockchain {
             const txsPromises = txsIds.map(txId => this.db.get(`${height}:${txId}`));
 
             if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
-            
+
             return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
             //return utils.serializer.block_finalized.toBinary_v4(await serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
@@ -302,26 +302,52 @@ export class Blockchain {
     getLatestBlockHash() {
         return this.lastBlock ? this.lastBlock.hash : "0000000000000000000000000000000000000000000000000000000000000000";
     }
-    /** @param {string} txReference - ex: 12:0f0f0f */
+    /** 
+     * Retrieves a transaction by its reference (height:txId format).
+     * @param {string} txReference - The transaction reference in the format "height:txId".
+     * @returns {Promise<Object|null>} - The deserialized transaction or null if not found.
+     */
     async getTransactionByReference(txReference) {
         const [height, txId] = txReference.split(':');
-        let serializedTx;
-        try {
-            serializedTx = await this.db.get(`${height}:${txId}`);
-        } catch (error) { return undefined }
-        
-        try { // TODO: review -- can be cleaner without try catch
-            const tx = utils.serializerFast.deserialize.transaction(serializedTx);
-            return tx;
-        } catch (error) {} // should be a special tx
 
         try {
-            const tx = utils.serializer.transaction.fromBinary_v2(serializedTx);
-            return tx;
+            // Try to fetch the serialized transaction from the database.
+            const serializedTx = await this.db.get(`${height}:${txId}`);
+
+            // Try deserializing the transaction with different methods.
+            return this.deserializeTransaction(serializedTx);
         } catch (error) {
-            console.error('Unable to deserialize tx', error);
+            // If the transaction is not found or deserialization fails, return null.
+            this.logger.error({ txReference }, 'Transaction not found or failed to deserialize');
+            return null;
         }
     }
+
+    /**
+     * Deserializes a transaction using the available strategies.
+     * @param {Uint8Array} serializedTx - The serialized transaction data.
+     * @returns {Object|null} - The deserialized transaction or null if deserialization fails.
+     */
+    deserializeTransaction(serializedTx) {
+        // Try fast deserialization first.
+        try {
+            return utils.serializerFast.deserialize.transaction(serializedTx);
+        } catch (error) {
+            this.logger.debug({ error }, 'Failed to fast deserialize transaction');
+        }
+
+        // Try the special transaction deserialization if fast deserialization fails.
+        try {
+            return utils.serializer.transaction.fromBinary_v2(serializedTx);
+        } catch (error) {
+            this.logger.debug({ error }, 'Failed to deserialize special transaction');
+        }
+
+        // Return null if deserialization fails for all strategies.
+        this.logger.error('Unable to deserialize transaction using available strategies');
+        return null;
+    }
+
     async getLastKnownHeight() {
         const storedHeight = await this.db.get('currentHeight').catch(() => '-1');
         const storedHeightInt = parseInt(storedHeight, 10);
