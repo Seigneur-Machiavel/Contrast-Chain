@@ -17,12 +17,6 @@ import utils from '../src/utils.mjs';
 * @typedef {import("../src/block.mjs").BlockUtils} BlockUtils
 */
 
-function loadAddressesFromStorage() {
-    const privateKeysFolder = localStorage_v1.getItem('privateKeysFolder');
-    const addresses = localStorage_v1.getItem('addresses');
-    return addresses ? JSON.parse(addresses) : [];
-}
-
 const APPS_VARS = {
     __filename: fileURLToPath(import.meta.url),
     __dirname: path.dirname( fileURLToPath(import.meta.url) ),
@@ -32,6 +26,8 @@ const APPS_VARS = {
 class AppStaticFncs {
     /** @param {Node} node */
     static async extractPrivateNodeInfo(node) {
+        if (!node) { return { error: 'No active node' }; }
+
         const result = {
             roles: node.roles,
         };
@@ -50,6 +46,7 @@ class AppStaticFncs {
         }
 
         if (node.roles.includes('miner')) {
+            if (!node.miner) { return { error: 'No miner found' }; }
             const { balance, UTXOs, spendableBalance } = await node.getAddressUtxos(node.miner.address);
             result.nodeId = node.id;
             result.minerAddress = node.miner.address;
@@ -95,13 +92,15 @@ export class DashboardWsApp {
         this.init();
     }
     /** @type {Node} */
-    get node() { return this.factory.getFirstNode(); }
-    /** @param {string} domain - default 'localhost' @param {number} port - default 27271 */
-    init() {
-        if (!this.node || this.#privateKeys.length === 0) { console.info("Node active Node & No private keys provided, can't auto init..."); return; }
-
-        this.callBackManager = new CallBackManager(this.node);
-
+    get node() { 
+        try {
+            const node = this.factory.getFirstNode();
+            return node;
+        } catch (error) {
+            return undefined;
+        }
+    }
+    async init() {
         if (this.app === null) {
             this.app = express();
             this.app.use(express.static(APPS_VARS.__parentDirname));
@@ -109,13 +108,24 @@ export class DashboardWsApp {
             const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
             this.wss = new WebSocketServer({ server });
         }
-
+        
         this.wss.on('connection', this.#onConnection.bind(this));
         this.wss.on('close', () => { console.log('Server closed'); });
+        
+        this.loadPrivateKey();
+        if (!this.node && this.#privateKeys.length !== 0) {
+            const defaultPrivKey = this.#privateKeys[0];
+            /** @type {Node} */
+            const multiNode = await this.initMultiNode(defaultPrivKey);
+            this.factory.nodes.set(multiNode.id, multiNode);
+        }
+
+        if (!this.node) { console.info("Node active Node and No private keys provided, can't auto init node..."); return; }
         
         const callbacksModes = []; // we will add the modes related to the callbacks we want to init
         if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
         if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
+        this.callBackManager = new CallBackManager(this.node);
         this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
     }
     #onConnection(ws, req) {
@@ -127,6 +137,11 @@ export class DashboardWsApp {
         //ws.onmessage = this.onMessage(event);
         const messageHandler = (message) => { this.#onMessage(message, ws); };
         ws.on('message', messageHandler);
+
+        if (!this.node) {
+            console.info("Node active Node and No private keys provided, can't auto init node...");
+            ws.send(JSON.stringify({ type: 'error', data: 'No active node' }));
+        }
     }
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
@@ -138,27 +153,41 @@ export class DashboardWsApp {
             case 'ping':
                 ws.send(JSON.stringify({ type: 'pong', data: Date.now() }));
                 break;
+            case 'set_private_key':
+                this.#privateKeys.push(data);
+                this.savePrivateKey();
+                this.init();
+                break;
             case 'force_restart':
                 ws.send(JSON.stringify({ type: 'node_restarting', data }));
-                console.info(`Closing the websocket server and express server`);
+                console.info(`Forcing restart of node ${data}`);
+                await this.factory.forceRestartNode(data);
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                ws.send(JSON.stringify({ type: 'node_restarted', data }));
+                break;
+            case 'force_restart_revalidate_blocks':
+                ws.send(JSON.stringify({ type: 'node_restarting', data }));
                 //this.wss.close(); // close the websocket server
                 //this.app.delete('/'); // close the express server
                 //await new Promise(resolve => setTimeout(resolve, 1000));
 
-                console.info(`Forcing restart of node ${data}`);
-                await this.factory.forceRestartNode(data);
-                //await new Promise(resolve => setTimeout(resolve, 1000));
-
+                console.info(`Forcing restart of node ${data} with revalidation of blocks`);
+                await this.factory.forceRestartNode(data, true);
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
                 ws.send(JSON.stringify({ type: 'node_restarted', data }));
                 break;
             case 'sync_clock':
-                synchronizeClock();
+                synchronizeClock(); // DEPRECATED
                 break;
             case 'get_node_info':
-                ws.send(JSON.stringify({ type: 'node_info', data: await AppStaticFncs.extractPrivateNodeInfo(this.node) }));
+                const nodeInfo = await AppStaticFncs.extractPrivateNodeInfo(this.node);
+                ws.send(JSON.stringify({ type: 'node_info', data: nodeInfo }));
                 break;
             case 'set_miner_threads':
                 console.log(`Setting miner threads to ${data}`);
+                if (!this.node) { console.error('No active node'); break; }
                 this.node.miner.nbOfWorkers = data;
                 break;
             case 'new_unsigned_transaction':
@@ -176,6 +205,38 @@ export class DashboardWsApp {
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                 break;
         }
+    }
+    savePrivateKey() {
+        localStorage_v1.saveJSON('nodePrivateKeys', this.#privateKeys);
+        console.log(`Private keys saved: ${this.#privateKeys.length}`);
+    }
+    loadPrivateKey() {
+        const keys = localStorage_v1.loadJSON('nodePrivateKeys');
+        if (!keys) { console.log('No private keys found'); return; }
+        this.#privateKeys = keys;
+        console.log(`Private keys loaded: ${this.#privateKeys.length}`);
+    }
+    async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
+        const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "W");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        const multiNode = await this.factory.createNode(
+            derivedAccounts[0], // validator account
+            ['validator', 'miner', 'observer'], // roles
+            {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27261'},
+            //{listenAddress: local ? '/ip4/0.0.0.0/tcp/0/ws' : '/ip4/0.0.0.0/tcp/27260/ws'},
+            derivedAccounts[1].address // miner address
+        );
+        multiNode.useDevArgon2 = useDevArgon2; // we remove that one ?
+        await multiNode.start();
+        multiNode.memPool.useDevArgon2 = useDevArgon2;
+
+        return multiNode;
     }
 }
 

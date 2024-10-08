@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Node Dashboard v1.0</title>
     <script crossorigin src="https://unpkg.com/@msgpack/msgpack"></script>
+    <script src="../externalLibs/anime.min.js"></script>
     <script src="./front/nodeDashboardScript.mjs" type="module"></script>
     <style>
         @font-face {
@@ -44,13 +45,16 @@
             background-color: var(--color1);
             color: white;
         }
+        .hidden {
+            display: none !important;
+        }
         button {
             font-family: 'IBM Plex Mono';
             font-weight: 500;
             background: var(--color2);
             border-radius: 6px;
             color: white;
-            padding: 5px;
+            padding: 5px 10px;
         }
         input {
             background: var(--color3);
@@ -84,10 +88,63 @@
         #topBar .btnWrap {
             display: flex;
             width: 250px;
+            align-items: flex-start;
+            justify-content: space-around;
+        }
+        #topBar .btnWrap div {
+            display: flex;
+            justify-content: flex-end;
+            flex-direction: column;
+            width: 120px;
+        }
+        #topBar .btnWrap div button {
+            cursor: pointer;
+            margin: 0 0 5px 0;
+        }
+
+        .modalsWrap {
+            /*pointer-events: none;*/
+            position: relative;
+            display: flex;
             justify-content: center;
             align-items: center;
-            width: 250px;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            position: fixed;
+            top: 0;
         }
+        .modalsWrapBackground{
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            transition: backdrop-filter .6s .4s;
+        }
+        .modalsWrap.hidden > .modalsWrapBackground {
+            backdrop-filter: blur(0px) !important;
+        }
+        .modalsWrap > .modalsWrapBackground {
+            backdrop-filter: blur(1px);
+        }
+        .modalWrap {
+            z-index: 1;
+            width: 72%;
+            max-width: 600px;
+            max-height: 72vh;
+            padding: 4vh;
+            border-radius: 10px;
+            box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.1);
+            background: var(--color2);
+        }
+        #setupPrivateKeyForm .spacedText {
+            align-items: center;
+        }
+        #privateKeyInputWrap input {
+            text-align: center;
+            width: 320px !important;
+        }
+
         .dashboard {
             display: flex;
             justify-content: space-between;
@@ -147,14 +204,17 @@
 </head>
 
 <body>
-    <!--<div style="text-align: center;">
-    </div>-->
     <div id="topBar">
         <h3>Node Dashboard v1.0</h3>
         <h3>roles: <span id="roles"></span></h3>
         <div class="btnWrap">
-            <button id="syncClock">Sync Clock</button>
-            <button id="forceRestart">force Restart</button>
+            <div style="">
+                <button id="syncClock">Sync Clock</button>
+            </div>
+            <div style="">
+                <button id="forceRestart">Restart</button>
+                <button id="Revalidate">Revalidate</button>
+            </div>
         </div>
     </div>
 
@@ -216,6 +276,24 @@
                     <input type="number" value="1" min="1" max="16">
                     <button>+</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modalsWrap hidden fold">
+        <div class="modalsWrapBackground"></div>
+        <div class="modalWrap hidden" id="setupModalWrap">
+            <div class="modal">
+                <form id="setupPrivateKeyForm">
+                    <div class="spacedText">
+                        <h3>Private key:</h3>
+                        <div id="privateKeyInputWrap">
+                            <input type="text" value="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff">
+                            <button>Confirm</button>
+                        </div>
+                    </div>
+                    <!--<div class="loadingSvgDiv"></div>-->
+                </form>
             </div>
         </div>
     </div>

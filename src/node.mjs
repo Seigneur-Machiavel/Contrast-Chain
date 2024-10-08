@@ -80,7 +80,7 @@ export class Node {
         this.configManager = new ConfigManager("config\\config.json");
     }
 
-    async start(skipStoredBlocksValidation = true) {
+    async start(startFromScratch = false) {
         await this.configManager.init();
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
@@ -88,7 +88,7 @@ export class Node {
         this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack);
         this.miner.useDevArgon2 = this.useDevArgon2;
 
-        await this.#loadBlockchain(skipStoredBlocksValidation);
+        if (!startFromScratch) { await this.#loadBlockchain(); }
 
         // actually useless in ram, but good for DB usage
         // await this.memPool.clearTransactionsWhoUTXOsAreSpent(this.utxoCache);
@@ -114,7 +114,7 @@ export class Node {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
 
-    async #loadBlockchain(skipStoredBlocksValidation = true) {
+    async #loadBlockchain() {
         try {
             while (this.blockchain.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
         } catch (error) {
@@ -275,6 +275,7 @@ export class Node {
      * @param {boolean} [options.storeAsFiles] - default: false
      */
     async digestFinalizedBlock(finalizedBlock, options = {}, byteLength) {
+        if (this.restartRequested) { return; }
         const blockBytes = byteLength ? byteLength : utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;
         const {
             skipValidation = false,

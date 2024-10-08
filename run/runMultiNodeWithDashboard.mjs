@@ -10,7 +10,7 @@ import { extractBlocksMiningInfo, saveBlockchainInfoLocally } from '../storage/l
 
 //#region NODE INITIALIZATION -------------------------------------------
 const factory = new NodeFactory();
-const nodePrivateKey = "12ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00";
+const nodePrivateKey = "11ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00";
 async function initMultiNode(local = false, useDevArgon2 = false) {
     const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
     const restored = await wallet.restore();

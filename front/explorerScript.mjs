@@ -29,7 +29,7 @@ const SETTINGS = {
     DOMAIN: 'pinkparrot.observer',
     RECONNECT_INTERVAL: 1000,
     //GET_NODE_INFO_INTERVAL: 10000,
-    GET_CURRENT_HEIGHT_INTERVAL: 1000,
+    GET_CURRENT_HEIGHT_INTERVAL: 5000,
     ROLES: ['chainExplorer', 'blockExplorer']
 }
 function connectWS() {

@@ -1,5 +1,6 @@
 console.log('run/nodeDashboardScript.mjs');
 
+// <script src="../externalLibs/anime.min.js"></script>
 import { Transaction_Builder, UTXO } from '../src/transaction.mjs';
 import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
@@ -10,8 +11,8 @@ import utils from '../src/utils.mjs';
 
 let ws;
 const WS_SETTINGS = {
-    DOMAIN: 'localhost',
-    PORT: 27271,
+    DOMAIN: window.location.hostname,
+    PORT: window.location.port,
     RECONNECT_INTERVAL: 5000,
     GET_NODE_INFO_INTERVAL: 10000,
 }
@@ -20,8 +21,10 @@ let nodeId;
 /** @type {UTXO[]} */
 let validatorUTXOs = [];
 let minerUTXOs = [];
+let modalOpen = false;
 function connectWS() {
     ws = new WebSocket(`ws://${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
+    console.log(`Connecting to ${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
   
     ws.onopen = function() {
         console.log('Connection opened');
@@ -40,8 +43,17 @@ function connectWS() {
         const message = JSON.parse(event.data);
         const trigger = message.trigger;
         const data = message.data;
+        if (data && data.error) { console.info(message.error); }
         switch (message.type) {
+            case 'error':
+                if (data === 'No active node' && !modalOpen) {
+                    openModal("setupModalWrap");
+                    console.log('No active node, opening setup modal');
+                }
+                break;
             case 'node_info':
+                if (data.error === 'No active node') { return; }
+
                 displayNodeInfo(data);
                 nodeId = data.nodeId;
                 validatorUTXOs = data.validatorUTXOs;
@@ -68,6 +80,7 @@ function connectWS() {
                 if(trigger === eHTML.minerAddress.textContent) { eHTML.minerBalance.textContent = utils.convert.number.formatNumberAsCurrency(data); }
                 break;
             default:
+                console.error(`Unknown message type: ${message.type}`);
                 break;
         }
     };
@@ -78,7 +91,21 @@ const eHTML = {
     dashboard: (nodeID) => document.getElementById(`dashboard-${nodeID}`),
     roles: document.getElementById('roles'),
     syncClock: document.getElementById('syncClock'),
-    forceRestart: document.getElementById('forceRestart'),
+    forceRestartBtn: document.getElementById('forceRestart'),
+    RevalidateBtn: document.getElementById('Revalidate'),
+
+    modals: {
+		wrap: document.getElementsByClassName('modalsWrap')[0],
+        setup: {
+			wrap : document.getElementById('setupModalWrap'),
+			modal: document.getElementById('setupModalWrap').getElementsByClassName('modal')[0],
+			setupPrivateKeyForm: document.getElementById('setupPrivateKeyForm'),
+			privateKeyInputWrap: document.getElementById('privateKeyInputWrap'),
+            privateKeyInput: document.getElementById('privateKeyInputWrap').getElementsByTagName('input')[0],
+            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[0],
+			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
+		},
+    },
 
     validatorAddress: document.getElementById('validatorAddress'),
     validatorHeight: document.getElementById('validatorHeight'),
@@ -122,9 +149,18 @@ function displayNodeInfo(data) {
     eHTML.minerHeight.textContent = data.highestBlockIndex ? data.highestBlockIndex : 0;
     eHTML.minerThreads.input.value = data.minerThreads ? data.minerThreads : 1;
 }
+//#region - EVENT LISTENERS
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
-eHTML.forceRestart.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
+eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
+eHTML.RevalidateBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId })));
 eHTML.syncClock.addEventListener('click', () => ws.send(JSON.stringify({ type: 'sync_clock', data: Date.now() })));
+eHTML.modals.setup.confirmBtn.addEventListener('click', () => {
+    console.log('setupPrivateKeyForm confirmBtn clicked');
+    console.log('privateKeyInput value:', eHTML.modals.setup.privateKeyInput.value);
+    ws.send(JSON.stringify({ type: 'set_private_key', data: eHTML.modals.setup.privateKeyInput.value }));
+    closeModal();
+});
+document.addEventListener('submit', function(event) { event.preventDefault(); });
 eHTML.stakeInput.input.addEventListener('input', () => {
     formatInputValueAsCurrency(eHTML.stakeInput.input);
     ws.send(JSON.stringify({ type: 'set_stake', data: eHTML.stakeInput.input.value }));
@@ -147,6 +183,82 @@ eHTML.minerThreads.input.addEventListener('change', () => {
 });
 eHTML.minerThreads.decrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, -1));
 eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, 1));
+//#endregion
+
+//#region - UX FUNCTIONS
+function openModal(modalName = 'setupModalWrap') {
+    modalOpen = true;
+	const modals = eHTML.modals;
+	if (!modals.wrap.classList.contains('fold')) { return; }
+
+	modals.wrap.classList.remove('hidden');
+	modals.wrap.classList.remove('fold');
+
+	for (let modalKey in modals) {
+		if (modalKey === 'wrap') { continue; }
+		const modalWrap = modals[modalKey].wrap;
+		modalWrap.classList.add('hidden');
+		if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
+	}
+
+	const modalsWrap = eHTML.modals.wrap;
+	modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
+	modalsWrap.style.opacity = 0;
+	modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
+
+	anime({
+		targets: modalsWrap,
+		//skewX: '1.2deg',
+		scaleX: 1,
+		scaleY: 1,
+		opacity: 1,
+		duration: 600,
+		easing: 'easeOutQuad',
+		complete: () => {
+			if (modalName === 'setupModalWrap') { eHTML.modals.setup.privateKeyInput.focus(); }
+		}
+	});
+	anime({
+		targets: modalsWrap,
+		clipPath: 'circle(100% at 50% 50%)',
+		delay: 200,
+		duration: 800,
+		easing: 'easeOutQuad',
+	});
+}
+function closeModal() {
+    modalOpen = false;
+	const modalsWrap = eHTML.modals.wrap;
+	if (modalsWrap.classList.contains('fold')) { return false; }
+	modalsWrap.classList.add('fold');
+
+	anime({
+		targets: modalsWrap,
+		clipPath: 'circle(6% at 50% 50%)',
+		duration: 600,
+		easing: 'easeOutQuad',
+	});
+	anime({
+		targets: modalsWrap,
+		scaleX: 0,
+		scaleY: 0,
+		opacity: 0,
+		duration: 800,
+		easing: 'easeOutQuad',
+		complete: () => {
+			if (!modalsWrap.classList.contains('fold')) { return; }
+
+			modalsWrap.classList.add('hidden');
+			const modals = eHTML.modals;
+			for (let modalKey in modals) {
+				if (modalKey === 'wrap') { continue; }
+				const modalWrap = modals[modalKey].wrap;
+				modalWrap.classList.add('hidden');
+			}
+		}
+	});
+}
+//#endregion
 
 //#region FUNCTIONS -------------------------------------------------------
 function formatInputValueAsCurrency(input) {
