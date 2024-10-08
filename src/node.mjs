@@ -15,6 +15,8 @@ import SnapshotSystemDoc from './snapshot-system.mjs';
 import { performance, PerformanceObserver } from 'perf_hooks';
 import { ValidationWorker, ValidationWorker_v2 } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
+import { TimeSynchronizer } from './time.mjs';
+
 /**
 * @typedef {import("./account.mjs").Account} Account
 * @typedef {import("./transaction.mjs").Transaction} Transaction
@@ -78,11 +80,21 @@ export class Node {
         this.workers = [];
         this.nbOfWorkers = 16;
         this.configManager = new ConfigManager("config\\config.json");
+
+        this.timeSynchronizer = new TimeSynchronizer({
+            syncInterval: 60000, // sync every minute
+            epochInterval: 300000, // 5 minutes
+            roundInterval: 60000, // 1 minute
+        });
+
+        this.isSyncedWithNTP = false;
     }
 
     async start(skipStoredBlocksValidation = true) {
         await this.configManager.init();
-
+        await this.initializeTimeSync();
+        console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
+        
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
         this.opStack = OpStack.buildNewStack(this);
         this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack);
@@ -112,6 +124,26 @@ export class Node {
     }
     async stop() {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
+    }
+
+    async initializeTimeSync() {
+        try {
+            await this.timeSynchronizer.syncTimeWithRetry();
+            this.isSyncedWithNTP = true;
+            this.timeSynchronizer.startSyncLoop();
+            console.log("Time synchronized successfully");
+        } catch (error) {
+            console.error("Failed to synchronize time:", error);
+            // Decide how to handle failed time sync (e.g., retry, use local time, etc.)
+        }
+    }
+
+    getCurrentTime() {
+        if (!this.isSyncedWithNTP) {
+            console.warn("Time not yet synchronized with NTP");
+            // Decide how to handle this case (e.g., return local time, throw error, etc.)
+        }
+        return this.timeSynchronizer.getCurrentTime();
     }
 
     async #loadBlockchain(skipStoredBlocksValidation = true) {
