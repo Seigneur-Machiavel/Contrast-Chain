@@ -80,7 +80,7 @@ export class Node {
         /** @type {ValidationWorker_v2[]} */
         this.workers = [];
         this.nbOfWorkers = 16;
-        this.configManager = new ConfigManager("config\\config.json");
+        this.configManager = new ConfigManager("config/config.json");
 
         this.timeSynchronizer = new TimeSynchronizer({
             syncInterval: 60000, // sync every minute
