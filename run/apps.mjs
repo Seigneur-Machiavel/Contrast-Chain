@@ -322,7 +322,9 @@ export class ObserverWsApp {
     get node() { return this.factory.getFirstNode(); }
     init() {
         this.app.use(express.static(APPS_VARS.__parentDirname));
-        this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
+        // if wss optio nactivated, replace "ws:" by "wss:" in the front/explorer.html file
+        
+        //this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
         const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
         this.wss = new WebSocketServer({ server });
 

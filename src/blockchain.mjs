@@ -38,6 +38,8 @@ export class Blockchain {
             snapshotInterval = 100,
         } = options;
         this.dbPath = path.join(this.__parentPath, 'nodes-data', nodeId, 'blockchain');
+        // ensure folder exists
+        if (!fs.existsSync(this.dbPath)) { fs.mkdirSync(this.dbPath, { recursive: true }); }
         this.db = LevelUp(LevelDown(this.dbPath));
         /** @type {Map<string, BlockData>} */
         this.inMemoryBlocks = new Map();
