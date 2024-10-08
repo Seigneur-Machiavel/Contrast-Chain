@@ -23,7 +23,7 @@ async function initMultiNode(local = false, useDevArgon2 = false) {
     const multiNode = await factory.createNode(
         derivedAccounts[0], // validator account
         ['validator', 'observer'], // roles
-        {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27262'},
+        {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27260'},
     );
     multiNode.useDevArgon2 = useDevArgon2; // we remove that one ?
     await multiNode.start();

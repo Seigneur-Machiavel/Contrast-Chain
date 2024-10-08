@@ -21,6 +21,10 @@ const APPS_VARS = {
     __filename: fileURLToPath(import.meta.url),
     __dirname: path.dirname( fileURLToPath(import.meta.url) ),
     __parentDirname: path.dirname( path.dirname( fileURLToPath(import.meta.url) ) ),
+    /*__httpsOptions: {
+        cert: fs.readFileSync('/chemin/vers/votre/certificate.crt'),
+        key: fs.readFileSync('/chemin/vers/votre/private.key')
+    }*/
 };
 
 class AppStaticFncs {
@@ -78,7 +82,7 @@ class AppStaticFncs {
 export class DashboardWsApp {
     #nodesSettings = {};
     /** @param {NodeFactory} factory */
-    constructor(factory, port = 27271) {
+    constructor(factory, port = 27271, secureWS = false) {
         /** @type {NodeFactory} */
         this.factory = factory;
         /** @type {CallBackManager} */
