@@ -82,7 +82,7 @@ export class ValidationWorker_v2 {
         return promise;
     }
     terminateAsync() {
-        console.info(`ValidationWorker ${this.id} terminating...`);
+        //console.info(`ValidationWorker ${this.id} terminating...`);
         this.worker.postMessage({ type: 'terminate', id: this.id });
         return new Promise((resolve, reject) => {
             this.worker.on('message', (message) => {
