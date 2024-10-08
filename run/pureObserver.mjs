@@ -36,4 +36,4 @@ console.log(`Multi node started, account : ${multiNode.account.address}`);
 //#endregion ------------------------------------------------------------
 
 // OBSERVER APP INITIALIZATION ------------------------------------------
-new ObserverWsApp(factory, 27272); // network port 27270
+new ObserverWsApp(factory, 27270); // network port 27270
