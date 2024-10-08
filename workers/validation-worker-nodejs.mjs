@@ -36,7 +36,7 @@ parentPort.on('message', async (task) => {
             }
             break
 		case 'terminate':
-            console.log(`[VALIDATION_WORKER ${workerId}] Terminating...`);
+            //console.log(`[VALIDATION_WORKER ${workerId}] Terminating...`);
 			parentPort.close(); // close the worker
 			break;
         default:
