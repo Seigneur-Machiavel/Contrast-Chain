@@ -5,6 +5,7 @@ import { BlockUtils } from './block.mjs';
 import { BlockMiningData } from './block.mjs';
 import utils from './utils.mjs';
 import { Transaction_Builder } from './transaction.mjs';
+import fs from 'fs';
 import path from 'path';
 const url = await import('url');
 
