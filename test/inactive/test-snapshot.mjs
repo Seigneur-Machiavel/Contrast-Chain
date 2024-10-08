@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { SnapshotManager, SnapshotableUtxoCache, SnapshotableVss } from '../src/snapshot-system.mjs';
+import { SnapshotManager, SnapshotableUtxoCache, SnapshotableVss } from '../../src/snapshot-system.mjs';
 
 describe('Blockchain Snapshot System', () => {
     let snapshotManager;

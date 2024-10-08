@@ -13,9 +13,10 @@ export class TransactionPriorityQueue {
     }
 
     add(transaction) {
-        if (typeof transaction.feePerByte !== 'number' || isNaN(transaction.feePerByte)) {
-            throw new Error('Transaction fee must be a number');
+        if (isNaN(parseFloat(transaction.feePerByte)) || !isFinite(transaction.feePerByte)) {
+            throw new Error('Transaction fee must be a valid number');
         }
+        
         if (this.transactionMap.has(transaction.id)) {
             return false; // Transaction already exists
         }
@@ -128,24 +129,19 @@ export class TransactionPriorityQueue {
         this.transactionMap.set(this.heap[j].id, j);
     }
 
-    getTransactions(maxSize) {
-        let totalSize = 0;
+    getTransactions() {
         const result = [];
         const tempHeap = [...this.heap];
-
-        while (totalSize < maxSize && tempHeap.length > 0) {
+    
+        while (tempHeap.length > 0) {
             const tx = tempHeap[0];
-            if (totalSize + tx.size > maxSize) {
-                break;
-            }
             result.push(tx);
-            totalSize += tx.size;
             this.removeFromTempHeap(tempHeap, 0);
         }
-
+    
         return result;
     }
-
+    
     removeFromTempHeap(heap, index) {
         const last = heap.pop();
         if (heap.length > 0) {

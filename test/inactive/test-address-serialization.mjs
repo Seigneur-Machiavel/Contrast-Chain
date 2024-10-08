@@ -1,5 +1,5 @@
 import { HashFunctions } from './conCrypto.mjs';
-import utils from '../src/utils.mjs';
+import utils from '../../src/utils.mjs';
 
 // TEST ADDRESS BASE 58 - UINT8ARRAY SERIALIZATION
 const nbOfAddresses = 1000;

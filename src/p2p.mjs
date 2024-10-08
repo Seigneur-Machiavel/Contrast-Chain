@@ -181,7 +181,7 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         // check if binary
-        if (!(data instanceof ArrayBuffer)) { console.error('Received non-binary data from pubsub'); return; }
+        if (!(data instanceof Buffer)) {  console.error(`Received non-binary data from ${from} dataset: ${data}`); return; }
         const byteLength = data.byteLength;
         try {
             let parsedMessage;

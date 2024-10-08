@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { BlockTree } from '../src/block-tree.mjs';
+import { BlockTree } from '../../src/block-tree.mjs';
 
 describe('BlockTree', function () {
     let blockTree;

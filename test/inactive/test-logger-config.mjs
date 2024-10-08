@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import Logger from '../src/logger.mjs'; // Adjust the path if necessary
+import Logger from '../../src/logger.mjs'; // Adjust the path if necessary
 
 // Mocha's describe and it are globally available when running tests with Mocha
 

@@ -1,7 +1,7 @@
-import { Wallet } from '../src/wallet.mjs';
-import { Node } from '../src/node.mjs';
-import { Account } from '../src/account.mjs';
-import utils from '../src/utils.mjs';
+import { Wallet } from '../../src/wallet.mjs';
+import { Node } from '../../src/node.mjs';
+import { Account } from '../../src/account.mjs';
+import utils from '../../src/utils.mjs';
 
 export class BlockchainHelpers {
     constructor(useDevArgon2 = true) {
