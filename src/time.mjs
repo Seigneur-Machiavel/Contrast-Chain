@@ -30,7 +30,7 @@ class TimeSynchronizer {
         this.currentServerIndex = (this.currentServerIndex + 1) % this.ntpServers.length;
     }
 
-    async syncTimeWithRetry_OLD(attempts = this.retryAttempts) { // DEPRECATED
+    async syncTimeWithRetry_OLD(attempts = this.retryAttempts) { //? DEPRECATED ?
         console.log(`Attempting NTP sync with ${this.getCurrentNtpServer()}. Attempts left: ${attempts}`);
         try {
             await this.syncTimeWithNTP();
@@ -85,7 +85,7 @@ class TimeSynchronizer {
         });
     }
     
-    delay(ms) {
+    delay(ms) { //? DEPRECATED ?
         return new Promise(resolve => setTimeout(resolve, ms));
     }
 
