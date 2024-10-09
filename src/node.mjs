@@ -84,8 +84,6 @@ export class Node {
 
         this.timeSynchronizer = new TimeSynchronizer({
             syncInterval: 3600000, // sync every minute
-            epochInterval: 300000, // 5 minutes
-            roundInterval: 60000, // 1 minute
         });
 
         this.isSyncedWithNTP = false;
