@@ -3,23 +3,25 @@ git clone https://github.com/Seigneur-Machiavel/Contrast-Chain
 
 NO NVM? INSTALL IT:
 curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.1/install.sh | bash
-export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 THEN RESTART OR ENTER:
+export NVM_DIR="$([ -z "${XDG_CONFIG_HOME-}" ] && printf %s "${HOME}/.nvm" || printf %s "${XDG_CONFIG_HOME}/nvm")"
 [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
 
 GET LAST NODE VERSION:
 nvm install node
 
-NAVIGATE TO PROJECT FOLDER:
-cd Contrast-Chain
-
-INSTALL NODE DEPENCIES:
-npm i
+NAVIGATE TO PROJECT FOLDER AND INSTALL DEPENDENCIES:
+cd Contrast-Chain && npm i
 
 CREATE BLOCKCHAIN FOLDER:
 mkdir -p nodes-data/W8tPnfZiU2GLSLBQgRS6/blockchain
 
-RUN (choose one option):
+TEST (choose one option):
 node run/pureObserver.mjs
-node run/runDashboard.mjs
+node run/dashboard.mjs
 node run/runMultiNodeWithDashboard.mjs
+
+RUN (choose one option):
+nohup node run/pureObserver.mjs > output.log 2>&1 &
+nohup node run/dashboard.mjs > output.log 2>&1 &
+nohup node run/runMultiNodeWithDashboard.mjs > output.log 2>&1 &
