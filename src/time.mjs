@@ -10,7 +10,7 @@ class TimeSynchronizer {
         ];
         this.currentServerIndex = 0;
         this.ntpPort = options.ntpPort || 123;
-        this.syncInterval = options.syncInterval || 60000; // Sync every 60 seconds
+        this.syncInterval = options.syncInterval || 3600000; // 1 hour
         this.epochInterval = options.epochInterval || 300000; // 5 minutes
         this.roundInterval = options.roundInterval || 60000; // 1 minute
         this.retryAttempts = options.retryAttempts || 5;
