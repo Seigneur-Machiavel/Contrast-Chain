@@ -11,6 +11,7 @@ import utils from '../src/utils.mjs';
 
 let ws;
 const WS_SETTINGS = {
+    PROTOCOL: window.location.protocol === "https:" ? "wss:" : "ws:",
     DOMAIN: window.location.hostname,
     PORT: window.location.port,
     RECONNECT_INTERVAL: 5000,
@@ -23,7 +24,7 @@ let validatorUTXOs = [];
 let minerUTXOs = [];
 let modalOpen = false;
 function connectWS() {
-    ws = new WebSocket(`ws://${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
+    ws = new WebSocket(`${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
     console.log(`Connecting to ${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
   
     ws.onopen = function() {
