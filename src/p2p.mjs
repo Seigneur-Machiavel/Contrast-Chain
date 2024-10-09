@@ -9,10 +9,10 @@ import { identify } from '@libp2p/identify';
 import { kadDHT } from '@libp2p/kad-dht';
 import { mdns } from '@libp2p/mdns';
 import { bootstrap } from '@libp2p/bootstrap';
-import { multiaddr } from 'multiaddr';
 import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
 import { yamux } from '@chainsafe/libp2p-yamux';
+import { multiaddr } from '@multiformats/multiaddr';
 
 class P2PNetwork extends EventEmitter {
     /** @param {Object} [options={}] */
