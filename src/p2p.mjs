@@ -248,14 +248,13 @@ class P2PNetwork extends EventEmitter {
         }
     }
     /**
-     * @param {string} peerMultiaddr - The multiaddress of the peer.
-     * @param {Object} message - The message to send.
-     * @returns {Promise<Object>} The response from the peer.
-     */
+      * @param {string} peerMultiaddr - The multiaddress of the peer.
+      * @param {Object} message - The message to send.
+      * @returns {Promise<Object>} The response from the peer.
+      */
     async sendMessage(peerMultiaddr, message) {
+        // Extract peerId using libp2p's multiaddr parsing for reliability
         let peerId;
-
-        // Parse the multiaddress to extract the Peer ID
         try {
             const ma = multiaddr(peerMultiaddr);
             const peerIdComponent = ma.getPeerId();
@@ -264,10 +263,7 @@ class P2PNetwork extends EventEmitter {
             }
             peerId = peerIdComponent.toString();
         } catch (err) {
-            this.logger.error(
-                { component: 'P2PNetwork', peerMultiaddr, error: err.message },
-                'Failed to parse multiaddr'
-            );
+            this.logger.error({ component: 'P2PNetwork', peerMultiaddr, error: err.message }, 'Failed to parse multiaddr');
             throw err;
         }
 
@@ -279,44 +275,20 @@ class P2PNetwork extends EventEmitter {
             const response = await this.sendOverStream(stream, message);
             return response;
         } catch (error) {
-            this.logger.error(
-                {
-                    component: 'P2PNetwork',
-                    peerMultiaddr,
-                    peerId,
-                    error: error.message
-                },
-                'Failed to send message'
-            );
+            this.logger.error({ component: 'P2PNetwork', peerMultiaddr, peerId, error: error.message }, 'Failed to send message');
 
+            // Attempt to close the faulty stream if it exists
             const peer = this.peers.get(peerId);
             if (peer && peer.stream && !peer.stream.closed) {
                 try {
                     await peer.stream.close();
                     await peer.stream.reset();
                     this.updatePeer(peerId, { stream: null });
-                    this.logger.debug(
-                        { component: 'P2PNetwork', peerId },
-                        'Closed faulty stream after error'
-                    );
+                    this.logger.debug({ component: 'P2PNetwork', peerId }, 'Closed faulty stream after error');
                 } catch (closeErr) {
-                    this.logger.error(
-                        {
-                            component: 'P2PNetwork',
-                            peerId,
-                            error: closeErr.message
-                        },
-                        'Failed to close stream after error'
-                    );
+                    this.logger.error({ component: 'P2PNetwork', peerId, error: closeErr.message }, 'Failed to close stream after error');
                 }
             }
-            if (error.code) {
-                this.logger.error(
-                    { component: 'P2PNetwork', peerId, error: error.message, code: error.code },
-                    `Libp2p error occurred: ${error.message}`
-                );
-            }
-
             throw error;
         }
     }
