@@ -160,7 +160,6 @@ export class DashboardWsApp {
             derivedAccounts[0], // validator account
             ['validator', 'miner', 'observer'], // roles
             {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27260'},
-            //{listenAddress: local ? '/ip4/0.0.0.0/tcp/0/ws' : '/ip4/0.0.0.0/tcp/27260/ws'},
             derivedAccounts[1].address // miner address
         );
         multiNode.useDevArgon2 = useDevArgon2; // we remove that one ?
@@ -324,7 +323,7 @@ export class ObserverWsApp {
         this.app.use(express.static(APPS_VARS.__parentDirname));
         // if wss optio nactivated, replace "ws:" by "wss:" in the front/explorer.html file
         
-        //this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
+        this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
         const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
         this.wss = new WebSocketServer({ server });
 

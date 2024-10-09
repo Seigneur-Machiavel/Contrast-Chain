@@ -118,8 +118,6 @@ export class Node {
 
         if (!this.roles.includes('validator')) { return; }
         
-        //const shouldInitBlockchain = this.configManager.getIsInitNode();
-        //if (shouldInitBlockchain) { this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);}
         this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);
         this.opStack.pushFirst('syncWithKnownPeers', null);
     }

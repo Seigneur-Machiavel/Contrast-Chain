@@ -9,7 +9,7 @@ import { DashboardWsApp, ObserverWsApp } from '../run/apps.mjs';
 
 let txsTaskDoneThisBlock = {};
 const network = 'mainnet'; // 'local' | 'testnet' | 'mainnet'
-const port = 27260;
+const port = 27261; //? 27260
 const testParams = {
     privKey: "10ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
     unsafeSpamMode: false,
