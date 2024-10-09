@@ -70,7 +70,7 @@ class P2PNetwork extends EventEmitter {
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
-            this.logger.debug({peerId: this.p2pNode.peerId}, 'P2P network started');
+            this.logger.debug({peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress}, 'P2P network started');
 
             this.#setupEventListeners();
             await this.connectToBootstrapNodes();
@@ -83,7 +83,7 @@ class P2PNetwork extends EventEmitter {
     async stop() {
         if (this.p2pNode) {
             await this.p2pNode.stop();
-            this.logger.debug({ component: 'P2PNetwork', peerId: this.p2pNode.peerId.toString() }, 'P2P network stopped');
+            this.logger.info({ component: 'P2PNetwork', peerId: this.p2pNode.peerId.toString() }, 'P2P network stopped');
         }
     }
 
@@ -128,7 +128,7 @@ class P2PNetwork extends EventEmitter {
             try {
                 const ma = multiaddr(addr);
                 await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
-                this.logger.debug({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
+                this.logger.info({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
             } catch (err) {
                 this.logger.error({ component: 'P2PNetwork', bootstrapNode: addr, error: err.message }, 'Failed to connect to bootstrap node');
             }
