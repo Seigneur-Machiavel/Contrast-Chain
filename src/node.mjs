@@ -229,71 +229,82 @@ export class Node {
 
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
-        try {
-            performance.mark('validation start');
-            performance.mark('validation height-timestamp-hash');
+        performance.mark('validation start');
+        performance.mark('validation height-timestamp-hash');
 
-            // verify the height
-            const lastBlockIndex = this.blockchain.currentHeight;
-            if (finalizedBlock.index > lastBlockIndex + 1) {
-                console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 1} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-                throw new Error(`Rejected: #${finalizedBlock.index} > ${lastBlockIndex + 1}`);
-            }
-            if (finalizedBlock.index <= lastBlockIndex) {
-                console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-                throw new Error(`Rejected: #${finalizedBlock.index} <= ${lastBlockIndex}`);
-            }
-
-            // verify prevhash
-            const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
-            if (lastBlockHash !== finalizedBlock.prevHash) {
-                console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-                throw new Error(`Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
-            }
-
-            // verify the timestamp
-            const timeDiff = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
-            if (timeDiff <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiff} > timestamp_diff_tolerance: 1`); }
-
-            // verify the hash
-            const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
-            if (finalizedBlock.hash !== hex) { throw new Error(`Invalid hash: ${finalizedBlock.hash} - expected: ${hex}`); }
-            const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-            if (!hashConfInfo.conform) { throw new Error(`Invalid hash: ${finalizedBlock.hash} - expected: ${hex}`); }
-
-            performance.mark('validation legitimacy');
-
-            // verify the legitimacy
-            await this.vss.calculateRoundLegitimacies(finalizedBlock.prevHash); // stored in cache
-            const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
-            const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
-            if (validatorLegitimacy !== finalizedBlock.legitimacy) { throw new Error(`Invalid legitimacy: ${finalizedBlock.legitimacy} - expected: ${validatorLegitimacy}`); }
-            
-            performance.mark('validation coinbase-rewards');
-
-            // control coinbase amount
-            const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
-            if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`Invalid coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
-
-            // control total rewards
-            const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
-            try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); } 
-            catch (error) { console.error('Error during rewards control:', error); throw error; }
-
-            performance.mark('validation double-spending');
-            // control double spending
-            try { BlockValidation.isFinalizedBlockDoubleSpending(finalizedBlock); }
-            catch (error) { console.error('Error during double spending control:', error); throw error; }
-
-            performance.mark('validation fullTxsValidation');
-            const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2); 
-            this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
-            performance.mark('validation fullTxsValidation end');
-
-            return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
-        } catch (error) {
-            throw error;
+        // verify the height
+        const lastBlockIndex = this.blockchain.currentHeight;
+        if (typeof finalizedBlock.index !== 'number') { throw new Error('Invalid block index'); }
+        if (Number.isInteger(finalizedBlock.index) === false) { throw new Error('Invalid block index'); }
+        if (finalizedBlock.index > lastBlockIndex + 1) {
+            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 1} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
+            throw new Error(`Rejected: #${finalizedBlock.index} > ${lastBlockIndex + 1}`);
         }
+        if (finalizedBlock.index <= lastBlockIndex) {
+            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
+            throw new Error(`Rejected: #${finalizedBlock.index} <= ${lastBlockIndex}`);
+        }
+        // The only possible case is: finalizedBlock.index === lastBlockIndex + 1
+
+        // verify the POS timestamp
+        if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
+        const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
+        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffPos} > timestamp_diff_tolerance: 1`); }
+
+        // verify final timestamp
+        if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('Invalid block timestamp'); }
+        const timeDiffFinal = finalizedBlock.timestamp - Date.now();
+        if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
+
+        // verify prevhash
+        const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
+        const isEqualPrevHash = lastBlockHash === finalizedBlock.prevHash;
+        /*if (lastBlockHash !== finalizedBlock.prevHash) {
+            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
+            throw new Error(`Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
+        }*/
+
+        // verify the hash
+        const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
+        if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
+        const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
+        if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}`); }
+
+        // pow hash is valid
+        if (!isEqualPrevHash) { throw new Error(`!sync! Invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`); }
+
+        performance.mark('validation legitimacy');
+
+        // verify the legitimacy
+        await this.vss.calculateRoundLegitimacies(finalizedBlock.prevHash); // stored in cache
+        const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
+        const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
+        if (validatorLegitimacy !== finalizedBlock.legitimacy) { throw new Error(`Invalid legitimacy: ${finalizedBlock.legitimacy} - expected: ${validatorLegitimacy}`); }
+        
+        performance.mark('validation coinbase-rewards');
+
+        // control coinbase amount
+        const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
+        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!ban! Invalid coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
+
+        // control total rewards
+        const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
+        try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); } 
+        catch (error) { throw new Error('!ban! Invalid rewards'); }
+
+        performance.mark('validation double-spending');
+        // control double spending
+        try { BlockValidation.isFinalizedBlockDoubleSpending(finalizedBlock); }
+        catch (error) { throw new Error('!ban! Double spending detected'); }
+
+        performance.mark('validation fullTxsValidation');
+        const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2); 
+        this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
+        performance.mark('validation fullTxsValidation end');
+
+        return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
     }
     /**
      * @param {BlockData} finalizedBlock
@@ -317,25 +328,24 @@ export class Node {
             storeAsFiles = false
         } = options;
 
+        if (!finalizedBlock) { throw new Error('Invalid block candidate'); }
+        if (!this.roles.includes('validator')) { throw new Error('Only validator can process PoW block'); }
         if (this.syncHandler.isSyncing && !isSync) { throw new Error("Node is syncing, can't process block"); }
         const nbOfPeers = isSync ? 0 : this.#waitSomePeers();
        
         const startTime = Date.now();
-        if (!finalizedBlock) { throw new Error('Invalid block candidate'); }
-        if (!this.roles.includes('validator')) { throw new Error('Only validator can process PoW block'); }
-        const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
-
+        
         let validationResult;
         let hashConfInfo = false;
         let totalFees = undefined; // will be recalculated if undefined by: addConfirmedBlocks()
         if (!skipValidation) {
-            try {
-                const vResult = await this.#validateBlockProposal(finalizedBlock, blockBytes);
-                validationResult = vResult;
-                hashConfInfo = vResult.hashConfInfo;
-            } catch (error) { throw error; }
-            if (!hashConfInfo || !hashConfInfo.conform) { 
-                console.info(`block validator ${validatorAddress} rejected`); 
+            const vResult = await this.#validateBlockProposal(finalizedBlock, blockBytes); // Can throw an error
+            validationResult = vResult;
+            hashConfInfo = vResult.hashConfInfo;
+            
+            if (!hashConfInfo || !hashConfInfo.conform) {
+                //const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0]; // dangerous
+                //console.info(`block validator ${validatorAddress} rejected`); 
                 throw new Error('Failed to validate block');
             }
         }

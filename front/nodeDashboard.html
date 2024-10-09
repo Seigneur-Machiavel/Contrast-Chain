@@ -58,8 +58,9 @@
         }
         .editButton {
             cursor: pointer;
+            height: fit-content;
             font-size: 22px;
-            margin: 0 10px 0 -50px;
+            margin-left: 10px;
         }
         .editButton:hover {
             transform: scale(1.1);
@@ -244,8 +245,10 @@
 
             <div class="spacedText" style="align-items: center;">
                 <h3>Reward address:</h3>
-                <h3 id="validatorRewardAddress"></h3>
-                <div id="validatorAddressEditBtn" class="editButton">✎</div>
+                <div style="display: flex; position: relative; align-items: center;">
+                    <h3 id="validatorRewardAddress"></h3>
+                    <div id="validatorAddressEditBtn" class="editButton">✎</div>
+                </div>
             </div>
 
             <div class="spacedText">
@@ -274,8 +277,10 @@
             
             <div class="spacedText" style="align-items: center;">
                 <h3>Address:</h3>
-                <h3 id="minerAddress"></h3>
-                <div id="minerAddressEditBtn" class="editButton">✎</div>
+                <div style="display: flex; position: relative; align-items: center;">
+                    <h3 id="minerAddress"></h3>
+                    <div id="minerAddressEditBtn" class="editButton">✎</div>
+                </div>
             </div>
 
             <div class="spacedText">

@@ -12,6 +12,9 @@ export class OpStack {
     syncRequested = false;
     terminated = false;
     txBatchSize = 10; // will treat transactions in batches of 10
+    /** @type {NodeJS.Timeout} */
+    lastConfirmedBlockTimeout = null;
+    delayWithoutConfirmationBeforeSync = 300_000; // 5 minutes
 
     /** @param {Node} node */
     static buildNewStack(node) {
@@ -64,23 +67,27 @@ export class OpStack {
                 case 'digestPowProposal':
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
                     try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false }, byteLength);
-                    } catch (error) { 
-                        if (error.message.includes('<=')) { return; }
-                        if (error.message.includes('=>')) { return; }
-                        if (error.message.includes('Node is syncing')) { return; }
+                    } catch (error) {
+                        if (error.message.includes('!ban!')) { } //! -> Ban the peer
+
                         if (error.message.includes('Anchor not found')) {
-                        console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
+                            console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
                         if (error.message.includes('invalid prevHash')) {
-                        console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
+                            console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
                         
-                        // Should work, but stop the syncing process
-                        //if (error.message.includes('Node is syncing')) { console.info(error.message); return; }
+                        if (!error.message.includes('!sync!')) { return; }
 
                         console.error(error.stack);
                         this.terminate();
 
                         await this.node.syncHandler.handleSyncFailure();
                     }
+                    // reset the timeout for the sync
+                    clearTimeout(this.lastConfirmedBlockTimeout);
+                    this.lastConfirmedBlockTimeout = setTimeout(() => {
+                        this.pushFirst('syncWithKnownPeers', null);
+                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    }, this.delayWithoutConfirmationBeforeSync);
                     break;
                 case 'syncWithKnownPeers':
                     console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
