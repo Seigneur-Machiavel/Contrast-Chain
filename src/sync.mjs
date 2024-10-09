@@ -2,7 +2,7 @@ import pino from 'pino';
 import utils from './utils.mjs';
 import P2PNetwork from './p2p.mjs';
 import * as lp from 'it-length-prefixed';
-import { multiaddr } from 'multiaddr';
+import { multiaddr } from '@multiformats/multiaddr';
 /**
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
