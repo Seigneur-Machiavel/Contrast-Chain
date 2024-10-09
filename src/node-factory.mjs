@@ -1,6 +1,5 @@
 import { Node } from './node.mjs';
 import { Account } from './account.mjs';
-import { Wallet } from './wallet.mjs';
 
 export class NodeFactory {
     constructor() {

@@ -82,7 +82,7 @@ class AppStaticFncs {
 export class DashboardWsApp {
     #nodesSettings = {};
     /** @param {NodeFactory} factory */
-    constructor(factory, port = 27271, secureWS = false) {
+    constructor(factory, port = 27271, autoInit = true) {
         /** @type {NodeFactory} */
         this.factory = factory;
         /** @type {CallBackManager} */
@@ -94,7 +94,7 @@ export class DashboardWsApp {
         this.wss =  null;
 
         this.readableNow = () => { return `${new Date().toLocaleTimeString()}:${new Date().getMilliseconds()}` };
-        this.init();
+        if (autoInit) this.init();
     }
     /** @type {Node} */
     get node() { 
@@ -146,6 +146,29 @@ export class DashboardWsApp {
         if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
         this.callBackManager = new CallBackManager(this.node);
         this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
+    }
+    async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
+        const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "W");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        const multiNode = await this.factory.createNode(
+            derivedAccounts[0], // validator account
+            ['validator', 'miner', 'observer'], // roles
+            {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27260'},
+            //{listenAddress: local ? '/ip4/0.0.0.0/tcp/0/ws' : '/ip4/0.0.0.0/tcp/27260/ws'},
+            derivedAccounts[1].address // miner address
+        );
+        multiNode.useDevArgon2 = useDevArgon2; // we remove that one ?
+        await multiNode.start();
+        multiNode.memPool.useDevArgon2 = useDevArgon2;
+
+        console.log(`Multi node started, account : ${multiNode.account.address}`);
+        return multiNode;
     }
     #onConnection(ws, req) {
         const clientIp = req.socket.remoteAddress === '::1' ? 'localhost' : req.socket.remoteAddress;
@@ -274,29 +297,6 @@ export class DashboardWsApp {
         
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
-    }
-    async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
-        const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
-        const restored = await wallet.restore();
-        if (!restored) { console.error('Failed to restore wallet.'); return; }
-        wallet.loadAccounts();
-        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "W");
-        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
-        wallet.saveAccounts();
-
-        const multiNode = await this.factory.createNode(
-            derivedAccounts[0], // validator account
-            ['validator', 'miner', 'observer'], // roles
-            {listenAddress: local ? '/ip4/0.0.0.0/tcp/0' : '/ip4/0.0.0.0/tcp/27261'},
-            //{listenAddress: local ? '/ip4/0.0.0.0/tcp/0/ws' : '/ip4/0.0.0.0/tcp/27260/ws'},
-            derivedAccounts[1].address // miner address
-        );
-        multiNode.useDevArgon2 = useDevArgon2; // we remove that one ?
-        await multiNode.start();
-        multiNode.memPool.useDevArgon2 = useDevArgon2;
-
-        console.log(`Multi node started, account : ${multiNode.account.address}`);
-        return multiNode;
     }
 }
 

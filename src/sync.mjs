@@ -139,11 +139,12 @@ export class SyncHandler {
 
         // Sort peers by currentHeight in descending order
         peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
-        const highestPeerHeight = peerStatuses[0].currentHeight;
+        //const highestPeerHeight = peerStatuses[0].currentHeight;
+        const highestPeerHeight = peerStatuses.reduce((acc, curr) => Math.max(acc, curr.currentHeight), -1);
 
         if (highestPeerHeight === undefined) {
             this.logger.error(`[SYNC] highestPeerHeight is undefined -> handleSyncFailure()`);
-            await this.handleSyncFailure();
+            //await this.handleSyncFailure();
             return false;
         }
 
