@@ -413,7 +413,7 @@ class P2PNetwork extends EventEmitter {
         const updatedPeer = {
             ...existingPeer,    // Preserve existing data
             ...data,            // Overwrite with new data
-            lastSeen: Date.now(),
+            lastSeen: this.timeSynchronizer.getCurrentTime(),
         };
 
         // Optionally, ensure that `address` and `stream` are preserved if not provided in `data`

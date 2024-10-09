@@ -82,23 +82,19 @@ export class Node {
         this.nbOfWorkers = 16;
         this.configManager = new ConfigManager("config/config.json");
 
-        this.timeSynchronizer = new TimeSynchronizer({
-            syncInterval: 3600000, // sync every minute
-            epochInterval: 300000, // 5 minutes
-            roundInterval: 60000, // 1 minute
-        });
-
+        this.timeSynchronizer = new TimeSynchronizer();
         this.isSyncedWithNTP = false;
     }
 
     async start(startFromScratch = false) {
         await this.configManager.init();
-        await this.initializeTimeSync();
+        //await this.initializeTimeSync(); // DEPRECATED
+        this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
         
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
         this.opStack = OpStack.buildNewStack(this);
-        this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack);
+        this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack, this.timeSynchronizer);
         this.miner.useDevArgon2 = this.useDevArgon2;
 
         if (!startFromScratch) { await this.#loadBlockchain(); }
@@ -125,7 +121,7 @@ export class Node {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
 
-    async initializeTimeSync() {
+    async initializeTimeSync() { // DEPRECATED
         try {
             await this.timeSynchronizer.syncTimeWithRetry();
             this.isSyncedWithNTP = true;
@@ -255,7 +251,7 @@ export class Node {
         // verify final timestamp
         if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
         if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('Invalid block timestamp'); }
-        const timeDiffFinal = finalizedBlock.timestamp - Date.now();
+        const timeDiffFinal = finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime();
         if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
 
         // verify prevhash
@@ -342,7 +338,7 @@ export class Node {
             const vResult = await this.#validateBlockProposal(finalizedBlock, blockBytes); // Can throw an error
             validationResult = vResult;
             hashConfInfo = vResult.hashConfInfo;
-            
+
             if (!hashConfInfo || !hashConfInfo.conform) {
                 //const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0]; // dangerous
                 //console.info(`block validator ${validatorAddress} rejected`); 
@@ -427,7 +423,7 @@ export class Node {
         const startTime = Date.now();
 
         const Txs = await this.memPool.getMostLucrativeTransactionsBatch(this.utxoCache);
-        const posTimestamp = this.blockchain.lastBlock ? this.blockchain.lastBlock.timestamp + 1 : Date.now();
+        const posTimestamp = this.blockchain.lastBlock ? this.blockchain.lastBlock.timestamp + 1 : this.timeSynchronizer.getCurrentTime();
 
         // Create the block candidate, genesis block if no lastBlockData
         let blockCandidate = BlockData(0, 0, utils.SETTINGS.blockReward, 27, 0, '0000000000000000000000000000000000000000000000000000000000000000', Txs, posTimestamp);

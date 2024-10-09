@@ -261,22 +261,9 @@ function saveBlockDataJSON(blockData, blocksFolderPath) {
 function saveBlockDataBinary_v1(blockData, blocksFolderPath) {
     const blockDataPath = path.join(blocksFolderPath, `${blockData.index}.bin`);
     const cloneOfBlockData = BlockUtils.cloneBlockData(blockData);
-    const timings = { start: Date.now() };
-    //const compressed = utils.compression.msgpack_Zlib.finalizedBlock.toBinary_v1(cloneOfBlockData, true);
-    //timings.compressed = Date.now() - timings.start;
-    //fs.writeFileSync(blockDataPath, compressed);
 
     const encoded = utils.serializer.block_finalized.toBinary_v2(cloneOfBlockData);
     fs.writeFileSync(blockDataPath, encoded);
-
-    // test
-    /*timings.start = Date.now();
-    const notCompressed = utils.compression.msgpack_Zlib.finalizedBlock.toBinary_v1(cloneOfBlockData);
-    timings.uncompressed = Date.now() - timings.start;
-    const blockDataPathNotCompressed = path.join(blocksFolderPath, `${blockData.index}(not compressed).bin`);
-    fs.writeFileSync(blockDataPathNotCompressed, notCompressed);
-
-    console.log(`Block ${blockData.index} saved - compressed: ${timings.compressed}ms, uncompressed: ${timings.uncompressed}ms`);*/
 }
 //#endregion -----------------------------
 

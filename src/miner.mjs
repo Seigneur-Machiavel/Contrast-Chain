@@ -7,6 +7,7 @@ import utils from './utils.mjs';
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
  * @typedef {import("./opStack.mjs").OpStack} OpStack
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
+ * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
 
 export class Miner {
@@ -14,7 +15,7 @@ export class Miner {
      * @param {Account} address
      * @param {P2PNetwork} p2pNetwork
      */
-    constructor(address, p2pNetwork, roles = ['miner'], opStack = null) {
+    constructor(address, p2pNetwork, roles = ['miner'], opStack = null, timeSynchronizer = null) {
         this.terminated = false;
         this.version = 1;
         this.useBetTimestamp = true;
@@ -49,6 +50,8 @@ export class Miner {
         this.hashRate = 0; // hash rate in H/s
         /** @type {OpStack} */
         this.opStack = opStack; // only for multiNode (validator + miner)
+        /** @type {TimeSynchronizer} */
+        this.timeSynchronizer = timeSynchronizer;
 
         /** @type {Object<string, WebSocketCallBack>} */
         this.wsCallbacks = {};
@@ -93,7 +96,7 @@ export class Miner {
         const headerNonce = utils.mining.generateRandomNonce().Hex;
         const coinbaseNonce = utils.mining.generateRandomNonce().Hex;
         clonedCandidate.nonce = headerNonce;
-        clonedCandidate.timestamp = Math.max(clonedCandidate.posTimestamp + 1 + this.bets[clonedCandidate.index], Date.now());
+        clonedCandidate.timestamp = Math.max(clonedCandidate.posTimestamp + 1 + this.bets[clonedCandidate.index], this.timeSynchronizer.getCurrentTime());
         //console.log(`generateRandomNonce: ${performance.now() - time}ms`); time = performance.now();
 
         const powReward = blockCandidate.powReward;
@@ -160,10 +163,8 @@ export class Miner {
         console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized (Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)} | validatorAddress: ${validatorAddress}`);
         
         this.addressOfCandidatesBroadcasted.push(validatorAddress);
-        const broadcastTimeStart = Date.now();
-        //console.warn(`broadcasting pow`);
         await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
-        //console.warn(`broadcastTime: ${Date.now() - broadcastTimeStart}ms`);
+
         if (this.roles.includes('validator')) { this.opStack.push('digestPowProposal', finalizedBlock); };
         if (this.wsCallbacks.onBroadcastFinalizedBlock) { this.wsCallbacks.onBroadcastFinalizedBlock.execute(BlockUtils.getBlockHeader(finalizedBlock)); }
     }
@@ -191,7 +192,7 @@ export class Miner {
                         return;
                     }
 
-                    if (finalizedBlock.timestamp <= Date.now()) { // if block is ready to be broadcasted
+                    if (finalizedBlock.timestamp <= this.timeSynchronizer.getCurrentTime()) { // if block is ready to be broadcasted
                         this.#broadcastBlockCandidate(finalizedBlock);
                     } else { // if block is not ready to be broadcasted (pre-shoted)
                         this.preshotedPowBlock = finalizedBlock;
@@ -213,12 +214,12 @@ export class Miner {
     /** DON'T AWAIT THIS FUNCTION */
     async startWithWorker() {
         const workersStatus = [];
-        let lastHashTime = Date.now();
+        let lastHashTime = Dthis.timeSynchronizer.getCurrentTime();
         while (!this.terminated) {
             const delayBetweenMining = this.roles.includes('validator') ? 20 : 10;
             await new Promise((resolve) => setTimeout(resolve, delayBetweenMining));
 
-            const preshotedPowReadyToSend = this.preshotedPowBlock ? this.preshotedPowBlock.timestamp <= Date.now() : false;
+            const preshotedPowReadyToSend = this.preshotedPowBlock ? this.preshotedPowBlock.timestamp <= this.timeSynchronizer.getCurrentTime() : false;
             if (preshotedPowReadyToSend) {
                 this.#broadcastBlockCandidate(this.preshotedPowBlock);
                 this.preshotedPowBlock = null;
@@ -235,8 +236,8 @@ export class Miner {
                 const blockCandidate = this.#getMostLegitimateBlockCandidate();
                 if (!blockCandidate) { continue; }
 
-                this.#hashRateNew(Date.now() - lastHashTime);
-                lastHashTime = Date.now();
+                this.#hashRateNew(this.timeSynchronizer.getCurrentTime() - lastHashTime);
+                lastHashTime = this.timeSynchronizer.getCurrentTime();
                 workersStatus[id] = 'busy';
 
                 const { signatureHex, nonce, clonedCandidate } = await this.#prepareBlockCandidateBeforeMining(blockCandidate);
@@ -247,7 +248,7 @@ export class Miner {
         console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);
     }
 
-    /** Event based operations */
+    /** Event based operations */ // NOT GOOD !
     start_v2(nbOfWorkers = 1) {
         this.version = 2;
         this.setNbOfThreads(nbOfWorkers);
@@ -309,8 +310,8 @@ export class Miner {
             if (!conform) { return; }
 
             // if block isn't ready to be broadcasted - avoid betting on the same block
-            if (finalizedBlock.timestamp > Date.now()) { this.bets[finalizedBlock.index] = 1; }
-            setTimeout(() => { this.#broadcastBlockCandidate(finalizedBlock); }, finalizedBlock.timestamp - Date.now());
+            if (finalizedBlock.timestamp > this.timeSynchronizer.getCurrentTime()) { this.bets[finalizedBlock.index] = 1; }
+            setTimeout(() => { this.#broadcastBlockCandidate(finalizedBlock); }, finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime());
         });
 
         worker.on('exit', (code) => { console.log(`MinerWorker stopped with exit code ${code}`); });
