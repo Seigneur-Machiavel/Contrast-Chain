@@ -118,7 +118,7 @@ class P2PNetwork extends EventEmitter {
             },
             peerDiscovery,
             connectionManager: {
-                autoDial: true,
+                autoDial: false,
             },
         });
     }
@@ -187,7 +187,7 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         // check if binary
-        if (!(data instanceof Uint8Array)) { console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
+        if (!(data instanceof Uint8Array)) {  console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
         const byteLength = data.byteLength;
         try {
             let parsedMessage;
