@@ -214,7 +214,7 @@ export class Miner {
     /** DON'T AWAIT THIS FUNCTION */
     async startWithWorker() {
         const workersStatus = [];
-        let lastHashTime = Dthis.timeSynchronizer.getCurrentTime();
+        let lastHashTime = this.timeSynchronizer.getCurrentTime();
         while (!this.terminated) {
             const delayBetweenMining = this.roles.includes('validator') ? 20 : 10;
             await new Promise((resolve) => setTimeout(resolve, delayBetweenMining));
