@@ -19,6 +19,7 @@ class TimeSynchronizer {
         this.lastSyncedTime = null;
         this.offset = 0; // Time offset between system time and NTP time
         this.#startSyncLoop();
+        this.isRunning = false; //? DEPRECATED ?
     }
 
     getCurrentNtpServer() {
@@ -114,13 +115,27 @@ class TimeSynchronizer {
     }
 
     // Start the periodic synchronization with the NTP server with retries
-    startSyncLoop() { // DEPRECATED
+    /*startSyncLoop() { // DEPRECATED
         this.syncTimeWithRetry(); // Initial sync with retry
         setInterval(() => {
             this.syncTimeWithRetry(); // Re-sync every syncInterval with retry
         }, this.syncInterval);
-    }
+    }*/
 
+    // Start the synchronization loop
+    async startSyncLoop() { //? DEPRECATED ?
+        if (this.isRunning) {
+            console.warn('TimeSynchronizer is already running.');
+            return;
+        }
+        this.isRunning = true;
+        console.log('Starting TimeSynchronizer...');
+
+        while (this.isRunning) {
+            await this.syncTimeWithRetry();
+            await this.delay(this.syncInterval);
+        }
+    }
 }
 
 export { TimeSynchronizer };
