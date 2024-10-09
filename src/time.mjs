@@ -37,7 +37,7 @@ class TimeSynchronizer {
             if (attempts > 1) {
                 console.warn(`Retrying NTP sync. Rotating to next server.`);
                 this.rotateNtpServer();
-                await new Promise(resolve => setTimeout(resolve, this.retryDelay));
+                await this.delay(this.retryDelay);
                 return this.syncTimeWithRetry(attempts - 1);
             } else {
                 console.error(`Failed to sync with NTP after ${this.retryAttempts} attempts`);
@@ -83,6 +83,10 @@ class TimeSynchronizer {
             });
         });
     }
+    
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
 
     // Get the synchronized current time
     getCurrentTime() {
@@ -116,6 +120,7 @@ class TimeSynchronizer {
             this.syncTimeWithRetry(); // Re-sync every syncInterval with retry
         }, this.syncInterval);
     }
+
 }
 
 export { TimeSynchronizer };
