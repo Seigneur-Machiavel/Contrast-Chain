@@ -83,7 +83,7 @@ export class Node {
         this.configManager = new ConfigManager("config/config.json");
 
         this.timeSynchronizer = new TimeSynchronizer({
-            syncInterval: 60000, // sync every minute
+            syncInterval: 3600000, // sync every minute
             epochInterval: 300000, // 5 minutes
             roundInterval: 60000, // 1 minute
         });
