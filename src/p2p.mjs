@@ -21,9 +21,9 @@ import { multiaddr } from '@multiformats/multiaddr';
 class P2PNetwork extends EventEmitter {
     /** @param {Object} [options={}] */
     constructor(options = {}, timeSynchronizer) {
+        super();
         /** @type {TimeSynchronizer} */
         this.timeSynchronizer = timeSynchronizer;
-        super();
         const defaultOptions = {
             bootstrapNodes: [],
             maxPeers: 12,
