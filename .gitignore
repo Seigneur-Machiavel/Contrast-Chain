@@ -4,6 +4,7 @@ storage/accounts
 storage/accounts(dev)
 storage/blocks
 storage/blockchainInfo.csv
+storage/nodeSettings.json
 nodePrivateKeys.json
 nodes-data
 config/config.json
