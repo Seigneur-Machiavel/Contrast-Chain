@@ -25,15 +25,20 @@ document.addEventListener("visibilitychange", function() { pageFocused = documen
 /** @type {WebSocket} */
 let ws;
 const SETTINGS = {
-    LOCAL_DOMAIN: 'localhost:27270',
-    DOMAIN: 'pinkparrot.observer',
+    PROTOCOL: window.location.protocol === "https:" ? "wss:" : "ws:",
+    DOMAIN: window.location.hostname,
+    PORT: window.location.port,
+    //LOCAL_DOMAIN: 'localhost:27270',
+    //DOMAIN: 'pinkparrot.observer',
     RECONNECT_INTERVAL: 1000,
     //GET_NODE_INFO_INTERVAL: 10000,
     GET_CURRENT_HEIGHT_INTERVAL: 5000,
     ROLES: ['chainExplorer', 'blockExplorer']
 }
 function connectWS() {
-    ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
+    //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
+    ws = new WebSocket(`${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}:${SETTINGS.PORT}`);
+    console.log(`Connecting to ${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}:${SETTINGS.PORT}`);
   
     ws.onopen = function() {
         console.log('Connection opened');

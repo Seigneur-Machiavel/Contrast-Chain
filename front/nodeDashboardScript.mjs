@@ -25,7 +25,7 @@ let minerUTXOs = [];
 let modalOpen = false;
 function connectWS() {
     ws = new WebSocket(`${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
-    console.log(`Connecting to ${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
+    console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
   
     ws.onopen = function() {
         console.log('Connection opened');
