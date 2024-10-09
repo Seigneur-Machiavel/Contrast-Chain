@@ -35,7 +35,7 @@ class TimeSynchronizer {
         for (let i = 0; i < attempts; i++) {
             try {
                 await this.syncTimeWithNTP();
-                console.log(`Time synchronized after ${this.retryAttempts - i} attempts`);
+                console.log(`Time synchronized after ${i + 1} attempts`);
                 return true;
             } catch (err) {
                 this.rotateNtpServer();

@@ -325,12 +325,7 @@ export class Transaction_Builder {
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
-        //const hashHex = await HashFunctions.SHA256(`${inputsStr}${outputsStr}${versionStr}`);
 
-        /*const inputsHash = HashFunctions.xxHash32(JSON.stringify(transaction.inputs));
-        const outputsHash = HashFunctions.xxHash32(JSON.stringify(transaction.outputs));
-        const versionHash = HashFunctions.xxHash32(JSON.stringify(transaction.version));
-        const hashHex = HashFunctions.xxHash32(`${inputsHash}${outputsHash}${versionHash}`);*/
         const hashHex = HashFunctions.xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
         return hashHex.slice(0, hashHexLength);
     }

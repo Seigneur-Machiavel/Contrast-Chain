@@ -147,7 +147,7 @@ export class SyncHandler {
             return false;
         }
 
-        if (highestPeerHeight === this.node.blockchain.currentHeight) {
+        if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`[SYNC] Already at the highest height, no need to sync`);
             this.isSyncing = false;
             await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
