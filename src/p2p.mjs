@@ -14,9 +14,15 @@ import utils from './utils.mjs';
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { multiaddr } from '@multiformats/multiaddr';
 
+/**
+ * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
+*/
+
 class P2PNetwork extends EventEmitter {
     /** @param {Object} [options={}] */
-    constructor(options = {}) {
+    constructor(options = {}, timeSynchronizer) {
+        /** @type {TimeSynchronizer} */
+        this.timeSynchronizer = timeSynchronizer;
         super();
         const defaultOptions = {
             bootstrapNodes: [],

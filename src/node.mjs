@@ -32,6 +32,8 @@ obs.observe({ entryTypes: ['measure'] });
 export class Node {
     /** @param {Account} account */
     constructor(account, roles = ['validator'], p2pOptions = {}, version = 1) {
+        this.timeSynchronizer = new TimeSynchronizer();
+        this.isSyncedWithNTP = false;
         this.restartRequested = false;
         /** @type {string} */
         this.id = account.address;
@@ -45,7 +47,7 @@ export class Node {
         this.p2pNetwork = new P2PNetwork({
             role: this.roles.join('_'),
             ...p2pOptions
-        });
+        }, this.timeSynchronizer);
         this.p2pOptions = p2pOptions;
 
         /** @type {Account} */
@@ -81,9 +83,6 @@ export class Node {
         this.workers = [];
         this.nbOfWorkers = 16;
         this.configManager = new ConfigManager("config/config.json");
-
-        this.timeSynchronizer = new TimeSynchronizer();
-        this.isSyncedWithNTP = false;
     }
 
     async start(startFromScratch = false) {
