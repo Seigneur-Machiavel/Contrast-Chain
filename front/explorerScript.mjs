@@ -114,7 +114,7 @@ function connectWS() {
                 break;
             case 'address_exhaustive_data_requested':
                 // { address, addressUTXOs, addressTxsReferences }
-                blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressExhaustiveData(data.addressUTXOs, data.addressTxsReferences);
+                blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressExhaustiveData(data.addressUTXOs.UTXOs, data.addressTxsReferences);
 
                 blockExplorerWidget.navigateUntilTarget(true);
                 break;
