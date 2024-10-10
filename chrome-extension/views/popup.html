@@ -2,6 +2,7 @@
 <html>
 <head>
     <link rel="stylesheet" href="../styles/popup-styles.css">
+    <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
     <script src="../scripts/argon2-bundled.min.js"></script>
     <script src="../scripts/cryptoLight.js"></script>
@@ -16,7 +17,7 @@
                 <h1 class="ml3">Constrast</h1>
                 <span class="titleSufix">Beta</span>
             </div>
-    
+            
             <div class="centerScreenBtnContrainer">
                 <div id="centerScreenBtnWrap">
                     <div class="wrap">
@@ -49,9 +50,24 @@
                 <p class="bottomInfo"></p>
             </form>
 
+            <form id="createWalletForm" class="hidden">
+                <h1>Wallet creation</h1>
+                <input id="privateKeyHexInput" placeholder="Private key">
+                <button id="randomizeBtn">Randomize</button>
+                <button id="confirmPrivateKeyBtn" class="disabled">Confirm</button>
+                <p class="bottomInfo"></p>
+            </form>
+
+            <form id="mnemonicOverviewForm" class="hidden">
+                <h1>Mnemonic (seedphrase)</h1>
+                <div id="mnemonicOverview"></div>
+                <button id="mnemonicOverviewBtn">My key is securely stored</button>
+            </form>
+
             <form id="walletForm" class="hidden">
-                <input type="password" placeholder="Password">
-                <button type="submit">Unlock</button>
+                <h1><span id="spendableBalanceStr">0.00</span>c</h1>
+
+                <button>+</button>
                 <p class="bottomInfo"></p>
             </form>
     

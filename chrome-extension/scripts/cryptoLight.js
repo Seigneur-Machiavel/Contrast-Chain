@@ -6,7 +6,7 @@ const cryptoLight = {
     useArgon2Worker: false,
     argon2Worker: null,
     cryptoStrength: 'heavy',
-    argon2Mem: { heavy: 2**17, medium: 2**16, light: 2**14 },
+    argon2Mem: { heavy: 2**16, medium: 2**14, light: 2**12 },
     key: null,
     /** @type {Uint8Array} */
     iv: null,
@@ -253,6 +253,18 @@ const cryptoLight = {
         result.set(salt1);
         result.set(salt2, salt1.length);
         return result;
+    },
+    generateRdnHex(length = 32) {
+        // use crypto
+        const array = new Uint8Array(length);
+        window.crypto.getRandomValues(array);
+
+        let hex = '';
+        for (let i = 0; i < array.length; i++) {
+            hex += array[i].toString(16).padStart(2, '0');
+        }
+
+        return hex;
     },
     // ASYMETRIC CRYPTO
     async generateKeyPair() {

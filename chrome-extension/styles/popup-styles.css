@@ -1,6 +1,8 @@
 :root {
     --background-color: #2c2c2c;
     --text-color: white;
+    --text-color2: #c1c1c1;
+    --text-color3: grey;
     --button-color: #ebebeb;
     --invalid-color: indianred;
     --valid-color: cornflowerblue;
@@ -17,6 +19,10 @@ body {
     background-color: #2c2c2c;
     margin: 0;
 }
+h1, h2 {
+    color: var(--text-color2);
+}
+
 #popUpContent {
     position: absolute;
     right: 0;
@@ -76,7 +82,9 @@ body {
     border-color: #ffffff17;
     filter: drop-shadow(-1px 6px 3px rgba(0, 0, 0, .1));
     transition: color 0.12s ease-in-out;
-    color: grey;
+}
+.appTitle h1 {
+    color: var(--text-color3);
 }
 .ml3 {
     font-weight: 600;
@@ -89,6 +97,7 @@ body {
     top: 10%;
     left: 0;
     font-size: 12px;
+    color: var(--text-color3);
 }
 form {
     display: flex;
@@ -131,6 +140,14 @@ button {
     border-radius: 10px;
     font-size: large;
 }
+button:not(.disabled):hover {
+    transform: scale(1.02);
+}
+button.disabled {
+    background-color: #171717;
+    color: #c1c1c1;
+    cursor: not-allowed;
+}
 #waitingForConnectionForm h2 {
     animation: blink 1s infinite;
 }
@@ -144,6 +161,17 @@ button {
     font-size: 14px;
     animation: blink 1s infinite;
 }
+
+#createWalletForm {
+
+}
+#createWalletForm h1 {
+    margin: 30px 0;
+}
+#createWalletForm button:not(:last-child) {
+    margin: 0 0 20px 0;
+}
+
 #settingsForm {
     margin: 20px 0;
 }

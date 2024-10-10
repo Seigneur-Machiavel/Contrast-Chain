@@ -5,6 +5,20 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { htmlAnimations } = require("./htmlAnimations.js");
 }
 
+class WalletInfo {
+    #privateKeyHex = '';
+    constructor(walletInfo = {}) {
+        this.name = walletInfo.name || 'wallet1';
+        this.#privateKeyHex = walletInfo.privateKeyHex || '';
+    }
+
+    extractVarsObjectToSave() {
+        return {
+            name: this.name,
+            privateKeyHex: this.#privateKeyHex
+        };
+    }
+}
 cryptoLight.useArgon2Worker = true; console.log('Argon2 worker enabled!');
 const settings = {
     appVersion: chrome.runtime.getManifest().version,
@@ -19,6 +33,7 @@ const centerScreenBtn = new CenterScreenBtn();
 centerScreenBtn.state = 'welcome';
 centerScreenBtn.init(7);
 const miner = new Miner(centerScreenBtn, communication);
+const selectedWalletIndex = 0;
 
 const eHTML = {
     centerScreenBtnContrainer: document.getElementsByClassName('centerScreenBtnContrainer')[0],
@@ -29,6 +44,16 @@ const eHTML = {
 
     loginForm: document.getElementById('loginForm'),
     loginFormInput: document.getElementById('loginForm').getElementsByTagName('input')[0],
+
+    createWalletForm: document.getElementById('createWalletForm'),
+    privateKeyHexInput: document.getElementById('privateKeyHexInput'),
+    randomizeBtn: document.getElementById('randomizeBtn'),
+    confirmPrivateKeyBtn: document.getElementById('confirmPrivateKeyBtn'),
+
+    //? mnemonicOverviewForm: document.getElementById('mnemonicOverviewForm'),
+
+    walletForm: document.getElementById('walletForm'),
+    spendableBalanceStr: document.getElementById('spendableBalanceStr'),
 
     bottomBar: document.getElementById('bottomBar'),
     walletBtn: document.getElementById('walletBtn'),
@@ -79,7 +104,7 @@ function setVisibleForm(formId, applyBLur = true) {
     eHTML.settingsBtn.classList.add('active');
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
-    eHTML.centerScreenBtnContrainer.classList.remove('hidden');
+    eHTML.centerScreenBtnContrainer.classList.add('hidden');
 
     const forms = document.getElementsByTagName('form');
     for (let i = 0; i < forms.length; i++) {
@@ -88,22 +113,27 @@ function setVisibleForm(formId, applyBLur = true) {
     }
 
     if (formId === "passwordCreationForm" || formId === "loginForm") {
+        eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         eHTML.bottomBar.classList.add('hidden');
     }
 
-    if (formId === "walletForm") {
-        eHTML.centerScreenBtnContrainer.classList.add('hidden');
+    if (formId === "walletForm" || formId === "createWalletForm") {
         eHTML.walletBtn.classList.remove('active');
+        eHTML.bottomBar.classList.add('hidden');
+    }
+    if (formId === "createWalletForm") {
+        eHTML.miningBtn.classList.remove('active');
+        eHTML.settingsBtn.classList.remove('active');
     }
 
     if (formId === "miningForm") {
+        eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         centerScreenBtn.centerScreenBtnWrap.classList.add('active');
         eHTML.miningBtn.classList.remove('active');
         setTimeout(async () => { setMiningIntensityFromLocalStorage() }, 100);
     }
 
     if (formId === "settingsForm") {
-        eHTML.centerScreenBtnContrainer.classList.add('hidden');
         eHTML.settingsBtn.classList.remove('active');
     }
 
@@ -141,11 +171,6 @@ function setWaitingForConnectionFormLoading(loading = true) {
     const loadingSvg = waitingForConnectionForm.getElementsByClassName('loadingSvgDiv')[0];
     loadingSvg.innerHTML = loading ? htmlAnimations.horizontalBtnLoading : '';
 }
-function setWaitingForConnectionFormText(text) {
-    const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
-    const blinkingText = waitingForConnectionForm.getElementsByTagName('h2')[0];
-    blinkingText.innerText = text;
-}
 function initUI() {
     document.body.style.width = "0px";
     document.body.style.height = "0px";
@@ -179,82 +204,6 @@ function initUI() {
         bottomBar.classList.remove('hidden');
     }*/
 })();
-async function pingServerAndSetMode(iterations = 10, delay = 2000) {
-    let tries = 0;
-    while (tries < iterations) {
-        const localServerIsRunning = await communication.pingServer("http://localhost:4340");
-        const webServerIsRunning = await communication.pingServer("https://www.linkvault.app");
-        if (!localServerIsRunning && webServerIsRunning) {
-            console.log('Running as production mode...');
-            settings.hardcodedPassword = '';
-            settings.serverUrl = "https://www.linkvault.app";
-            communication.url = settings.serverUrl;
-            return 'production';
-        } else if (localServerIsRunning) {
-            console.info('Running as development mode...');
-            return 'development';
-        }
-
-        if (tries === 0) {setVisibleForm('waitingForConnectionForm');}
-        tries++;
-        setWaitingForConnectionFormText(`Waiting for connection... (${tries}/${iterations})`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-    }
-
-    setWaitingForConnectionFormLoading(false);
-    setWaitingForConnectionFormText('Cannot connect to any server!');
-    return false;
-}
-async function initAuth() { // DEPRECATED
-    setInitialInputValues();
-
-    const authInfoResult = await chrome.storage.local.get(['authInfo']);
-    /** @type {AuthInfo} */
-    const sanitizedAuthInfo = authInfoResult.authInfo ? sanitizer.sanitize(authInfoResult.authInfo) : {};
-
-    if (authInfoResult.authInfo) {
-        const resetNecessary = controlVersion(sanitizedAuthInfo);
-        if (resetNecessary) { await resetApplication(); }
-    }
-
-    if (authInfoResult.authInfo && authInfoResult.authInfo.serverAuthBoost) {
-        const connectionResult = await pingServerAndSetMode();
-        if (!connectionResult) { return; }
-    }
-
-    showFormDependingOnStoredPassword(sanitizedAuthInfo);
-    /*const { hash, salt1Base64, iv1Base64 } = sanitizedAuthInfo;
-    if (hash && salt1Base64 && iv1Base64) {
-        chrome.runtime.sendMessage({action: "openPage", password: null});
-    } else {
-        setVisibleForm('passwordCreationForm');
-        eHTML.passwordCreationFormInputPassword.focus();
-    }*/
-}
-/**
- * Check if the stored password is compatible with the current version of the application
- * @param {object} sanitizedAuthInfo - result of chrome.storage.local.get(['authInfo']).authInfo
- * @returns {boolean} - true if reset is necessary
- */
-function controlVersion(sanitizedAuthInfo) {
-        const { appVersion, serverAuthBoost } = sanitizedAuthInfo;
-        console.log(`App version: ${appVersion}, minVersionAcceptedWithoutReset: ${settings.minVersionAcceptedWithoutReset}`);
-        console.log(appVersion)
-        if (!appVersion) { return true; }
-
-        // Here we can proceed check for version compatibility
-        /*const appV = settings.appVersion.split('.');
-        const minV = settings.minVersionAcceptedWithoutReset.split('.');
-
-        if (parseInt(appV[0]) < parseInt(minV[0])) { return true; }
-        if (parseInt(appV[0]) > parseInt(minV[0])) { return false; }
-
-        if (parseInt(appV[1]) < parseInt(minV[1])) { return true; }
-        if (parseInt(appV[1]) > parseInt(minV[1])) { return false; }
-
-        if (parseInt(appV[2]) < parseInt(minV[2])) { return true; }*/
-        return false;
-}
 async function setNewPassword(password, passComplement = false) {
     const startTimestamp = Date.now();
 
@@ -316,9 +265,26 @@ function generateAuthID(length = 32) {
     }
     return result;
 }
+function strToMaxLen(str, maxLen) {
+    if (str.length <= maxLen + 3) { return str; }
+
+    const half = Math.floor(maxLen / 2);
+    return `${str.slice(0, half)}...${str.slice(-half)}`;
+}
+async function copyTextToClipboard(str) {
+    try {
+      await navigator.clipboard.writeText(str);
+      console.log("Text copied to clipboard");
+    } catch (err) {
+      console.error("Failed to copy text to clipboard: ", err);
+    }
+}
 //#endregion
 
 //#region - EVENT LISTENERS
+document.addEventListener('submit', function(e) {
+    e.preventDefault();
+});
 eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
     if (busy.includes('passwordCreationForm')) return;
     busy.push('passwordCreationForm');
@@ -435,7 +401,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     const res = await cryptoLight.generateKey(passwordReadyUse, salt1Base64, iv1Base64, hash);
     if (!res) { infoAndWrongAnim('Key derivation failed'); busy.splice(busy.indexOf('loginForm'), 1); return; }
     
-    cryptoLight.clear();
+    //cryptoLight.clear(); // needed to sign tx, will be clear on close
     button.innerHTML = 'Unlock';
 
     totalTimings.argon2Time += res.argon2Time;
@@ -443,25 +409,55 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     totalTimings.total = Date.now() - startTimestamp;
     console.log(totalTimings);
 
-    if (res.hashVerified) {
-        setVisibleForm('walletForm');
-        //chrome.runtime.sendMessage({action: "openPage", password: passwordReadyUse});
-    } else {
-        infoAndWrongAnim('Wrong password');
-    }
-    
+    if (!res.hashVerified) { infoAndWrongAnim('Wrong password'); return; }
+
+    const walletsInfoResult = await chrome.storage.local.get(['walletsInfo']);
+    if (!walletsInfoResult || !walletsInfoResult.walletsInfo) { setVisibleForm('createWalletForm'); return; }
+
+    const walletsInfo = walletsInfoResult.walletsInfo;
+    if (!walletsInfo[0].privateKeyHex) { setVisibleForm('createWalletForm'); return; }
+
+    setVisibleForm('walletForm');
+
     passwordReadyUse = null;
     busy.splice(busy.indexOf('loginForm'), 1);
 });
-document.addEventListener('click', function(e) {
+document.addEventListener('click', async function(e) {
     switch (e.target.id) {
+        case 'randomizeBtn':
+            const rndSeedHex = cryptoLight.generateRdnHex(64);
+            eHTML.privateKeyHexInput.value = strToMaxLen(rndSeedHex, 21);
+            eHTML.privateKeyHexInput.placeholder = rndSeedHex;
+            eHTML.privateKeyHexInput.readOnly = true;
+            eHTML.confirmPrivateKeyBtn.classList.remove('disabled');
+            break;
+        case 'privateKeyHexInput':
+            if (!eHTML.privateKeyHexInput.readOnly) { return; } // if not readOnly, do nothing
+            copyTextToClipboard(eHTML.privateKeyHexInput.placeholder);
+            bottomInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
+            break;
+        case 'confirmPrivateKeyBtn':
+            const encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
+            const walletInfo = new WalletInfo({name: 'wallet1', privateKeyHex: encryptedSeedHex});
+            const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+            const walletsInfo = loadedWalletsInfo ? loadedWalletsInfo.walletsInfo : [];
+            const walletsInfo = [
+                
+            ];
+            await chrome.storage.local.set({walletsInfo});
+            setVisibleForm('walletForm');
+            console.log('Private key set');
+            break;
         case 'walletBtn':
+            if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('walletForm', false);
             break;
         case 'miningBtn':
+            if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('miningForm', false);
             break;
         case 'settingsBtn':
+            if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('settingsForm', false);
             break;
         default:
@@ -493,5 +489,21 @@ document.addEventListener('input', (event) => {
         const checked = event.target.checked ? 'checked' : '';
         label.innerHTML = `<input id="serverAuthBoost" type="checkbox" name="securityOption" value="improveSecurityUsingServer" ${checked}> ${newText}`;
     }
+
+    const isPrivateKeyHexInput = event.target.id === 'privateKeyHexInput';
+    if (isPrivateKeyHexInput) {
+        console.log(`privKeyHex: ${event.target.value}`);
+        if (event.target.value.length === 64) {
+            eHTML.confirmPrivateKeyBtn.placeholder = event.target.value;
+            eHTML.confirmPrivateKeyBtn.classList.remove('disabled');
+        } else {
+            eHTML.confirmPrivateKeyBtn.classList.add('disabled');
+        }
+    }
+});
+// on close
+window.addEventListener('beforeunload', function(e) {
+    console.log('beforeunload');
+    cryptoLight.clear();
 });
 //#endregion

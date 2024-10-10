@@ -2,7 +2,8 @@ import { Node } from './node.mjs';
 import { Account } from './account.mjs';
 
 export class NodeFactory {
-    constructor() {
+    constructor(nodePort = 27260) {
+        this.nodePort = nodePort;
         /** @type {Map<string, Node>} */
         this.nodes = new Map();
         this.nodesCreationSettings = {};
@@ -27,6 +28,16 @@ export class NodeFactory {
      * @param {string} minerAddress - if not specified, the miner address will be the same as the validator address
      */
     async createNode(account, roles = ['validator'], p2pOptions = {}, minerAddress) {
+        const listenAddress = p2pOptions.listenAddress;
+        if (listenAddress) {
+            // exemple : /ip4/vrjvrj/tcp/PORT
+            const protocol = listenAddress.split('/')[1];
+            const ip = listenAddress.split('/')[2];
+            const transport = listenAddress.split('/')[3];
+            const port = listenAddress.split('/')[4];
+            if (port) { p2pOptions.listenAddress = `/${protocol}/${ip}/${transport}/${this.nodePort || port}`; }
+        }
+        
         const rolesArray = Array.isArray(roles) ? roles : [roles];
         const node = new Node(account, rolesArray, p2pOptions);
         if (minerAddress) { node.minerAddress = minerAddress; }

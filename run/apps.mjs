@@ -313,19 +313,18 @@ export class ObserverWsApp {
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
     async init() {
+        while (!this.node) { 
+            console.log('[OBSERVER] Waiting for node to be initialized...'); 
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+
         this.app.use(express.static(APPS_VARS.__parentDirname));
         
         this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
         const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
         
         this.wss = new WebSocketServer({ server });
-
         this.wss.on('connection', this.#onConnection.bind(this));
-
-        while (!this.node) { 
-            console.log('[OBSERVER] Waiting for node to be initialized...'); 
-            await new Promise(resolve => setTimeout(resolve, 1000));
-        }
         
         if (!this.node.roles.includes('validator')) { throw new Error('ObserverWsApp must be used with a validator node'); }
         if (!this.node.roles.includes('observer')) { throw new Error('ObserverWsApp must be used with an observer node'); }
