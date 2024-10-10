@@ -97,14 +97,7 @@ export class DashboardWsApp {
         if (autoInit) this.init();
     }
     /** @type {Node} */
-    get node() { 
-        try {
-            const node = this.factory.getFirstNode();
-            return node;
-        } catch (error) {
-            return undefined;
-        }
-    }
+    get node() { return this.factory.getFirstNode(); }
     async init(privateKey) {
         if (this.app === null) {
             this.app = express();
@@ -305,7 +298,7 @@ export class ObserverWsApp {
         /** @type {NodeFactory} */
         this.factory = factory;
         /** @type {CallBackManager} */
-        this.callBackManager = new CallBackManager(this.node);
+        this.callBackManager = null;
         /** @type {express.Application} */
         this.app = express();
         this.port = port;
@@ -319,7 +312,7 @@ export class ObserverWsApp {
     }
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
-    init() {
+    async init() {
         this.app.use(express.static(APPS_VARS.__parentDirname));
         
         this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
@@ -328,8 +321,16 @@ export class ObserverWsApp {
         this.wss = new WebSocketServer({ server });
 
         this.wss.on('connection', this.#onConnection.bind(this));
+
+        while (!this.node) { 
+            console.log('[OBSERVER] Waiting for node to be initialized...'); 
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
         
         if (!this.node.roles.includes('validator')) { throw new Error('ObserverWsApp must be used with a validator node'); }
+        if (!this.node.roles.includes('observer')) { throw new Error('ObserverWsApp must be used with an observer node'); }
+        
+        this.callBackManager = new CallBackManager(this.node);
         this.callBackManager.initAllCallbacksOfMode('observer', this.wss.clients);
     }
     /** @param {WebSocket} ws @param {http.IncomingMessage} req */
