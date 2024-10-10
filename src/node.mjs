@@ -605,7 +605,7 @@ export class Node {
     }
     async getAddressExhaustiveData(address) {
         const addressTxsReferences = await this.getAddressTransactionsReferences(address);
-        const addressUTXOs = this.getAddressUtxos(address);
+        const addressUTXOs = await this.getAddressUtxos(address);
         return { addressUTXOs, addressTxsReferences };
     }
     /**
@@ -647,7 +647,7 @@ export class Node {
         }
     }
     async getAddressUtxos(address) {
-        const addressAnchors = await this.utxoCache.getAddressAnchorsArray(address);
+        const addressAnchors = this.utxoCache.getAddressAnchorsArray(address);
         let spendableBalance = 0;
         let balance = 0;
         const UTXOs = [];

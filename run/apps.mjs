@@ -128,7 +128,7 @@ export class DashboardWsApp {
             this.factory.nodes.set(multiNode.id, multiNode);
         }
 
-        if (!this.node) { console.info("Node active Node and No private keys provided, can't auto init node..."); return; }
+        if (!this.node) { console.info("Not active Node and No private keys provided, can't auto init node..."); return; }
         
         const activeNodeAssociatedSettings = this.#nodesSettings[this.node.id];
         if (!activeNodeAssociatedSettings) { // Save the settings for the new node
