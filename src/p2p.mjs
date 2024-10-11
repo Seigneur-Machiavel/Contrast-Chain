@@ -70,7 +70,7 @@ class P2PNetwork extends EventEmitter {
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
-            this.logger.debug({peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress}, 'P2P network started');
+            this.logger.info({peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress}, 'P2P network started');
 
             this.#setupEventListeners();
             await this.connectToBootstrapNodes();
