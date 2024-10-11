@@ -115,8 +115,8 @@ export class MnemoLinker {
 	#getCryptoLib() {
 		const buffer = new Uint32Array(1);
 		try {
-			window.crypto.getRandomValues(buffer);
-			return window.crypto;
+			crypto.getRandomValues(buffer);
+			return crypto;
 		} catch (e) {
 		}
 		try {

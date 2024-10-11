@@ -5,15 +5,13 @@ import ed25519 from '../externalLibs/noble-ed25519-03-2024.mjs';
 import { Transaction, UTXO } from './transaction.mjs';
 import { xxHash32 } from '../externalLibs/xxhash32.mjs';
 async function msgPackLib() {
-    if (isNode) {
+    //if (isNode) {
         const m = await import('../externalLibs/msgpack.min.js');
         return m.default;
-    }
-    return MessagePack;
+    //}
+   // return MessagePack;
 };
-const msgpack = await msgPackLib();
-//import { BinarySerializer } from '../externalLibs/gpt-serializer.mjs';
-//const msgpack = new BinarySerializer();
+const msgpack = msgPackLib().then((m) => m);
 
 const cryptoLib = crypto;
 async function getArgon2Lib() {
@@ -35,10 +33,11 @@ async function getArgon2Lib() {
     window.argon2 = argon2Import.default;
     return argon2Import.default;
 };
-const argon2Lib = await getArgon2Lib();
+const argon2Lib = getArgon2Lib().then((a) => a);
 
 //import Compressor from '../externalLibs/gzip.min.js'; -> not used anymore
 //import Decompressor from '../externalLibs/gunzip.min.js'; -> not used anymore
+//import { encode, decode } from "@msgpack/msgpack";
 
 /**
 * @typedef {import("./block.mjs").Block} Block
@@ -49,15 +48,14 @@ const argon2Lib = await getArgon2Lib();
 */
 //#endregion
 
-/*async function getWorkerModule() {
+let workerModule;
+async function getWorkerModule() {
     if (isNode) {
         return (await import('worker_threads')).Worker;
     }
     return Worker;
 };
-const WokerModule = await getWorkerModule();*/
-const WorkerModule = isNode ? (await import('worker_threads')).Worker : Worker;
-
+if (isNode) { workerModule = getWorkerModule().then((m) => m); }
 
 const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function newWorker(scriptPath) {

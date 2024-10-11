@@ -1,8 +1,7 @@
-if (false) {
-    const argon2 = require('argon2-browser');
-}
+if (false) { const argon2 = require('argon2-browser'); }
 
 const cryptoLight = {
+    argon2: null,
     useArgon2Worker: false,
     argon2Worker: null,
     cryptoStrength: 'heavy',
@@ -25,10 +24,19 @@ const cryptoLight = {
 			const workerCode = await this.loadScriptAsText('../scripts/argon2Worker.js');
 			const blob = new Blob([workerCode], { type: 'application/javascript' });
 			this.argon2Worker = new Worker(URL.createObjectURL(blob));
+            return true;
 		} catch (error) {
-			console.error('Error initializing the Argon2 worker:', error);
-			return false;
+			console.info('Error initializing the Argon2 worker:', error);
 		}
+
+        // TRY IN ES6
+        try {
+            this.argon2Worker = new Worker('../scripts/argon2Worker.js', { type: 'module' });
+        } catch (error) {
+            console.error('Error initializing the Argon2 worker (ES6):', error);
+            return false;
+        }
+
 		return true;
 	},
     async generateKey(passwordStr, salt1Base64 = null, iv1Base64 = null, hashToVerify = null) {
@@ -85,7 +93,7 @@ const cryptoLight = {
     },
     async importArgon2KeyAsAesGcm(argon2Key) {
 		try {
-			const keyMaterial = await window.crypto.subtle.importKey(
+			const keyMaterial = await crypto.subtle.importKey(
 				"raw",
 				argon2Key,
 				{ name: "AES-GCM" },
@@ -120,7 +128,7 @@ const cryptoLight = {
         if (this.iv === null && !iv) { console.error('IV not initialized'); return false; }
 
         const buffer = new TextEncoder().encode(str);
-        const encryptedContent = await window.crypto.subtle.encrypt(
+        const encryptedContent = await crypto.subtle.encrypt(
             { name: "AES-GCM", iv: iv ? iv : this.iv },
             this.key,
             buffer
@@ -134,7 +142,7 @@ const cryptoLight = {
         if (this.iv === null && !iv) { console.error('IV not initialized'); return false; }
         
         const buffer = this.base64ToUint8Array(base64);
-        const decryptedContent = await window.crypto.subtle.decrypt(
+        const decryptedContent = await crypto.subtle.decrypt(
             { name: "AES-GCM", iv: iv ? iv : this.iv },
             this.key,
             buffer
@@ -145,7 +153,7 @@ const cryptoLight = {
     },
     generateRandomUint8Array(bytesEntropy = 16) {
         const randomUint8Array = new Uint8Array(bytesEntropy);
-        window.crypto.getRandomValues(randomUint8Array);
+        crypto.getRandomValues(randomUint8Array);
         return randomUint8Array;
     },
     generateRndBase64(bytesEntropy = 32) {
@@ -178,6 +186,8 @@ const cryptoLight = {
 
 			return result;
 		};
+
+        if (this.argon2) { return this.argon2.hash(paramsNavigator); }
 
         // Classic method without worker, blocking the navigator
         return argon2.hash(paramsNavigator);
@@ -230,24 +240,6 @@ const cryptoLight = {
         splited.pop();
         return { encoded: splited.join('$') + '$' + hash, hash: hash }
     },
-    async verifyArgon2Hash(passwordStr, hashEncoded, saltToInclude = '') { // DEPRECATED
-        /** @type {string} */
-        let hashEnc = hashEncoded;
-        if (saltToInclude) {
-            // re-add the salt to the hash
-            const splited = hashEnc.split('$');
-            const hash = splited.pop();
-            splited.push(saltToInclude)
-            hashEnc = splited.join('$') + '$' + hash;
-        }
-        try {
-            await argon2.verify({pass: passwordStr, encoded: hashEnc});
-            return true;
-        } catch (error) {
-            console.error('Argon2 verify res:', error);
-        }
-        return false;
-    },
     concatUint8(salt1, salt2) {
         const result = new Uint8Array(salt1.length + salt2.length);
         result.set(salt1);
@@ -257,7 +249,7 @@ const cryptoLight = {
     generateRdnHex(length = 32) {
         // use crypto
         const array = new Uint8Array(length);
-        window.crypto.getRandomValues(array);
+        crypto.getRandomValues(array);
 
         let hex = '';
         for (let i = 0; i < array.length; i++) {
@@ -268,7 +260,7 @@ const cryptoLight = {
     },
     // ASYMETRIC CRYPTO
     async generateKeyPair() {
-        const keyPair = await window.crypto.subtle.generateKey(
+        const keyPair = await crypto.subtle.generateKey(
             {
                 name: "RSA-OAEP",
                 modulusLength: 2048,
@@ -282,7 +274,7 @@ const cryptoLight = {
         return keyPair;
     },
     async exportPublicKey(key) {
-        const exportedKey = await window.crypto.subtle.exportKey(
+        const exportedKey = await crypto.subtle.exportKey(
             "spki",
             key
         );
@@ -290,7 +282,7 @@ const cryptoLight = {
     },
     async publicKeyFromExported(exportedKey) {
         const buffer = new Uint8Array(Object.values(exportedKey));
-        const publicKey = await window.crypto.subtle.importKey(
+        const publicKey = await crypto.subtle.importKey(
             "spki",
             buffer,
             {
@@ -305,7 +297,7 @@ const cryptoLight = {
     async encryptData(publicKey, data) {
         const encodedData = new TextEncoder().encode(data);
     
-        const encryptedData = await window.crypto.subtle.encrypt(
+        const encryptedData = await crypto.subtle.encrypt(
             {
                 name: "RSA-OAEP"
             },
@@ -318,7 +310,7 @@ const cryptoLight = {
     async decryptData(privateKey, data) {
         const encryptedData = this.base64ToUint8Array(data);
 
-        const decryptedData = await window.crypto.subtle.decrypt(
+        const decryptedData = await crypto.subtle.decrypt(
             {
                 name: "RSA-OAEP"
             },
@@ -331,4 +323,9 @@ const cryptoLight = {
     }
 }
 
-if (window.location.href.includes('localhost')) { module.exports = { cryptoLight} };
+export { cryptoLight };
+
+// Pour CommonJS (Node.js)
+if (typeof module !== 'undefined' && typeof module.exports !== 'undefined') {
+    module.exports = { cryptoLight };
+}

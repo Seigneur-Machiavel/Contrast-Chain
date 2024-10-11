@@ -26,3 +26,10 @@ if (args.includes('-np')) {
 const factory = new NodeFactory(nodePort);
 new DashboardWsApp(factory, dashboardPort);
 new ObserverWsApp(factory, observerPort);
+
+process.on('uncaughtException', (error) => {
+    console.error('Uncatched exception:', error);
+});
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Promise rejected:', promise, 'reason:', reason);
+});

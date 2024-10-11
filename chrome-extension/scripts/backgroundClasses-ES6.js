@@ -20,71 +20,10 @@ class Sanitizer {
 		return data;
 	}
 }
-
-class Communication {
-    constructor(serverUrl) {
-        this.url = serverUrl;
-		this.sanitizer = new Sanitizer();
-    }
-
-    async pingServer(serverUrl) {
-		try {
-			const response = await fetch(`${serverUrl}/api/ping`);
-            const result = await response.json();
-			if (result.success) { return true; }
-		} catch (error) {
-		}
-		return false;
-	}
-    async getMiningInfo() {
-		const serverUrl = `${this.url}/api/getMiningInfo`;
-
-		try {
-			const response = await fetch(serverUrl);
-            const result = await response.json();
-            if (!result || !result.success) { console.info('Invalid response from server !'); return false; }
-
-            result.miningInfo = this.sanitizer.sanitize(result.miningInfo);
-            if (!result.miningInfo) { console.info('No mining info found in response !'); return false; }
-
-			return result.miningInfo;
-		} catch (error) {
-			//console.info(`Error while getting hash from server: ${error}`);
-			return false;
-		}
-	}
-	async submitPowProposal(powProposal, userId = 'toto') {
-		const data = { pow: powProposal, userId: userId };
-		const stringifiedData = JSON.stringify(data);
-		const serverUrl = `${this.url}/api/submitPowProposal`;
-
-		const requestOptions = {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json',
-			},
-			body: stringifiedData
-		};
-
-		try {
-			const response = await fetch(serverUrl, requestOptions);
-			const result = await response.json();
-
-			if (typeof result.success !== 'boolean') { console.info('Invalid response from server !'); return false; }
-			if (result.message) { result.message = this.sanitizer.sanitize(result.message); }
-			return result;
-		} catch (error) {
-			console.info(`Error while submitting PoW Proposal to server: ${error}`);
-			return false;
-		}
-	}
-}
-
 class Pow {
     constructor(argon2, serverUrl = 'http://localhost:4340') {
         this.argon2 = argon2;
         this.userId = 'toto';
-        this.communication = new Communication(serverUrl);
         this.blockHash = null; // this.#generateRandomHash(16).hashHex;
         this.argon2Params = { time: 1, mem: 2**18, hashLen: 32, parallelism: 1, type: 2 };
         this.miningIntensity = 1;
@@ -178,7 +117,7 @@ class Pow {
             if (powProposal && powProposal.isValid) {
                 //console.log(`Valid POW found: ${powProposal}`);
                 const nonceHex = powProposal.nonce;
-                const response = await this.communication.submitPowProposal(nonceHex, this.userId);
+                const response = 'toto' // await this.communication.submitPowProposal(nonceHex, this.userId);
                 if (!response) { console.info('Error while submitting POW to server'); }
                 
                 if (response.success) { 
@@ -289,7 +228,7 @@ class Pow {
         while (this.state.active) {
             await new Promise(resolve => setTimeout(resolve, tickDelay));
 
-            const miningInfo = await this.communication.getMiningInfo();
+            const miningInfo = 'toto' // await this.communication.getMiningInfo();
             if (!miningInfo) { this.blockHash = null; continue; }
 
             this.blockHash = miningInfo.hash;
@@ -318,4 +257,4 @@ class Pow {
     }
 }
 
-export { Communication, Sanitizer, Pow };
+export { Sanitizer, Pow };

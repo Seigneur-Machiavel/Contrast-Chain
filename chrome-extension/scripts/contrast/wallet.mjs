@@ -8,8 +8,10 @@ async function localStorage_v1Lib() {
         return l.default;
     }
     return null;
-};
-const localStorage_v1 = await localStorage_v1Lib();
+}; //const localStorage_v1 = utils.isNode ? await localStorage_v1Lib() : null;
+const localStorage_v1Promise = localStorage_v1Lib().then((l) => l);
+let localStorage_v1;
+if (utils.isNode) { localStorage_v1 = await localStorage_v1Promise; }
 
 export class AddressTypeInfo {
     name = '';

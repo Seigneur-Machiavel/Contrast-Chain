@@ -2,12 +2,17 @@
 <html>
 <head>
     <link rel="stylesheet" href="../styles/popup-styles.css">
+    <script src="../scripts/argon2-bundled.min.js"></script>
+    <script src="../scripts/modulesLoader.mjs" type="module"></script>
+
+    <script src="../scripts/externalLibs/msgPack.min.js"></script>
+    <script src="../scripts/pattern-generator.js"></script>
     <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
-    <script src="../scripts/argon2-bundled.min.js"></script>
-    <script src="../scripts/cryptoLight.js"></script>
+    <!--<script src="../scripts/cryptoLight.js"></script> imported as ES6 in modulesLoader.mjs -->
     <script src="../scripts/classes.js"></script>
     <script src="../scripts/htmlAnimations.js"></script>
+    <script src="../scripts/popup.js" defer></script>
     <title>Authentification</title>
 </head>
 <body>
@@ -66,8 +71,26 @@
 
             <form id="walletForm" class="hidden">
                 <h1><span id="spendableBalanceStr">0.00</span>c</h1>
-
-                <button>+</button>
+                <div class="buttonBar">
+                    <button><img src="../images/qr-code32.png" alt="Receive">Receive</button>
+                    <button><img src="../images/send32.png" alt="Send">Send</button>
+                    <button><img src="../images/swap32.png" alt="Swap">Swap</button>
+                </div>
+                <div id="accountsWrap">
+                    <!--<div class="accountLabel">
+                        <img src="../images/qr-code32.png" alt="Account">
+                        <div class="accountLabelInfoWrap">
+                            <div class="accountLabelNameAndValueWrap">
+                                <h2>Account 1</h2>
+                                <h3>0.00c</h3>
+                            </div>
+                            <div class="accountLabelAddress">
+                                <h3>WKDEJFIUHESVUOHEIUEF</h3>
+                            </div>
+                        </div>
+                    </div>-->
+                    <button id="newAddressBtn">+</button>
+                </div>
                 <p class="bottomInfo"></p>
             </form>
     
@@ -98,7 +121,5 @@
             </div>
         </div>
     </div>
-
-    <script src="../scripts/popup.js"></script>
 </body>
 </html>

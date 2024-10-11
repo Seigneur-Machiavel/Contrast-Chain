@@ -1,21 +1,24 @@
 if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const anime = require("./anime.min.js");
+    const PatternGenerator = require("./pattern-generator.js");
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
     const { htmlAnimations } = require("./htmlAnimations.js");
+    const { Wallet } = require("./contrast/wallet.mjs");
 }
 
+const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
+
 class WalletInfo {
-    #privateKeyHex = '';
     constructor(walletInfo = {}) {
         this.name = walletInfo.name || 'wallet1';
-        this.#privateKeyHex = walletInfo.privateKeyHex || '';
+        this.encryptedSeedHex = walletInfo.encryptedSeedHex || '';
     }
 
     extractVarsObjectToSave() {
         return {
             name: this.name,
-            privateKeyHex: this.#privateKeyHex
+            encryptedSeedHex: this.encryptedSeedHex
         };
     }
 }
@@ -37,6 +40,8 @@ const selectedWalletIndex = 0;
 
 const eHTML = {
     centerScreenBtnContrainer: document.getElementsByClassName('centerScreenBtnContrainer')[0],
+    popUpContent: document.getElementById('popUpContent'),
+    popUpContentWrap: document.getElementById('popUpContent').children[0],
 
     passwordCreationForm: document.getElementById('passwordCreationForm'),
     passwordCreationFormInputPassword: document.getElementById('passwordCreationForm').getElementsByTagName('input')[0],
@@ -54,6 +59,7 @@ const eHTML = {
 
     walletForm: document.getElementById('walletForm'),
     spendableBalanceStr: document.getElementById('spendableBalanceStr'),
+    newAddressBtn: document.getElementById('newAddressBtn'),
 
     bottomBar: document.getElementById('bottomBar'),
     walletBtn: document.getElementById('walletBtn'),
@@ -64,10 +70,8 @@ const eHTML = {
 const busy = [];
 //#region - UX FUNCTIONS
 function resizePopUp(applyBLur = true, duration = 200) {
-    const contentDiv = document.getElementById('popUpContent');
-    const contentWrap = contentDiv.children[0];
-    const contentDivHeight = contentDiv.offsetHeight;
-    const contentWrapHeight = contentWrap.offsetHeight;
+    const contentDivHeight = eHTML.popUpContent.offsetHeight;
+    const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
     const contentHeight = Math.max(contentDivHeight, contentWrapHeight);
     const newHeight = contentHeight; // + 29;
     console.log(`New height: ${newHeight}px`);
@@ -117,13 +121,13 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.bottomBar.classList.add('hidden');
     }
 
-    if (formId === "walletForm" || formId === "createWalletForm") {
+    if (formId === "walletForm") {
         eHTML.walletBtn.classList.remove('active');
-        eHTML.bottomBar.classList.add('hidden');
     }
     if (formId === "createWalletForm") {
         eHTML.miningBtn.classList.remove('active');
         eHTML.settingsBtn.classList.remove('active');
+        eHTML.bottomBar.classList.add('hidden');
     }
 
     if (formId === "miningForm") {
@@ -175,6 +179,53 @@ function initUI() {
     document.body.style.width = "0px";
     document.body.style.height = "0px";
 }
+/*<div class="accountLabel">
+    <img src="../images/qr-code32.png" alt="Account">
+    <div class="accountLabelInfoWrap">
+        <div class="accountLabelNameAndValueWrap">
+            <h2>Account 1</h2>
+            <h3>0.00c</h3>
+        </div>
+        <div class="accountLabelAddress">
+            <h3>WKDEJFIUHESVUOHEIUEF</h3>
+        </div>
+    </div>
+</div>*/
+function createAccountLabel(accountInfo) {
+    const accountLabel = document.createElement('div');
+    accountLabel.classList.add('accountLabel');
+
+    const img = document.createElement('img');
+    img.src = '../images/qr-code32.png';
+    img.alt = 'Account';
+    accountLabel.appendChild(img);
+
+    const accountLabelInfoWrap = document.createElement('div');
+    accountLabelInfoWrap.classList.add('accountLabelInfoWrap');
+    accountLabel.appendChild(accountLabelInfoWrap);
+
+    const accountLabelNameAndValueWrap = document.createElement('div');
+    accountLabelNameAndValueWrap.classList.add('accountLabelNameAndValueWrap');
+    accountLabelInfoWrap.appendChild(accountLabelNameAndValueWrap);
+
+    const h2 = document.createElement('h2');
+    h2.innerText = accountInfo.name;
+    accountLabelNameAndValueWrap.appendChild(h2);
+
+    const h3 = document.createElement('h3');
+    h3.innerText = '0.00c';
+    accountLabelNameAndValueWrap.appendChild(h3);
+
+    const accountLabelAddress = document.createElement('div');
+    accountLabelAddress.classList.add('accountLabelAddress');
+    accountLabelInfoWrap.appendChild(accountLabelAddress);
+
+    const h3Address = document.createElement('h3');
+    h3Address.innerText = accountInfo.address;
+    accountLabelAddress.appendChild(h3Address);
+
+    return accountLabel;
+}
 //#endregion
 
 //#region - FUNCTIONS
@@ -220,7 +271,8 @@ async function setNewPassword(password, passComplement = false) {
 
     const encryptedPassComplement = passComplement ? await cryptoLight.encryptText(passComplement) : false;
     if (passComplement && !encryptedPassComplement) { console.error('Pass complement encryption failed'); return false; }
-    cryptoLight.clear();
+    //cryptoLight.clear();
+    //console.log('cryptoLight.clear() done');
 
     const authID = generateAuthID(); // authID - used to link the passComplement on the server
     await chrome.storage.local.set({
@@ -300,39 +352,44 @@ eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
     const passwordConfirm = eHTML.passwordCreationFormInputConfirm.value;
     
     if (password !== passwordConfirm) {
+        busy.splice(busy.indexOf('passwordCreationForm'), 1);
         alert('Passwords do not match');
+        return;
     } else if (password.length < passwordMinLength) {
+        busy.splice(busy.indexOf('passwordCreationForm'), 1);
         alert(`Password must be at least ${passwordMinLength} characters long`);
-    } else {
-        const button = eHTML.passwordCreationForm.getElementsByTagName('button')[0];
-        button.innerHTML = htmlAnimations.horizontalBtnLoading;
-        const passwordCreatedInfo = await setNewPassword(password, passComplement);
-        setTimeout(() => { button.innerHTML = 'Set password'; }, 1000);
-        if (!passwordCreatedInfo) { alert('Password setting failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); return; }
-
-        eHTML.passwordCreationFormInputPassword.value = '';
-        eHTML.passwordCreationFormInputConfirm.value = '';
-
-       if (serverAuthBoost) {
-            const { authID, authTokenHash, encryptedPassComplement, totalTimings } = passwordCreatedInfo;
-            const keyPair = await cryptoLight.generateKeyPair();
-            const exportedPubKey = await cryptoLight.exportPublicKey(keyPair.publicKey);
-
-            const serverResponse = await communication.sharePubKeyWithServer(authID, exportedPubKey);
-            if (!serverResponse) { alert('Server communication failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
-            if (!serverResponse.success) { alert(serverResponse.message); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
-
-            const serverPublicKey = await cryptoLight.publicKeyFromExported(serverResponse.serverPublicKey);
-
-            const serverResponse2 = await communication.sendAuthDataToServer(serverPublicKey, authID, authTokenHash, encryptedPassComplement, totalTimings);
-            if (!serverResponse2) { alert('Server communication failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
-            if (!serverResponse2.success) { alert(serverResponse2.message); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
-       }
-
-        setVisibleForm('walletForm');
-        //chrome.runtime.sendMessage({action: "openPage", password: passComplement ? `${password}${passComplement}` : password });
+        return;
     }
-    
+
+    const button = eHTML.passwordCreationForm.getElementsByTagName('button')[0];
+    button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    const passwordCreatedInfo = await setNewPassword(password, passComplement);
+    setTimeout(() => { button.innerHTML = 'Set password'; }, 1000);
+    if (!passwordCreatedInfo) { alert('Password setting failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); return; }
+
+    eHTML.passwordCreationFormInputPassword.value = '';
+    eHTML.passwordCreationFormInputConfirm.value = '';
+
+    if (serverAuthBoost) {
+        const { authID, authTokenHash, encryptedPassComplement, totalTimings } = passwordCreatedInfo;
+        const keyPair = await cryptoLight.generateKeyPair();
+        const exportedPubKey = await cryptoLight.exportPublicKey(keyPair.publicKey);
+
+        const serverResponse = await communication.sharePubKeyWithServer(authID, exportedPubKey);
+        if (!serverResponse) { alert('Server communication failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
+        if (!serverResponse.success) { alert(serverResponse.message); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
+
+        const serverPublicKey = await cryptoLight.publicKeyFromExported(serverResponse.serverPublicKey);
+
+        const serverResponse2 = await communication.sendAuthDataToServer(serverPublicKey, authID, authTokenHash, encryptedPassComplement, totalTimings);
+        if (!serverResponse2) { alert('Server communication failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
+        if (!serverResponse2.success) { alert(serverResponse2.message); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
+    }
+
+    setVisibleForm('walletForm');
+    //chrome.runtime.sendMessage({action: "openPage", password: passComplement ? `${password}${passComplement}` : password });
+    chrome.runtime.sendMessage({action: "authentified", password: passComplement ? `${password}${passComplement}` : password });
+
     busy.splice(busy.indexOf('passwordCreationForm'), 1);
 });
 eHTML.loginForm.addEventListener('submit', async function(e) {
@@ -407,7 +464,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     totalTimings.argon2Time += res.argon2Time;
     totalTimings.deriveKTime += res.deriveKTime;
     totalTimings.total = Date.now() - startTimestamp;
-    console.log(totalTimings);
+    //console.log(totalTimings);
 
     if (!res.hashVerified) { infoAndWrongAnim('Wrong password'); return; }
 
@@ -415,14 +472,21 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (!walletsInfoResult || !walletsInfoResult.walletsInfo) { setVisibleForm('createWalletForm'); return; }
 
     const walletsInfo = walletsInfoResult.walletsInfo;
-    if (!walletsInfo[0].privateKeyHex) { setVisibleForm('createWalletForm'); return; }
+    if (!walletsInfo[0].encryptedSeedHex) { setVisibleForm('createWalletForm'); return; }
+    console.log(`Wallets info loaded, first walletName: ${walletsInfo[0].name}`);
 
     setVisibleForm('walletForm');
+
+    chrome.runtime.sendMessage({action: "authentified", password: passwordReadyUse });
 
     passwordReadyUse = null;
     busy.splice(busy.indexOf('loginForm'), 1);
 });
 document.addEventListener('click', async function(e) {
+    let loadedWalletsInfo;
+    let walletsInfo;
+    let encryptedSeedHex;
+    let privateKeyHex;
     switch (e.target.id) {
         case 'randomizeBtn':
             const rndSeedHex = cryptoLight.generateRdnHex(64);
@@ -437,13 +501,13 @@ document.addEventListener('click', async function(e) {
             bottomInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
             break;
         case 'confirmPrivateKeyBtn':
-            const encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
-            const walletInfo = new WalletInfo({name: 'wallet1', privateKeyHex: encryptedSeedHex});
-            const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-            const walletsInfo = loadedWalletsInfo ? loadedWalletsInfo.walletsInfo : [];
-            const walletsInfo = [
-                
-            ];
+            encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
+            eHTML.privateKeyHexInput.placeholder = 'Private key';
+            const walletInfo = new WalletInfo({name: 'wallet1', encryptedSeedHex: encryptedSeedHex});
+            loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+            walletsInfo = loadedWalletsInfo && loadedWalletsInfo.walletsInf ? loadedWalletsInfo.walletsInfo : [];
+            walletsInfo.push(walletInfo.extractVarsObjectToSave());
+
             await chrome.storage.local.set({walletsInfo});
             setVisibleForm('walletForm');
             console.log('Private key set');
@@ -451,6 +515,18 @@ document.addEventListener('click', async function(e) {
         case 'walletBtn':
             if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('walletForm', false);
+            break;
+        case 'newAddressBtn':
+            console.log('newAddressBtn');
+            loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+            if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
+            if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
+            walletsInfo = loadedWalletsInfo.walletsInfo;
+            encryptedSeedHex = walletsInfo[selectedWalletIndex].encryptedSeedHex;
+            privateKeyHex = await cryptoLight.decryptText(encryptedSeedHex);
+
+            chrome.runtime.sendMessage({ action: "deriveAccount", walletIndex: selectedWalletIndex, nb: 1, addressPrefix: "W" });
+            console.log('address:', address);
             break;
         case 'miningBtn':
             if (!e.target.classList.contains('active')) { return; }
@@ -494,7 +570,7 @@ document.addEventListener('input', (event) => {
     if (isPrivateKeyHexInput) {
         console.log(`privKeyHex: ${event.target.value}`);
         if (event.target.value.length === 64) {
-            eHTML.confirmPrivateKeyBtn.placeholder = event.target.value;
+            eHTML.privateKeyHexInput.placeholder = event.target.value;
             eHTML.confirmPrivateKeyBtn.classList.remove('disabled');
         } else {
             eHTML.confirmPrivateKeyBtn.classList.add('disabled');
@@ -507,3 +583,16 @@ window.addEventListener('beforeunload', function(e) {
     cryptoLight.clear();
 });
 //#endregion
+
+chrome.runtime.onMessage.addListener(async function(request, sender, sendResponse) {
+    if (typeof request.action !== "string") { return; }
+    if (!sanitizer.sanitize(request)) { console.info('data possibly corrupted!'); return; }
+
+    switch (request.action) {
+        case 'derivedAccountResult':
+            console.log('derivedAccountResult:', request.success);
+            break;
+        default:
+            break;
+    }
+});
