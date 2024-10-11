@@ -5,6 +5,8 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
     const { htmlAnimations } = require("./htmlAnimations.js");
     const { Wallet } = require("./contrast/wallet.mjs");
+    const utils = require("./contrast/utils.mjs").default;
+    const { Account } = require("./contrast/account.mjs");
 }
 
 const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
@@ -22,6 +24,7 @@ class WalletInfo {
         };
     }
 }
+
 cryptoLight.useArgon2Worker = true; console.log('Argon2 worker enabled!');
 const settings = {
     appVersion: chrome.runtime.getManifest().version,
@@ -59,6 +62,7 @@ const eHTML = {
 
     walletForm: document.getElementById('walletForm'),
     spendableBalanceStr: document.getElementById('spendableBalanceStr'),
+    accountsWrap: document.getElementById('accountsWrap'),
     newAddressBtn: document.getElementById('newAddressBtn'),
 
     bottomBar: document.getElementById('bottomBar'),
@@ -193,7 +197,7 @@ function initUI() {
         </div>
     </div>
 </div>*/
-function createAccountLabel(accountInfo) {
+function createAccountLabel(name, address) {
     const accountLabel = document.createElement('div');
     accountLabel.classList.add('accountLabel');
 
@@ -211,7 +215,7 @@ function createAccountLabel(accountInfo) {
     accountLabelInfoWrap.appendChild(accountLabelNameAndValueWrap);
 
     const h2 = document.createElement('h2');
-    h2.innerText = accountInfo.name;
+    h2.innerText = name;
     accountLabelNameAndValueWrap.appendChild(h2);
 
     const h3 = document.createElement('h3');
@@ -223,10 +227,13 @@ function createAccountLabel(accountInfo) {
     accountLabelInfoWrap.appendChild(accountLabelAddress);
 
     const h3Address = document.createElement('h3');
-    h3Address.innerText = accountInfo.address;
+    h3Address.innerText = address;
     accountLabelAddress.appendChild(h3Address);
 
     return accountLabel;
+}
+function setWalletTotalBalance(balance) {
+    eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(balance);
 }
 //#endregion
 
@@ -364,10 +371,20 @@ async function loadWalletGeneratedAccounts(walletIndex = 0) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
 
     const nbOfExistingAccounts = walletInfo.accountsGenerated["W"].length;
+    /** @type {Account[]} */
     const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, "W");
     if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
-    console.log('[POPUP] wallet accounts loaded');
+    const nbOfAccounts = activeWallet.accounts["W"].length;
+    for (let i = 0; i < nbOfAccounts; i++) {
+        const account = activeWallet.accounts["W"][i];
+        const accountName = `Account ${i + 1}`;
+        const accountLabel = createAccountLabel(accountName, account.address);
+        // Before last child
+        eHTML.accountsWrap.insertBefore(accountLabel, eHTML.accountsWrap.lastChild);
+    }
+
+    console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
 }
 //#endregion
 
@@ -547,6 +564,7 @@ document.addEventListener('click', async function(e) {
             break;
         case 'confirmPrivateKeyBtn':
             encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
+            activeWallet = new Wallet(eHTML.privateKeyHexInput.placeholder);
             eHTML.privateKeyHexInput.placeholder = 'Private key';
             walletInfo = new WalletInfo({name: 'wallet1', encryptedSeedHex: encryptedSeedHex});
             loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
@@ -554,7 +572,6 @@ document.addEventListener('click', async function(e) {
             walletsInfo.push(walletInfo.extractVarsObjectToSave());
 
             await chrome.storage.local.set({walletsInfo});
-            activeWallet = new Wallet(eHTML.privateKeyHexInput.placeholder);
             setVisibleForm('walletForm');
             console.log('Private key set');
             break;
@@ -573,6 +590,8 @@ document.addEventListener('click', async function(e) {
 
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');
+
+            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: activeWallet.accounts["W"][0].address });
 
             break;
         case 'miningBtn':
@@ -640,9 +659,13 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
             if (!activeWallet.accounts["W"][0]) { console.error('No active wallet'); return; }
-            if (activeWallet.accounts["W"][0].address !== request.UTXOs) { console.error('Address mismatch'); return; }
+            if (activeWallet.accounts["W"][0].address !== request.address) { console.error('Address mismatch'); return; }
 
             activeWallet.accounts["W"][0].UTXOs = request.UTXOs;
+            activeWallet.accounts["W"][0].balance = request.balance;
+            activeWallet.accounts["W"][0].spendableBalance = request.spendableBalance;
+
+            setWalletTotalBalance(request.spendableBalance);
         case 'derivedAccountResult':
             console.log('derivedAccountResult:', request.success);
             break;

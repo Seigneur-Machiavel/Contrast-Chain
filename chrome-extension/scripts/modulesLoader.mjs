@@ -1,3 +1,6 @@
+import utils from '../scripts/contrast/utils.mjs';
+window.utils = utils;
+
 import { Wallet } from '../scripts/contrast/wallet.mjs';
 window.Wallet = Wallet;
 
