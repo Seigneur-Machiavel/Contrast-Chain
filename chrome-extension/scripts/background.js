@@ -1,24 +1,10 @@
-//import msgpack from './externalLibs/msgPack.min.js';
-
-//import { encode, decode } from './externalLibs/msgPack.min.js';
-/*async function msgPackLib() {
-        const m = await import('../externalLibs/msgpack.min.js');
-        return m.default;
-};*/
-//const msgPack = msgPackLib().then((m) => m);
-//console.log('msgPack', msgpack);
-
-/*import * as msgpack from './externalLibs/msgPackPort.js';
-console.log('toto', msgpack);*/
-
 import argon2 from './argon2-ES6.min.mjs';
 import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
-import { Wallet } from './contrast/wallet.mjs';
+//import { Wallet } from './contrast/wallet.mjs';
 import { cryptoLight } from './cryptoLight.js';
 
 cryptoLight.argon2 = argon2;
 
-/** @type {WebSocket} */
 let pow = new Pow(argon2, "http://localhost:4340");
 const sanitizer = new Sanitizer();
 const SETTINGS = {
@@ -32,6 +18,7 @@ const SETTINGS = {
     RECONNECT_INTERVAL: 1000,
     GET_CURRENT_HEIGHT_INTERVAL: 5000
 }
+/** @type {WebSocket} */
 let ws;
 let currentHeightInterval;
 function connectWS() {
@@ -55,7 +42,28 @@ function connectWS() {
             blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);*/
         }, SETTINGS.RECONNECT_INTERVAL);
     };
-
+    ws.onmessage = async function(event) {
+        const message = JSON.parse(event.data);
+        const trigger = message.trigger;
+        const data = message.data;
+        let remainingAttempts = 10;
+        switch (message.type) {
+            case 'address_exhaustive_data_requested':
+                console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
+                chrome.runtime.sendMessage({action: 'address_exhaustive_data_requested', UTXOs: data.addressUTXOs.UTXOs});
+                break;
+            case 'transaction_requested':
+                // { transaction, balanceChange, txReference }
+                const transactionWithBalanceChange = data.transaction;
+                transactionWithBalanceChange.balanceChange = data.balanceChange;
+                blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithBalanceChange;
+                // set html
+                blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
+                break;
+            default:
+                break;
+        }
+    }
 
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
 
@@ -81,10 +89,10 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     if (typeof request.action !== "string") { return; }
     if (!sanitizer.sanitize(request)) { console.info('data possibly corrupted!'); return; }
     
-    let privateKeyHex;
-    let wallet;
-    let walletInfo;
     switch (request.action) {
+        case 'get_address_exhaustive_data':
+            console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}`);
+            ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: request.address }));
         case 'authentified':
             console.log(`[BACKGROUND] ${request.action}!`);
             await initCryptoLightFromAuthInfo(request.password);
@@ -92,20 +100,6 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case "requestAuth":
             // open popup for authentication
             chrome.runtime.sendMessage({action: "openPage", data: {password: request.data.password}});
-            break;
-        case 'deriveAccount':
-            privateKeyHex = await getWalletPrivateKey(request.walletIndex)
-            wallet = new Wallet(privateKeyHex);
-            const derivedAccounts = await wallet.deriveAccounts(request.nb, request.addressPrefix)
-            if (!derivedAccounts) {
-                chrome.runtime.sendMessage({ action: 'derivedAccountResult', success: false });
-                return;
-            }
-            
-            walletInfo = await getWalletInfo(request.walletIndex);
-            walletInfo.accountsGenerated = wallet.accountsGenerated;
-            await setWalletInfo(request.walletIndex, walletInfo);
-            chrome.runtime.sendMessage({ action: 'derivedAccountResult', success: true });
             break;
         case "startMining":
             //console.log('Starting mining 1...');
@@ -141,25 +135,4 @@ async function initCryptoLightFromAuthInfo(passwordReadyUse) {
     if (!res) { console.info('Error generating key!'); return; }
 
     console.log('CryptoLight initialized!');
-}
-async function getWalletInfo(walletIndex = 0) {
-    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
-    if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
-    return loadedWalletsInfo.walletsInfo[walletIndex];
-}
-async function setWalletInfo(walletIndex = 0, walletInfo) {
-    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
-    
-    loadedWalletsInfo.walletsInfo[walletIndex] = walletInfo;
-    await chrome.storage.local.set(loadedWalletsInfo);
-}
-async function getWalletPrivateKey(walletIndex = 0) {
-    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
-    if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
-    const walletsInfo = loadedWalletsInfo.walletsInfo;
-    const encryptedSeedHex = walletsInfo[walletIndex].encryptedSeedHex;
-    return await cryptoLight.decryptText(encryptedSeedHex);
 }

@@ -67,6 +67,8 @@ const eHTML = {
     settingsBtn: document.getElementById('settingsBtn')
 };
 
+/** @type {Wallet} */
+let activeWallet;
 const busy = [];
 //#region - UX FUNCTIONS
 function resizePopUp(applyBLur = true, duration = 200) {
@@ -331,6 +333,36 @@ async function copyTextToClipboard(str) {
       console.error("Failed to copy text to clipboard: ", err);
     }
 }
+async function getWalletInfo(walletIndex = 0) {
+    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
+    if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
+    return loadedWalletsInfo.walletsInfo[walletIndex];
+}
+async function setWalletInfo(walletIndex = 0, walletInfo) {
+    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
+    
+    loadedWalletsInfo.walletsInfo[walletIndex] = walletInfo;
+    await chrome.storage.local.set(loadedWalletsInfo);
+}
+async function getWalletPrivateKey(walletIndex = 0) {
+    const loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
+    if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
+    if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
+    const walletsInfo = loadedWalletsInfo.walletsInfo;
+    const encryptedSeedHex = walletsInfo[walletIndex].encryptedSeedHex;
+    return await cryptoLight.decryptText(encryptedSeedHex);
+}
+async function saveWalletGeneratedAccounts(walletIndex = 0) {
+    const walletInfo = await getWalletInfo(walletIndex);
+    walletInfo.accountsGenerated = activeWallet.accountsGenerated || {};
+    await setWalletInfo(walletIndex, walletInfo);
+}
+async function loadWalletGeneratedAccounts(walletIndex = 0) {
+    const walletInfo = await getWalletInfo(walletIndex);
+    activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
+}
 //#endregion
 
 //#region - EVENT LISTENERS
@@ -475,9 +507,14 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (!walletsInfo[0].encryptedSeedHex) { setVisibleForm('createWalletForm'); return; }
     console.log(`Wallets info loaded, first walletName: ${walletsInfo[0].name}`);
 
+    activeWallet = new Wallet(passwordReadyUse);
     setVisibleForm('walletForm');
+    await loadWalletGeneratedAccounts(selectedWalletIndex);
 
     chrome.runtime.sendMessage({action: "authentified", password: passwordReadyUse });
+    if (activeWallet.accounts["W"][0]) {
+        chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: activeWallet.accounts["W"][0].address });
+    }
 
     passwordReadyUse = null;
     busy.splice(busy.indexOf('loginForm'), 1);
@@ -487,6 +524,7 @@ document.addEventListener('click', async function(e) {
     let walletsInfo;
     let encryptedSeedHex;
     let privateKeyHex;
+    let walletInfo;
     switch (e.target.id) {
         case 'randomizeBtn':
             const rndSeedHex = cryptoLight.generateRdnHex(64);
@@ -503,7 +541,7 @@ document.addEventListener('click', async function(e) {
         case 'confirmPrivateKeyBtn':
             encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
             eHTML.privateKeyHexInput.placeholder = 'Private key';
-            const walletInfo = new WalletInfo({name: 'wallet1', encryptedSeedHex: encryptedSeedHex});
+            walletInfo = new WalletInfo({name: 'wallet1', encryptedSeedHex: encryptedSeedHex});
             loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
             walletsInfo = loadedWalletsInfo && loadedWalletsInfo.walletsInf ? loadedWalletsInfo.walletsInfo : [];
             walletsInfo.push(walletInfo.extractVarsObjectToSave());
@@ -518,15 +556,15 @@ document.addEventListener('click', async function(e) {
             break;
         case 'newAddressBtn':
             console.log('newAddressBtn');
-            loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-            if (!loadedWalletsInfo) { console.error('No wallets info'); return; }
-            if (loadedWalletsInfo.walletsInfo.length === 0) { console.error('No wallets info [].len === 0'); return; }
-            walletsInfo = loadedWalletsInfo.walletsInfo;
-            encryptedSeedHex = walletsInfo[selectedWalletIndex].encryptedSeedHex;
-            privateKeyHex = await cryptoLight.decryptText(encryptedSeedHex);
+            privateKeyHex = await getWalletPrivateKey(selectedWalletIndex);
 
-            chrome.runtime.sendMessage({ action: "deriveAccount", walletIndex: selectedWalletIndex, nb: 1, addressPrefix: "W" });
-            console.log('address:', address);
+            console.log('privateKeyHex:', privateKeyHex);
+            const nbOfExistingAccounts = activeWallet.accounts["W"].length;
+            const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, "W");
+
+            await saveWalletGeneratedAccounts(selectedWalletIndex);
+            console.log('[POPUP] wallet accounts generated and saved');
+
             break;
         case 'miningBtn':
             if (!e.target.classList.contains('active')) { return; }
@@ -589,6 +627,13 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     if (!sanitizer.sanitize(request)) { console.info('data possibly corrupted!'); return; }
 
     switch (request.action) {
+        case 'address_exhaustive_data_requested':
+            //data.addressUTXOs.UTXOs, data.addressTxsReferences);
+            console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
+            if (!activeWallet.accounts["W"][0]) { console.error('No active wallet'); return; }
+            if (activeWallet.accounts["W"][0].address !== request.UTXOs) { console.error('Address mismatch'); return; }
+
+            activeWallet.accounts["W"][0].UTXOs = request.UTXOs;
         case 'derivedAccountResult':
             console.log('derivedAccountResult:', request.success);
             break;

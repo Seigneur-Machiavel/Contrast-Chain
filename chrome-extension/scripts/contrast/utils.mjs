@@ -4,14 +4,17 @@ const isNode = typeof process !== 'undefined' && process.versions != null && pro
 import ed25519 from '../externalLibs/noble-ed25519-03-2024.mjs';
 import { Transaction, UTXO } from './transaction.mjs';
 import { xxHash32 } from '../externalLibs/xxhash32.mjs';
+//import { MessagePack } from '../externalLibs/msgpack.min.js';
 async function msgPackLib() {
-    //if (isNode) {
+    if (isNode) {
         const m = await import('../externalLibs/msgpack.min.js');
         return m.default;
-    //}
-   // return MessagePack;
+    }
+    return MessagePack;
 };
-const msgpack = msgPackLib().then((m) => m);
+const msgpack = await msgPackLib();
+//import { BinarySerializer } from '../externalLibs/gpt-serializer.mjs';
+//const msgpack = new BinarySerializer();
 
 const cryptoLib = crypto;
 async function getArgon2Lib() {
@@ -33,11 +36,10 @@ async function getArgon2Lib() {
     window.argon2 = argon2Import.default;
     return argon2Import.default;
 };
-const argon2Lib = getArgon2Lib().then((a) => a);
+const argon2Lib = await getArgon2Lib();
 
 //import Compressor from '../externalLibs/gzip.min.js'; -> not used anymore
 //import Decompressor from '../externalLibs/gunzip.min.js'; -> not used anymore
-//import { encode, decode } from "@msgpack/msgpack";
 
 /**
 * @typedef {import("./block.mjs").Block} Block
@@ -48,14 +50,15 @@ const argon2Lib = getArgon2Lib().then((a) => a);
 */
 //#endregion
 
-let workerModule;
-async function getWorkerModule() {
+/*async function getWorkerModule() {
     if (isNode) {
         return (await import('worker_threads')).Worker;
     }
     return Worker;
 };
-if (isNode) { workerModule = getWorkerModule().then((m) => m); }
+const WokerModule = await getWorkerModule();*/
+const WorkerModule = isNode ? (await import('worker_threads')).Worker : Worker;
+
 
 const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 function newWorker(scriptPath) {
