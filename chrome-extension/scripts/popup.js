@@ -362,6 +362,12 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
 async function loadWalletGeneratedAccounts(walletIndex = 0) {
     const walletInfo = await getWalletInfo(walletIndex);
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
+
+    const nbOfExistingAccounts = walletInfo.accountsGenerated["W"].length;
+    const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, "W");
+    if (!derivedAccounts) { console.error('Derivation failed'); return; }
+
+    console.log('[POPUP] wallet accounts loaded');
 }
 //#endregion
 
@@ -418,7 +424,7 @@ eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
         if (!serverResponse2.success) { alert(serverResponse2.message); busy.splice(busy.indexOf('passwordCreationForm'), 1); resetApplication(); return; }
     }
 
-    setVisibleForm('walletForm');
+    setVisibleForm('createWalletForm');
     //chrome.runtime.sendMessage({action: "openPage", password: passComplement ? `${password}${passComplement}` : password });
     chrome.runtime.sendMessage({action: "authentified", password: passComplement ? `${password}${passComplement}` : password });
 
@@ -508,13 +514,14 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     console.log(`Wallets info loaded, first walletName: ${walletsInfo[0].name}`);
 
     activeWallet = new Wallet(passwordReadyUse);
-    setVisibleForm('walletForm');
     await loadWalletGeneratedAccounts(selectedWalletIndex);
-
+    
     chrome.runtime.sendMessage({action: "authentified", password: passwordReadyUse });
     if (activeWallet.accounts["W"][0]) {
         chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: activeWallet.accounts["W"][0].address });
     }
+
+    setVisibleForm('walletForm');
 
     passwordReadyUse = null;
     busy.splice(busy.indexOf('loginForm'), 1);
@@ -547,6 +554,7 @@ document.addEventListener('click', async function(e) {
             walletsInfo.push(walletInfo.extractVarsObjectToSave());
 
             await chrome.storage.local.set({walletsInfo});
+            activeWallet = new Wallet(eHTML.privateKeyHexInput.placeholder);
             setVisibleForm('walletForm');
             console.log('Private key set');
             break;
@@ -561,6 +569,7 @@ document.addEventListener('click', async function(e) {
             console.log('privateKeyHex:', privateKeyHex);
             const nbOfExistingAccounts = activeWallet.accounts["W"].length;
             const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, "W");
+            if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');

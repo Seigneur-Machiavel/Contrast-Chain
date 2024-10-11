@@ -50,6 +50,7 @@ function connectWS() {
         switch (message.type) {
             case 'address_exhaustive_data_requested':
                 console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
+                console.log('data:', data);
                 chrome.runtime.sendMessage({action: 'address_exhaustive_data_requested', UTXOs: data.addressUTXOs.UTXOs});
                 break;
             case 'transaction_requested':
