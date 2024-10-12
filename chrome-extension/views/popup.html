@@ -73,14 +73,18 @@
 
             <form id="walletForm" class="hidden">
                 <h1><span id="spendableBalanceStr">0.00</span>c</h1>
+                <h2 class="stakedBalance">Staked: <span id="stakedStr">0.00</span>c</h2>
                 <div class="buttonBar">
-                    <button><img src="../images/qr-code32.png" alt="Receive">Receive</button>
-                    <button><img src="../images/send32.png" alt="Send">Send</button>
-                    <button><img src="../images/swap32.png" alt="Swap">Swap</button>
+                    <button><div class="btnBackground"></div><img src="../images/qr-code32.png" alt="Receive">Receive</button>
+                    <button><div class="btnBackground"></div><img src="../images/send32.png" alt="Send">Send</button>
+                    <button><div class="btnBackground"></div><img src="../images/swap32.png" alt="Swap">Swap</button>
                 </div>
                 <div id="accountsWrap">
                     <!--<div class="accountLabel">
-                        <img src="../images/qr-code32.png" alt="Account">
+                        <div class="accountImgWrap">
+                            <div></div>
+                            <img src="../images/qr-code32.png" alt="Account">
+                        </div>
                         <div class="accountLabelInfoWrap">
                             <div class="accountLabelNameAndValueWrap">
                                 <h2>Account 1</h2>
@@ -91,8 +95,8 @@
                             </div>
                         </div>
                     </div>-->
-                    <button id="newAddressBtn">+</button>
                 </div>
+                <button id="newAddressBtn">+</button>
                 <p class="bottomInfo"></p>
             </form>
     

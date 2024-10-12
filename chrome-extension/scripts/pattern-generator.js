@@ -6,13 +6,13 @@ class PatternGenerator {
         this.width = options.width || 48;
         this.height = options.height || 48;
         this.shapes = [];
-        this.drawingCanvas = document.createElement('canvas');
-        this.drawingCanvas.width = this.width * this.SCALE;
-        this.drawingCanvas.height = this.height * this.SCALE;
     }
 
     generateImage(seed, shapeCount) {
-        const ctx = this.drawingCanvas.getContext('2d');
+        const drawingCanvas = document.createElement('canvas');
+        drawingCanvas.width = this.width * this.SCALE;
+        drawingCanvas.height = this.height * this.SCALE;
+        const ctx = drawingCanvas.getContext('2d');
         this.shapes = [];
 
         const random = (seed) => {
@@ -25,9 +25,9 @@ class PatternGenerator {
 
         const rand = random(seed);
 
-        const centerX = this.drawingCanvas.width / 2;
-        const centerY = this.drawingCanvas.height / 2;
-        const maxSize = Math.min(this.drawingCanvas.width, this.drawingCanvas.height) * 0.45;
+        const centerX = drawingCanvas.width / 2;
+        const centerY = drawingCanvas.height / 2;
+        const maxSize = Math.min(drawingCanvas.width, drawingCanvas.height) * 0.45;
 
         const circleThreshold = 0.4 + rand() * 0.2;
 
@@ -42,7 +42,7 @@ class PatternGenerator {
 
         this.drawShapes(ctx, centerX, centerY);
 
-        return this.drawingCanvas;
+        return drawingCanvas;
     }
 
     drawShapes(ctx, centerX, centerY) {

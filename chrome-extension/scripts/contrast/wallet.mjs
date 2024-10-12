@@ -93,7 +93,7 @@ export class Wallet {
         }
 
         const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);
-        if (derivedAccounts.length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
+        if (derivedAccounts.length !== nbOfAccounts - nbOfExistingAccounts) { console.error('Failed to derive all accounts'); return {}; }
         return { derivedAccounts, avgIterations: Math.round(iterationsPerAccount / nbOfAccounts) };
     }
     async tryDerivationUntilValidAccount(accountIndex = 0, desiredPrefix = "C") {

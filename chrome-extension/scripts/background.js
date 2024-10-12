@@ -1,6 +1,5 @@
 import argon2 from './argon2-ES6.min.mjs';
 import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
-//import { Wallet } from './contrast/wallet.mjs';
 import { cryptoLight } from './cryptoLight.js';
 
 cryptoLight.argon2 = argon2;
@@ -9,22 +8,22 @@ let pow = new Pow(argon2, "http://localhost:4340");
 const sanitizer = new Sanitizer();
 const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
-    //PROTOCOL: window.location.protocol === "https:" ? "wss:" : "ws:",
-    PROTOCOL: "ws:",
+    WS_PROTOCOL: "ws", // ws or wss
     DOMAIN: 'pinkparrot.observer',
     PORT: false, // 27270 (not used with domain)
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
-    RECONNECT_INTERVAL: 1000,
-    GET_CURRENT_HEIGHT_INTERVAL: 5000
+    RECONNECT_INTERVAL: 5000,
+    GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
+
 /** @type {WebSocket} */
 let ws;
 let currentHeightInterval;
 function connectWS() {
     //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
-    ws = new WebSocket(`${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
-    console.log(`Connecting to ${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
+    ws = new WebSocket(`${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
+    console.log(`Connecting to ${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
 
     ws.onopen = function() {
         console.log('Connection opened');
@@ -79,18 +78,6 @@ function connectWS() {
         try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
     }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL);
 } connectWS();
-(async () => {
-    console.log('Background script starting...');
-
-    //await initCryptoLightFromAuthInfo(); // we can't
-    
-    // if not initialized, initialize mining state
-    const miningState = await chrome.storage.local.get('miningState');
-    if (!miningState || !miningState.miningState) {
-        await chrome.storage.local.set({miningState: 'disabled'});
-    }
-    console.log('Background script started!');
-})();
 
 chrome.runtime.onMessage.addListener(async function(request, sender, sendResponse) {
     if (typeof request.action !== "string") { return; }
@@ -129,6 +116,17 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
         }
     }
 });
+
+(async () => { // INIT FUNCTION
+    console.log('Background script starting...');
+    
+    // if not initialized, initialize mining state
+    const miningState = await chrome.storage.local.get('miningState');
+    if (!miningState || !miningState.miningState) {
+        await chrome.storage.local.set({miningState: 'disabled'});
+    }
+    console.log('Background script started!');
+})();
 
 // FUNCTIONS
 async function initCryptoLightFromAuthInfo(passwordReadyUse) {

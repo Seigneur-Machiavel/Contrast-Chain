@@ -32,6 +32,9 @@ const settings = {
     hardcodedPassword: '123456',
     serverUrl: "http://localhost:4340"
 };
+const UX_SETTINGS = {
+    shapes: 3
+};
 let resizePopUpAnimations = [];
 const sanitizer = new Sanitizer();
 const communication = new Communication(settings.serverUrl);
@@ -62,6 +65,7 @@ const eHTML = {
 
     walletForm: document.getElementById('walletForm'),
     spendableBalanceStr: document.getElementById('spendableBalanceStr'),
+    stakedStr: document.getElementById('stakedStr'),
     accountsWrap: document.getElementById('accountsWrap'),
     newAddressBtn: document.getElementById('newAddressBtn'),
 
@@ -73,6 +77,8 @@ const eHTML = {
 
 /** @type {Wallet} */
 let activeWallet;
+let activeAddressPrefix = "W";
+let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
 const busy = [];
 //#region - UX FUNCTIONS
 function resizePopUp(applyBLur = true, duration = 200) {
@@ -197,14 +203,17 @@ function initUI() {
         </div>
     </div>
 </div>*/
-function createAccountLabel(name, address) {
+function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');
     accountLabel.classList.add('accountLabel');
 
-    const img = document.createElement('img');
-    img.src = '../images/qr-code32.png';
-    img.alt = 'Account';
-    accountLabel.appendChild(img);
+    const accountImgWrap = document.createElement('div');
+    accountImgWrap.classList.add('accountImgWrap');
+    accountLabel.appendChild(accountImgWrap);
+    const accountImgWrapDiv = document.createElement('div');
+    accountImgWrap.appendChild(accountImgWrapDiv);
+    const img = patternGenerator.generateImage(address, UX_SETTINGS.shapes);
+    accountImgWrap.appendChild(img);
 
     const accountLabelInfoWrap = document.createElement('div');
     accountLabelInfoWrap.classList.add('accountLabelInfoWrap');
@@ -219,7 +228,7 @@ function createAccountLabel(name, address) {
     accountLabelNameAndValueWrap.appendChild(h2);
 
     const h3 = document.createElement('h3');
-    h3.innerText = '0.00c';
+    h3.innerText = `${utils.convert.number.formatNumberAsCurrency(amount)}c`;
     accountLabelNameAndValueWrap.appendChild(h3);
 
     const accountLabelAddress = document.createElement('div');
@@ -232,8 +241,56 @@ function createAccountLabel(name, address) {
 
     return accountLabel;
 }
-function setWalletTotalBalance(balance) {
-    eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(balance);
+function updateBalances() {
+    let walletTotalBalance = 0;
+    let walletTotalSpendableBalance = 0;
+    // for each address type
+    const addressTypes = Object.keys(activeWallet.accounts);
+    for (let i = 0; i < addressTypes.length; i++) {
+        const addressPrefix = addressTypes[i];
+        const showInLabelsWrap = addressPrefix === activeAddressPrefix;
+        const { totalBalance, totalSpendableBalance } = updateLabelsBalances(addressPrefix, showInLabelsWrap);
+        walletTotalBalance += totalBalance;
+        walletTotalSpendableBalance += totalSpendableBalance;
+    }
+
+    const stakedBalance = walletTotalBalance - walletTotalSpendableBalance;
+    eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalBalance);
+    eHTML.stakedStr.innerText = utils.convert.number.formatNumberAsCurrency(stakedBalance);
+
+    updateActiveAccountLabel();
+
+    console.log(`[POPUP] wallet accounts updated: ${activeWallet.accounts[activeAddressPrefix].length}`);
+}
+function updateLabelsBalances(addressPrefix = "W", showInLabelsWrap = false) {
+    if (showInLabelsWrap) { eHTML.accountsWrap.innerHTML = ''; }
+
+    let totalBalance = 0;
+    let totalSpendableBalance = 0;
+    const nbOfAccounts = activeWallet.accounts[addressPrefix].length;
+    for (let i = 0; i < nbOfAccounts; i++) {
+        const account = activeWallet.accounts[addressPrefix][i];
+        totalBalance += account.balance;
+        totalSpendableBalance += account.spendableBalance;
+        if (!showInLabelsWrap) { continue; }
+
+        const accountName = `Account ${i + 1}`;
+        const accountLabel = createAccountLabel(accountName, account.address, account.balance);
+        eHTML.accountsWrap.appendChild(accountLabel);
+    }
+
+    return { totalBalance, totalSpendableBalance };
+}
+function updateActiveAccountLabel() {
+    const accountLabels = eHTML.accountsWrap.getElementsByClassName('accountLabel');
+    if (accountLabels.length === 0) { return; }
+
+    const activeAccountIndex = activeAccountIndexByPrefix[activeAddressPrefix];
+    for (let i = 0; i < accountLabels.length; i++) {
+        accountLabels[i].classList.remove('active');
+        if (i !== activeAccountIndex) { continue; }
+        accountLabels[i].classList.add('active');
+    }
 }
 //#endregion
 
@@ -361,6 +418,20 @@ async function getWalletPrivateKey(walletIndex = 0) {
     const encryptedSeedHex = walletsInfo[walletIndex].encryptedSeedHex;
     return await cryptoLight.decryptText(encryptedSeedHex);
 }
+function getWalletAccountIndexByAddress(address) {
+    const targetAddressPrefix = address.slice(0, 1);
+    const addressTypes = Object.keys(activeWallet.accounts);
+    for (let i = 0; i < addressTypes.length; i++) {
+        const addressPrefix = addressTypes[i];
+        if (addressPrefix !== targetAddressPrefix) { continue; }
+
+        const accounts = activeWallet.accounts[addressPrefix];
+        for (let j = 0; j < accounts.length; j++) {
+            if (accounts[j].address === address) { return j; }
+        }
+    }
+    return -1;
+}
 async function saveWalletGeneratedAccounts(walletIndex = 0) {
     const walletInfo = await getWalletInfo(walletIndex);
     walletInfo.accountsGenerated = activeWallet.accountsGenerated || {};
@@ -379,9 +450,8 @@ async function loadWalletGeneratedAccounts(walletIndex = 0) {
     for (let i = 0; i < nbOfAccounts; i++) {
         const account = activeWallet.accounts["W"][i];
         const accountName = `Account ${i + 1}`;
-        const accountLabel = createAccountLabel(accountName, account.address);
-        // Before last child
-        eHTML.accountsWrap.insertBefore(accountLabel, eHTML.accountsWrap.lastChild);
+        const accountLabel = createAccountLabel(accountName, account.address, account.balance);
+        eHTML.accountsWrap.appendChild(accountLabel);
     }
 
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
@@ -524,10 +594,12 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (!res.hashVerified) { infoAndWrongAnim('Wrong password'); return; }
 
     const walletsInfoResult = await chrome.storage.local.get(['walletsInfo']);
-    if (!walletsInfoResult || !walletsInfoResult.walletsInfo) { setVisibleForm('createWalletForm'); return; }
+    if (!walletsInfoResult || !walletsInfoResult.walletsInfo || walletsInfoResult.walletsInfo.length === 0) {
+        console.log('No wallets info, open create wallet form');
+        setVisibleForm('createWalletForm'); return;
+    }
 
     const walletsInfo = walletsInfoResult.walletsInfo;
-    if (!walletsInfo[0].encryptedSeedHex) { setVisibleForm('createWalletForm'); return; }
     console.log(`Wallets info loaded, first walletName: ${walletsInfo[0].name}`);
 
     activeWallet = new Wallet(passwordReadyUse);
@@ -591,7 +663,8 @@ document.addEventListener('click', async function(e) {
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');
 
-            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: activeWallet.accounts["W"][0].address });
+            const lastAccountAddress = activeWallet.accounts["W"][nbOfExistingAccounts].address;
+            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
 
             break;
         case 'miningBtn':
@@ -601,6 +674,20 @@ document.addEventListener('click', async function(e) {
         case 'settingsBtn':
             if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('settingsForm', false);
+            break;
+        default:
+            break;
+    }
+
+    switch (e.target.className) {
+        case 'accountImgWrap':
+            //console.log('accountImgWrap clicked');
+            const accountLabel = e.target.parentElement;
+            const accountIndex = Array.from(accountLabel.parentElement.children).indexOf(accountLabel);
+
+            //console.log(`accountIndex: ${accountIndex}`);
+            activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
+            updateActiveAccountLabel();
             break;
         default:
             break;
@@ -643,7 +730,6 @@ document.addEventListener('input', (event) => {
         }
     }
 });
-// on close
 window.addEventListener('beforeunload', function(e) {
     console.log('beforeunload');
     cryptoLight.clear();
@@ -654,18 +740,25 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     if (typeof request.action !== "string") { return; }
     if (!sanitizer.sanitize(request)) { console.info('data possibly corrupted!'); return; }
 
+    let targetAccountIndex;
+    let targetAccount;
     switch (request.action) {
         case 'address_exhaustive_data_requested':
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
-            if (!activeWallet.accounts["W"][0]) { console.error('No active wallet'); return; }
-            if (activeWallet.accounts["W"][0].address !== request.address) { console.error('Address mismatch'); return; }
+            
+            const targetAccountAddressPrefix = request.address.slice(0, 1);
+            targetAccountIndex = getWalletAccountIndexByAddress(request.address);
+            if (targetAccountIndex === -1) { console.error(`No account corresponding to address: ${request.address}`); return; }
+            targetAccount = activeWallet.accounts[targetAccountAddressPrefix][targetAccountIndex];
+            if (!targetAccount) { console.error('No target account'); return; }
 
-            activeWallet.accounts["W"][0].UTXOs = request.UTXOs;
-            activeWallet.accounts["W"][0].balance = request.balance;
-            activeWallet.accounts["W"][0].spendableBalance = request.spendableBalance;
+            targetAccount.UTXOs = request.UTXOs;
+            targetAccount.balance = request.balance;
+            targetAccount.spendableBalance = request.spendableBalance;
 
-            setWalletTotalBalance(request.spendableBalance);
+            updateBalances();
+            break;
         case 'derivedAccountResult':
             console.log('derivedAccountResult:', request.success);
             break;

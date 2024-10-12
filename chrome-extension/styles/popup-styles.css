@@ -4,6 +4,9 @@
     --text-color: white;
     --text-color2: #c1c1c1;
     --text-color3: grey;
+    --neumo-color1: #2b2828;
+    --neumo-color2: #383838;
+
     --button-color: #ebebeb;
     --invalid-color: indianred;
     --valid-color: cornflowerblue;
@@ -171,6 +174,7 @@ button.disabled {
     padding: 0 0 10px 0;
 }
 .buttonBar button {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -182,14 +186,17 @@ button.disabled {
     font-size: small;
     border-style: none;
     cursor: pointer;
-    transition: background-color 0.08s ease-in-out, transform 0.12s ease-in-out;
+    transition: background 0.08s ease-in-out, transform 0.12s ease-in-out;
     padding: 0;
-    background-color: var(--background-color2);
+    /*background-color: radial-gradient(circle, var(--neumo-color1) 0%, var(--neumo-color2) 85%);*/
+    background: radial-gradient(circle, var(--neumo-color1) 0%, var(--neumo-color2) 85%);
+    box-shadow: 5px 2px 5px var(--neumo-color1), -4px -2px 6px var(--neumo-color2);
     font-weight: bold;
 }
 .buttonBar button:hover {
     transform: none !important;
     color: var(--text-color2);
+    box-shadow: 6px 3px 7px var(--neumo-color1), -5px -3px 8px var(--neumo-color2);
 }
 .buttonBar button img {
     width: 26px;
@@ -198,29 +205,74 @@ button.disabled {
     transform: translateY(5px);
 }
 .buttonBar button:hover img {
-    filter: brightness(1) drop-shadow(0px 0px 2px rgba(255, 255, 255, .2));
-    transform: skew(-2deg, -2deg) translateY(4px);
+    /*box-shadow: 6px 3px 7px var(--neumo-color1), -5px -3px 8px var(--neumo-color2);*/
+    filter: brightness(1) drop-shadow(-3px -1px .6px rgba(0, 0, 0, .2)) drop-shadow(4px 3px .8px rgba(255, 255, 255, .06));
+    transform: skew(-1deg, -.4deg) translateY(4px);
+}
+.btnBackground {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 10px;
+    background-color: transparent;
+    background: linear-gradient(135deg, var(--neumo-color1) 0%, var(--neumo-color2) 85%);
+    opacity: 0.5;
+    transition: background 0.28s ease-in-out, transform 0.12s ease-in-out, opacity 0.12s ease-in-out;
+}
+.buttonBar button:hover .btnBackground {
+    background: linear-gradient(-45deg, var(--neumo-color1) 0%, var(--neumo-color2) 85%);
+    opacity: 0.2;
+    transform: scale(1.02);
 }
 #accountsWrap {
     position: relative;
     display: flex;
     flex-direction: column;
+    align-items: center;
     overflow-y: auto;
-    height: 200px;
-    width: 280px;
+    max-height: 200px;
+    /*width: 280px;*/
+    width: 100%;
 }
 .accountLabel {
     display: flex;
     justify-content: space-between;
     align-items: center;
     background-color: var(--background-color2);
-    margin-bottom: 20px;
+    margin-top: 10px;
     padding: 2px 12px;
     border-radius: 10px;
+    /*box-shadow: 6px 3px 14px var(--neumo-color1), -3px -1px 2px var(--neumo-color2);*/
+    box-shadow: inset 2px 3px 4px var(--neumo-color1), inset -2px 5px 8px var(--neumo-color2);
+    width: 86%;
 }
-.accountLabel img {
-    width: 48px;
-    height: 48px;
+.accountLabel .accountImgWrap {
+    cursor: pointer;
+    position: relative;
+    width: 52px;
+    height: 52px;
+}
+.accountLabel .accountImgWrap div {
+    pointer-events: none;
+    position: absolute;
+    border-radius: 50%;
+    box-shadow: inset 3px 3px 10px var(--neumo-color1), inset -5px -5px 10px var(--neumo-color2);
+    width: 100%;
+    height: 100%;
+    transition: box-shadow 0.12s ease-in-out;
+}
+.accountLabel .accountImgWrap:hover div {
+    box-shadow: inset 0px 0px 10px var(--neumo-color1), inset 0px 0px 10px var(--neumo-color2);
+}
+.accountLabel.active .accountImgWrap div {
+    box-shadow: 0px 0px 3px var(--text-color);
+}
+.accountLabel .accountImgWrap canvas {
+    pointer-events: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 .accountLabelInfoWrap {
     width: calc(100% - 64px);
@@ -243,15 +295,16 @@ button.disabled {
 }
 #newAddressBtn {
     position: relative;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 42px;
+    margin-top: 6px;
+    width: 34px;
+    height: 34px;
     background: var(--background-color2);
     color: var(--text-color2);
-    font-size: 30px;
+    font-size: 24px;
+    border-radius: 40%;
 }
 #newAddressBtn:hover {
-    background: var(--background-color);
+    background: var(--neumo-color2);
     color: var(--text-color);
 }
 
@@ -269,8 +322,14 @@ button.disabled {
 
 }
 #walletForm h1 {
-    margin: 30px 0 20px 0;
+    margin: 20px 0 0px 0;
     font-size: xx-large;
+}
+.stakedBalance {
+    border-top: solid #80808024 1px;
+    margin: 10px 0 16px 0;
+    padding-top: 4px;
+    color: var(--text-color3);
 }
 
 
