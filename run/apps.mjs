@@ -413,6 +413,9 @@ export class ObserverWsApp {
                     const { transaction, balanceChange } = await this.node.getTransactionByReference(data.txReference, data.address);
                     if (!transaction) { console.error(`[OBSERVER] Transaction not found: ${data.txReference}`); return; }
                     ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, txReference: data.txReference } }));
+                case 'subscribe_balance_update':
+                    this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, ws);
+                    break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                     break;

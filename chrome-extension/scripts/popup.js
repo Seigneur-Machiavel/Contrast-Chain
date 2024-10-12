@@ -606,8 +606,11 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     await loadWalletGeneratedAccounts(selectedWalletIndex);
     
     chrome.runtime.sendMessage({action: "authentified", password: passwordReadyUse });
-    if (activeWallet.accounts["W"][0]) {
-        chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: activeWallet.accounts["W"][0].address });
+    if (activeWallet.accounts[activeAddressPrefix][0]) {
+        for (let i = 0; i < activeWallet.accounts[activeAddressPrefix].length; i++) {
+            const address = activeWallet.accounts[activeAddressPrefix][i].address;
+            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address });
+        }
     }
 
     setVisibleForm('walletForm');
