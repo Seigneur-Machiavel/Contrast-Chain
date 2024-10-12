@@ -416,8 +416,9 @@ export class ObserverWsApp {
                 case 'subscribe_balance_update':
                     this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, ws);
                     break;
-                case 'broadcast_transaction':
-                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data);
+                case 'broadcast_serialized_transaction':
+                    const deserializeTx = contrast.utils.serializerFast.deserialize.transaction(data);
+                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(deserializeTx);
                     if (error) { console.error('Error broadcasting transaction', error); }
 
                     ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { broadcasted, pushedInLocalMempool, error } }));

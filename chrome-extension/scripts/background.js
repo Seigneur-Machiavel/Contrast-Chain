@@ -109,9 +109,9 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             console.log(`[BACKGROUND] ${request.action}!`);
             await initCryptoLightFromAuthInfo(request.password);
             break;
-        case 'broadcast_transaction':
-            console.log(`[BACKGROUND] broadcast_transaction!`);
-            ws.send(JSON.stringify({ type: 'broadcast_transaction', data: request.transaction }));
+        case 'broadcast_serialized_transaction':
+            console.log(`[BACKGROUND] broadcast_serialized_transaction!`);
+            ws.send(JSON.stringify({ type: 'broadcast_serialized_transaction', data: request.serialized_transaction }));
             break;
         case "requestAuth":
             // open popup for authentication

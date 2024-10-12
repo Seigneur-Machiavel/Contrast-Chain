@@ -811,15 +811,18 @@ document.addEventListener('click', async function(e) {
             break;
         case 'sendBtn':
             console.log('sendBtn');
-            amount = parseInt(eHTML.send.address.value.replace(",","").replace(".",""))
-            receiverAddress = utils.addressUtils.conformityCheck(eHTML.send.address.value);
-            //senderAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+            amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
+            console.log('amount:', amount);
+            // utils.addressUtils.conformityCheck(eHTML.send.address.value);
+            receiverAddress = eHTML.send.address.value;
             senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
             transaction = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
             if (!transaction) { console.error('Transaction creation failed'); return; }
 
+            serialized_transaction = utils.serializerFast.serialize.transaction(data);
+
             console.log('transaction:', transaction);
-            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction });
+            chrome.runtime.sendMessage({action: "broadcast_transaction", serialized_transaction });
             break;
         default:
             break;

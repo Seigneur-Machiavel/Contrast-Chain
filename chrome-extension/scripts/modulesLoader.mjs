@@ -4,6 +4,10 @@ window.utils = utils;
 import { Wallet } from '../scripts/contrast/wallet.mjs';
 window.Wallet = Wallet;
 
+import { Transaction, Transaction_Builder } from './contrast/transaction.mjs';
+window.Transaction = Transaction;
+window.Transaction_Builder = Transaction_Builder;
+
 import { cryptoLight } from './cryptoLight.js';
 window.cryptoLight = cryptoLight;
 
