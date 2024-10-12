@@ -6,36 +6,47 @@ class PatternGenerator {
         this.width = options.width || 48;
         this.height = options.height || 48;
         this.shapes = [];
+        this.base58 = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
     }
 
-    generateImage(seed, shapeCount) {
+    generateImage(seed = 'toto', shapeCount) {
         const drawingCanvas = document.createElement('canvas');
         drawingCanvas.width = this.width * this.SCALE;
         drawingCanvas.height = this.height * this.SCALE;
         const ctx = drawingCanvas.getContext('2d');
         this.shapes = [];
 
-        const random = (seed) => {
+        const randoms = [];
+        for (let i = 1; i < 50; i++) { // don't use the first letter of the seed
+            const char = seed[i] || seed[i - seed.length] || '1';
+            let num = this.base58.indexOf(char) || 0;
+            randoms.push(num / 58);
+        }
+        console.log('randoms:', randoms);
+        /*const random = (seed) => {
             let num = parseInt(seed, 16) || 0;
+            console.log('num:', num);
             return () => {
                 num = (num * 1664525 + 1013904223) % 4294967296;
                 return num / 4294967296;
             };
         };
-
-        const rand = random(seed);
+        console.log('seed:', seed);
+        const rand = random(seed);*/
 
         const centerX = drawingCanvas.width / 2;
         const centerY = drawingCanvas.height / 2;
         const maxSize = Math.min(drawingCanvas.width, drawingCanvas.height) * 0.45;
 
-        const circleThreshold = 0.4 + rand() * 0.2;
+        const circleThreshold = 0.3 + (randoms[0] * 0.4);
 
         for (let i = shapeCount; i > 0; i--) {
-            const size = (i / shapeCount) * maxSize;
-            const brightness = Math.floor(200 + rand() * 55);
-            const lineWidth = this.SCALE * (0.2 + rand() * 0.8);
-            const isCircle = rand() < circleThreshold;
+            const mod = i * 4;
+            const size = (i / shapeCount) * maxSize * (.95 + (randoms[mod + 1] * .1));
+            const brightness = Math.floor(100 + (randoms[mod + 2] * 155));
+            const lineWidth = this.SCALE * (.2 + (randoms[mod + 3] * 1.4));
+            const isCircle = randoms[mod + 4] < circleThreshold;
+            console.log('size:', size, 'brightness:', brightness, 'lineWidth:', lineWidth, 'isCircle:', isCircle);
 
             this.shapes.push({ size, brightness, lineWidth, isCircle });
         }

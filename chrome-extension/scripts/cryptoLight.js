@@ -40,56 +40,62 @@ const cryptoLight = {
 		return true;
 	},
     async generateKey(passwordStr, salt1Base64 = null, iv1Base64 = null, hashToVerify = null) {
-        this.clear();
-
-        let startTimestamp = Date.now();
-        const result = {
-            salt1Base64: null,
-            iv1Base64: null,
-            passHash: null,
-            strongEntropyPassStr: null,
-            encodedHash: null,
-            hashVerified: false,
-            argon2Time: 0,
-            deriveKTime: 0
-        };
-
-        // iv1 && salt1 are random, saved
-        const iv1 = iv1Base64 ? this.base64ToUint8Array(iv1Base64) : this.generateRandomUint8Array();
-        result.iv1Base64 = this.uint8ArrayToBase64(iv1);
-        
-        const salt1 = salt1Base64 ? this.base64ToUint8Array(salt1Base64) : this.generateRandomUint8Array();
-        result.salt1Base64 = this.uint8ArrayToBase64(salt1);
-        
-        // iv2 && salt2 are deterministic, not saved : would need to generate them each time
-        const concatSaltA = this.uint8ArrayToBase64(this.concatUint8(salt1, iv1));
-        const iv2 = await this.generateArgon2DeterministicUint8(passwordStr + "iv2", concatSaltA, 16);
-        this.iv = this.concatUint8(iv1, iv2); // should be 32 bytes
-        
-        const concatSaltB = this.uint8ArrayToBase64(this.concatUint8(salt1, this.iv));
-        const salt2 = await this.generateArgon2DeterministicUint8(passwordStr + "salt2", concatSaltB, 16);
-        const salt = this.concatUint8(salt1, salt2); // should be 32 bytes
-
-        result.argon2Time = Date.now() - startTimestamp;
-
-        const concatSaltC = this.uint8ArrayToBase64(salt);
-        const argon2Key = await this.generateArgon2DeterministicUint8(passwordStr, concatSaltC, 32);
-		this.key = await this.importArgon2KeyAsAesGcm(argon2Key);
-
-        if (!this.key) { console.error('Key derivation failed'); return false; }
-
-        result.deriveKTime = Date.now() - startTimestamp - result.argon2Time;
-        //console.log('Key derivation took', result.deriveKTime, 'ms');
-
-        result.strongEntropyPassStr = passwordStr + this.uint8ArrayToBase64(this.iv) + this.uint8ArrayToBase64(salt);
-        
-        // generate a hash from the strongEntropyPassStr
-        const concatSaltD = concatSaltC + concatSaltB + concatSaltA;
-        const generatedArgon2Hash = await this.generateArgon2Hash(result.strongEntropyPassStr, concatSaltD, 64);
-        result.encodedHash = generatedArgon2Hash.encoded;
-        result.hashVerified = result.encodedHash === hashToVerify;
-
-        return result;
+        try {
+            this.clear();
+    
+            let startTimestamp = Date.now();
+            const result = {
+                salt1Base64: null,
+                iv1Base64: null,
+                passHash: null,
+                strongEntropyPassStr: null,
+                encodedHash: null,
+                hashVerified: false,
+                argon2Time: 0,
+                deriveKTime: 0
+            };
+    
+            // iv1 && salt1 are random, saved
+            const iv1 = iv1Base64 ? this.base64ToUint8Array(iv1Base64) : this.generateRandomUint8Array();
+            result.iv1Base64 = this.uint8ArrayToBase64(iv1);
+            
+            const salt1 = salt1Base64 ? this.base64ToUint8Array(salt1Base64) : this.generateRandomUint8Array();
+            result.salt1Base64 = this.uint8ArrayToBase64(salt1);
+            
+            // iv2 && salt2 are deterministic, not saved : would need to generate them each time
+            const concatSaltA = this.uint8ArrayToBase64(this.concatUint8(salt1, iv1));
+            const iv2 = await this.generateArgon2DeterministicUint8(passwordStr + "iv2", concatSaltA, 16);
+            this.iv = this.concatUint8(iv1, iv2); // should be 32 bytes
+            
+            const concatSaltB = this.uint8ArrayToBase64(this.concatUint8(salt1, this.iv));
+            const salt2 = await this.generateArgon2DeterministicUint8(passwordStr + "salt2", concatSaltB, 16);
+            const salt = this.concatUint8(salt1, salt2); // should be 32 bytes
+    
+            result.argon2Time = Date.now() - startTimestamp;
+    
+            const concatSaltC = this.uint8ArrayToBase64(salt);
+            const argon2Key = await this.generateArgon2DeterministicUint8(passwordStr, concatSaltC, 32);
+            this.key = await this.importArgon2KeyAsAesGcm(argon2Key);
+    
+            if (!this.key) { console.error('Key derivation failed'); return false; }
+    
+            result.deriveKTime = Date.now() - startTimestamp - result.argon2Time;
+            //console.log('Key derivation took', result.deriveKTime, 'ms');
+    
+            result.strongEntropyPassStr = passwordStr + this.uint8ArrayToBase64(this.iv) + this.uint8ArrayToBase64(salt);
+            
+            // generate a hash from the strongEntropyPassStr
+            const concatSaltD = concatSaltC + concatSaltB + concatSaltA;
+            const generatedArgon2Hash = await this.generateArgon2Hash(result.strongEntropyPassStr, concatSaltD, 64);
+            result.encodedHash = generatedArgon2Hash.encoded;
+            result.hashVerified = result.encodedHash === hashToVerify;
+    
+            return result;
+        } catch (error) {
+            console.info('Error generating key:', error);
+            console.info(`passwordStr: ${passwordStr}, salt1Base64: ${salt1Base64}, iv1Base64: ${iv1Base64}, hashToVerify: ${hashToVerify}`);
+            return false;
+        }
     },
     async importArgon2KeyAsAesGcm(argon2Key) {
 		try {

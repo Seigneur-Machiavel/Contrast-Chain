@@ -7,6 +7,7 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { Wallet } = require("./contrast/wallet.mjs");
     const utils = require("./contrast/utils.mjs").default;
     const { Account } = require("./contrast/account.mjs");
+    const { Transaction, Transaction_Builder } = require("./contrast/transaction.mjs");
 }
 
 const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
@@ -33,7 +34,7 @@ const settings = {
     serverUrl: "http://localhost:4340"
 };
 const UX_SETTINGS = {
-    shapes: 3
+    shapes: 4
 };
 let resizePopUpAnimations = [];
 const sanitizer = new Sanitizer();
@@ -44,7 +45,9 @@ centerScreenBtn.init(7);
 const miner = new Miner(centerScreenBtn, communication);
 const selectedWalletIndex = 0;
 
+const animations = {};
 const eHTML = {
+    appTitle: document.getElementById('appTitle'),
     centerScreenBtnContrainer: document.getElementsByClassName('centerScreenBtnContrainer')[0],
     popUpContent: document.getElementById('popUpContent'),
     popUpContentWrap: document.getElementById('popUpContent').children[0],
@@ -68,6 +71,18 @@ const eHTML = {
     stakedStr: document.getElementById('stakedStr'),
     accountsWrap: document.getElementById('accountsWrap'),
     newAddressBtn: document.getElementById('newAddressBtn'),
+    sendBtn: document.getElementById('buttonBarSend'),
+    swapBtn: document.getElementById('buttonBarSwap'),
+    stakeBtn: document.getElementById('buttonBarStake'),
+    specialBtn: document.getElementById('buttonBarSpecial'),
+
+    send: {
+        miniForm: document.getElementById('spendMiniForm'),
+        foldBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[1],
+        amount: document.getElementById('spendMiniForm').getElementsByTagName('input')[0],
+        address: document.getElementById('spendMiniForm').getElementsByTagName('input')[1],
+        confirmBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[0]
+    },
 
     bottomBar: document.getElementById('bottomBar'),
     walletBtn: document.getElementById('walletBtn'),
@@ -81,7 +96,7 @@ let activeAddressPrefix = "W";
 let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
 const busy = [];
 //#region - UX FUNCTIONS
-function resizePopUp(applyBLur = true, duration = 200) {
+function resizePopUp(applyBLur = true, large = false, duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
     const contentHeight = Math.max(contentDivHeight, contentWrapHeight);
@@ -91,7 +106,7 @@ function resizePopUp(applyBLur = true, duration = 200) {
     
     resizePopUpAnimations[0] = anime({
         targets: 'body',
-        width: '300px',
+        width: large ? '320px' : '300px',
         height: `${newHeight}px`,
         filter: applyBLur ? 'blur(2px)' : 'blur(0px)',
         duration,
@@ -115,9 +130,12 @@ async function setMiningIntensityFromLocalStorage() {
 }
 function setVisibleForm(formId, applyBLur = true) {
     eHTML.bottomBar.classList.remove('hidden');
+    eHTML.popUpContent.classList.add('large');
+    eHTML.appTitle.classList.add('hidden');
     eHTML.walletBtn.classList.add('active');
     eHTML.miningBtn.classList.add('active');
     eHTML.settingsBtn.classList.add('active');
+    let largePopUp = true;
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
     eHTML.centerScreenBtnContrainer.classList.add('hidden');
@@ -131,6 +149,9 @@ function setVisibleForm(formId, applyBLur = true) {
     if (formId === "passwordCreationForm" || formId === "loginForm") {
         eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         eHTML.bottomBar.classList.add('hidden');
+        eHTML.appTitle.classList.remove('hidden');
+        eHTML.popUpContent.classList.remove('large');
+        largePopUp = false;
     }
 
     if (formId === "walletForm") {
@@ -140,6 +161,8 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.miningBtn.classList.remove('active');
         eHTML.settingsBtn.classList.remove('active');
         eHTML.bottomBar.classList.add('hidden');
+        eHTML.popUpContent.classList.remove('large');
+        largePopUp = false;
     }
 
     if (formId === "miningForm") {
@@ -153,7 +176,39 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.settingsBtn.classList.remove('active');
     }
 
-    resizePopUp(applyBLur);
+    resizePopUp(applyBLur, largePopUp);
+}
+function toggleMiniForm(miniFormElmnt) {
+    const isFold = miniFormElmnt.classList.contains('miniFold');
+    if (animations[miniFormElmnt.id]) { animations[miniFormElmnt.id].pause(); }
+
+    // fold : transform: rotateY(60deg) translateX(-160%);
+    miniFormElmnt.style.opacity = isFold ? '0' : '1';
+    miniFormElmnt.style.filter = isFold ? 'blur(10px)' : 'blur(0px)';
+    miniFormElmnt.style.transform = isFold ? 'rotateY(60deg) translateX(-160%)' : 'rotateY(0deg) translateX(0%)';
+    if (isFold) {
+        animations[miniFormElmnt.id] = anime({
+            targets: miniFormElmnt,
+            translateX: '0%',
+            rotateY: '0deg',
+            opacity: 1,
+            filter: 'blur(0px)',
+            duration: 260,
+            easing: 'easeInOutQuad',
+            complete: () => { miniFormElmnt.classList.remove('miniFold'); }
+        });
+    } else {
+        animations[miniFormElmnt.id] = anime({
+            targets: miniFormElmnt,
+            translateX: '-160%',
+            rotateY: '60deg',
+            opacity: 0,
+            filter: 'blur(10px)',
+            duration: 260,
+            easing: 'easeInOutQuad',
+            complete: () => { miniFormElmnt.classList.add('miniFold'); }
+        });
+    }
 }
 function setInitialInputValues() {
     const hardcodedPassword = settings.hardcodedPassword;
@@ -210,8 +265,10 @@ function createAccountLabel(name, address, amount = 0) {
     const accountImgWrap = document.createElement('div');
     accountImgWrap.classList.add('accountImgWrap');
     accountLabel.appendChild(accountImgWrap);
-    const accountImgWrapDiv = document.createElement('div');
-    accountImgWrap.appendChild(accountImgWrapDiv);
+    const accountImgWrapDivA = document.createElement('div');
+    accountImgWrap.appendChild(accountImgWrapDivA);
+    const accountImgWrapDivB = document.createElement('div');
+    accountImgWrap.appendChild(accountImgWrapDivB);
     const img = patternGenerator.generateImage(address, UX_SETTINGS.shapes);
     accountImgWrap.appendChild(img);
 
@@ -290,6 +347,33 @@ function updateActiveAccountLabel() {
         accountLabels[i].classList.remove('active');
         if (i !== activeAccountIndex) { continue; }
         accountLabels[i].classList.add('active');
+    }
+}
+function newAddressBtnLoadingToggle() {
+    const isGenerating = eHTML.newAddressBtn.innerHTML !== '+';
+
+    if (isGenerating) {
+        if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
+        animations.newAddressBtn = anime({
+            targets: eHTML.newAddressBtn,
+            width: '34px',
+            duration: 200,
+            easing: 'easeInOutQuad',
+            complete: () => { 
+                eHTML.newAddressBtn.innerHTML = '+';
+                animations.newAddressBtn = null; 
+            }
+        });
+    } else {
+        eHTML.newAddressBtn.innerHTML = htmlAnimations.horizontalBtnLoading;
+        if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
+        animations.newAddressBtn = anime({
+            targets: eHTML.newAddressBtn,
+            width: ['60px', '200px', '60px'],
+            duration: 1600,
+            loop: true,
+            easing: 'easeInOutQuad'
+        });
     }
 }
 //#endregion
@@ -513,7 +597,7 @@ eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
 
     setVisibleForm('createWalletForm');
     //chrome.runtime.sendMessage({action: "openPage", password: passComplement ? `${password}${passComplement}` : password });
-    chrome.runtime.sendMessage({action: "authentified", password: passComplement ? `${password}${passComplement}` : password });
+    chrome.runtime.sendMessage({action: 'authentified', password: passComplement ? `${password}${passComplement}` : password });
 
     busy.splice(busy.indexOf('passwordCreationForm'), 1);
 });
@@ -591,7 +675,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     totalTimings.total = Date.now() - startTimestamp;
     //console.log(totalTimings);
 
-    if (!res.hashVerified) { infoAndWrongAnim('Wrong password'); return; }
+    if (!res.hashVerified) { infoAndWrongAnim('Wrong password'); busy.splice(busy.indexOf('loginForm'), 1); return; }
 
     const walletsInfoResult = await chrome.storage.local.get(['walletsInfo']);
     if (!walletsInfoResult || !walletsInfoResult.walletsInfo || walletsInfoResult.walletsInfo.length === 0) {
@@ -605,11 +689,12 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     activeWallet = new Wallet(passwordReadyUse);
     await loadWalletGeneratedAccounts(selectedWalletIndex);
     
-    chrome.runtime.sendMessage({action: "authentified", password: passwordReadyUse });
+    chrome.runtime.sendMessage({action: 'authentified', password: passwordReadyUse });
     if (activeWallet.accounts[activeAddressPrefix][0]) {
         for (let i = 0; i < activeWallet.accounts[activeAddressPrefix].length; i++) {
             const address = activeWallet.accounts[activeAddressPrefix][i].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address });
+            //chrome.runtime.sendMessage({action: "subscribe_balance_update", address }); // TODO: IMPLEMENT
         }
     }
 
@@ -624,6 +709,12 @@ document.addEventListener('click', async function(e) {
     let encryptedSeedHex;
     let privateKeyHex;
     let walletInfo;
+
+    let amount;
+    let receiverAddress;
+    let senderAddress;
+    let senderAccount;
+    let transaction;
     switch (e.target.id) {
         case 'randomizeBtn':
             const rndSeedHex = cryptoLight.generateRdnHex(64);
@@ -656,11 +747,14 @@ document.addEventListener('click', async function(e) {
             break;
         case 'newAddressBtn':
             console.log('newAddressBtn');
+            if (e.target.innerHTML !== '+') { console.log('Already generating new address'); return; }
             privateKeyHex = await getWalletPrivateKey(selectedWalletIndex);
 
+            newAddressBtnLoadingToggle();
             console.log('privateKeyHex:', privateKeyHex);
             const nbOfExistingAccounts = activeWallet.accounts["W"].length;
             const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, "W");
+            newAddressBtnLoadingToggle();
             if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
             await saveWalletGeneratedAccounts(selectedWalletIndex);
@@ -670,6 +764,20 @@ document.addEventListener('click', async function(e) {
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
 
             break;
+        case 'buttonBarSend':
+            console.log('buttonBarSpend');
+            toggleMiniForm(eHTML.send.miniForm);
+            break;
+        case 'buttonBarSwap':
+            console.log('buttonBarSwap');
+            break;
+        case 'buttonBarStake':
+            console.log('buttonBarStake');
+            break;
+        case 'buttonBarSpecial':
+            console.log('buttonBarSpecial');
+            break;
+        case 'createWalletBtn':
         case 'miningBtn':
             if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('miningForm', false);
@@ -679,6 +787,7 @@ document.addEventListener('click', async function(e) {
             setVisibleForm('settingsForm', false);
             break;
         default:
+            //console.log(`clicked: ${e.target.id}`);
             break;
     }
 
@@ -691,6 +800,26 @@ document.addEventListener('click', async function(e) {
             //console.log(`accountIndex: ${accountIndex}`);
             activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
             updateActiveAccountLabel();
+            break;
+        /*case 'btnBackground':
+            console.log(`btnBackground, clicking parent: ${e.target.parentElement.id}`);
+            e.target.parentElement.click();
+            break;*/
+        case 'foldBtn':
+            console.log('foldBtn');
+            toggleMiniForm(e.target.parentElement);
+            break;
+        case 'sendBtn':
+            console.log('sendBtn');
+            amount = parseInt(eHTML.send.address.value.replace(",","").replace(".",""))
+            receiverAddress = utils.addressUtils.conformityCheck(eHTML.send.address.value);
+            //senderAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+            senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+            transaction = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
+            if (!transaction) { console.error('Transaction creation failed'); return; }
+
+            console.log('transaction:', transaction);
+            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction });
             break;
         default:
             break;
@@ -762,7 +891,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
 
             updateBalances();
             break;
-        case 'derivedAccountResult':
+        case 'derivedAccountResult': // DEPRECATED
             console.log('derivedAccountResult:', request.success);
             break;
         default:

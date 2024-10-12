@@ -66,6 +66,19 @@ function connectWS() {
                 // set html
                 blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
                 break;
+            case 'transaction_broadcast_result':
+                console.log('[BACKGROUND] transaction_broadcast_result:', data);
+                if (data.success) {
+                    blockExplorerWidget.fillTransactionRow(data.txReference, 'success');
+                } else {
+                    blockExplorerWidget.fillTransactionRow(data.txReference, 'error');
+                }
+                break;
+            case 'balance_updated':
+                console.log(`[BACKGROUND] balance_updated: ${data.address}`);
+                console.log(data);
+                //chrome.runtime.sendMessage({ action: 'balance_updated', address: data.address, balance: data.balance });
+                break;
             default:
                 break;
         }
@@ -87,9 +100,18 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case 'get_address_exhaustive_data':
             console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}`);
             ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: request.address }));
+            break;
+        case 'subscribe_balance_update':
+            console.log(`[BACKGROUND] subscribe_balance_update: ${request.address}`);
+            ws.send(JSON.stringify({ type: 'subscribe_balance_update', data: request.address }));
+            break;
         case 'authentified':
             console.log(`[BACKGROUND] ${request.action}!`);
             await initCryptoLightFromAuthInfo(request.password);
+            break;
+        case 'broadcast_transaction':
+            console.log(`[BACKGROUND] broadcast_transaction!`);
+            ws.send(JSON.stringify({ type: 'broadcast_transaction', data: request.transaction }));
             break;
         case "requestAuth":
             // open popup for authentication

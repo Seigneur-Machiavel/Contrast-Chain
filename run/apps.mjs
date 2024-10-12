@@ -416,6 +416,12 @@ export class ObserverWsApp {
                 case 'subscribe_balance_update':
                     this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, ws);
                     break;
+                case 'broadcast_transaction':
+                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data);
+                    if (error) { console.error('Error broadcasting transaction', error); }
+
+                    ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { broadcasted, pushedInLocalMempool, error } }));
+                    break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                     break;

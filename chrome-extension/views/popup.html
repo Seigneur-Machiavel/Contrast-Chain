@@ -21,7 +21,7 @@
     <div id="popUpContent">
         <div class="wrap">
             <div id="appTitle" class="appTitle">
-                <h1 class="ml3">Constrast</h1>
+                <h1 class="ml3">Contrast</h1>
                 <span class="titleSufix">Beta</span>
             </div>
             
@@ -72,32 +72,43 @@
             </form>
 
             <form id="walletForm" class="hidden">
+                <div id="spendMiniForm" class="miniFold">
+                    <button class="foldBtn"><img src="../images/fold64.png" alt="Send"></button>
+                    <input type="number" placeholder="Amount to send">
+                    <input type="text" placeholder="Receiver address">
+                    <button class="sendBtn">Send</button>
+                </div>
                 <h1><span id="spendableBalanceStr">0.00</span>c</h1>
                 <h2 class="stakedBalance">Staked: <span id="stakedStr">0.00</span>c</h2>
                 <div class="buttonBar">
-                    <button><div class="btnBackground"></div><img src="../images/qr-code32.png" alt="Receive">Receive</button>
-                    <button><div class="btnBackground"></div><img src="../images/send32.png" alt="Send">Send</button>
-                    <button><div class="btnBackground"></div><img src="../images/swap32.png" alt="Swap">Swap</button>
+                    <!--<button><div class="btnBackground"></div><img src="../images/qr-code32.png" alt="Receive">Receive</button>-->
+                    <button id="buttonBarSend"><div class="btnBackground"></div><img src="../images/send32.png" alt="Send">Send</button>
+                    <button id="buttonBarSwap"><div class="btnBackground"></div><img src="../images/swap32.png" alt="Swap">Swap</button>
+                    <button id="buttonBarStake"><div class="btnBackground"></div><img src="../images/stake64.png" alt="Stake">Stake</button>
+                    <button id="buttonBarSpecial" class="disabled"><div class="btnBackground"></div><img src="../images/specialtx64.png" alt="Swap">Special</button>
                 </div>
-                <div id="accountsWrap">
-                    <!--<div class="accountLabel">
-                        <div class="accountImgWrap">
-                            <div></div>
-                            <img src="../images/qr-code32.png" alt="Account">
-                        </div>
-                        <div class="accountLabelInfoWrap">
-                            <div class="accountLabelNameAndValueWrap">
-                                <h2>Account 1</h2>
-                                <h3>0.00c</h3>
+                <div class="wrap">
+                    <div id="accountsWrap">
+                        <!--<div class="accountLabel">
+                            <div class="accountImgWrap">
+                                <div></div>
+                                <div></div>
+                                <img src="../images/qr-code32.png" alt="Account">
                             </div>
-                            <div class="accountLabelAddress">
-                                <h3>WKDEJFIUHESVUOHEIUEF</h3>
+                            <div class="accountLabelInfoWrap">
+                                <div class="accountLabelNameAndValueWrap">
+                                    <h2>Account 1</h2>
+                                    <h3>0.00c</h3>
+                                </div>
+                                <div class="accountLabelAddress">
+                                    <h3>WKDEJFIUHESVUOHEIUEF</h3>
+                                </div>
                             </div>
-                        </div>
-                    </div>-->
+                        </div>-->
+                    </div>
+                    <button id="newAddressBtn">+</button>
+                    <p class="bottomInfo"></p>
                 </div>
-                <button id="newAddressBtn">+</button>
-                <p class="bottomInfo"></p>
             </form>
     
             <form id="miningForm" class="hidden">
