@@ -251,9 +251,6 @@ export class DashboardWsApp {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 ws.send(JSON.stringify({ type: 'node_restarted', data }));
                 break;
-            case 'sync_clock':
-                synchronizeClock(); // DEPRECATED
-                break;
             case 'get_node_info':
                 const nodeInfo = await AppStaticFncs.extractPrivateNodeInfo(this.node);
                 ws.send(JSON.stringify({ type: 'node_info', data: nodeInfo }));
@@ -414,11 +411,12 @@ export class ObserverWsApp {
                     if (!transaction) { console.error(`[OBSERVER] Transaction not found: ${data.txReference}`); return; }
                     ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, txReference: data.txReference } }));
                 case 'subscribe_balance_update':
-                    this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, ws);
+                    this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, [ws]);
+                    ws.send(JSON.stringify({ type: 'subscribed_balance_update', data }));
                     break;
-                case 'broadcast_serialized_transaction':
-                    const deserializeTx = contrast.utils.serializerFast.deserialize.transaction(data);
-                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(deserializeTx);
+                case 'broadcast_transaction':
+                    //const deserializeTx = contrast.utils.serializerFast.deserialize.transaction(data);
+                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data);
                     if (error) { console.error('Error broadcasting transaction', error); }
 
                     ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { broadcasted, pushedInLocalMempool, error } }));
@@ -431,36 +429,4 @@ export class ObserverWsApp {
             console.error(`[OBSERVER] Error on message: ${error.message}`);
         }
     }
-}
-
-// GENERAL FUNCTIONS
-function synchronizeClock() { // DEPRECATED
-    const platform = process.platform;
-  
-    let command;
-
-    switch (platform) {
-      case 'win32': // Windows
-        command = 'w32tm /resync';
-        break;
-      case 'linux': // Linux
-        command = 'sudo ntpdate -u pool.ntp.org';
-        break;
-      case 'darwin': // macOS
-        command = 'sudo sntp -sS time.apple.com';
-        break;
-      default:
-        console.log(`Platform not supported: ${platform}`);
-        return;
-    }
-  
-    exec(command, (error, stdout, stderr) => {
-        console.log(`Output: ${stdout}`);
-        if (error) {
-            console.error(`Error: ${error.message}`); // the error message is more explicit
-            return;
-        }
-        if (stderr) { console.error(`Error: ${stderr}`); return; }
-        console.log(`Clock synchronized on ${platform}.`);
-    });
 }

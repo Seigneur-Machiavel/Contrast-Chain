@@ -12,7 +12,9 @@ const SETTINGS = {
     DOMAIN: 'pinkparrot.observer',
     PORT: false, // 27270 (not used with domain)
     LOCAL_DOMAIN: "localhost",
-    LOCAL_PORT: "27270",
+    LOCAL_PORT: "27279",
+
+    LOCAL: true,
     RECONNECT_INTERVAL: 5000,
     GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
@@ -22,8 +24,10 @@ let ws;
 let currentHeightInterval;
 function connectWS() {
     //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
-    ws = new WebSocket(`${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
-    console.log(`Connecting to ${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
+    const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
+    const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
 
     ws.onopen = function() {
         console.log('Connection opened');
@@ -48,8 +52,8 @@ function connectWS() {
         let remainingAttempts = 10;
         switch (message.type) {
             case 'address_exhaustive_data_requested':
-                console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
-                console.log('data:', data);
+                //console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
+                //console.log('data:', data);
                 chrome.runtime.sendMessage({
                     action: 'address_exhaustive_data_requested',
                     address: data.address,
@@ -68,16 +72,20 @@ function connectWS() {
                 break;
             case 'transaction_broadcast_result':
                 console.log('[BACKGROUND] transaction_broadcast_result:', data);
+                if (!blockExplorerWidget) { return; }
                 if (data.success) {
                     blockExplorerWidget.fillTransactionRow(data.txReference, 'success');
                 } else {
                     blockExplorerWidget.fillTransactionRow(data.txReference, 'error');
                 }
                 break;
+            case 'subscribed_balance_update':
+                console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
+                break;
             case 'balance_updated':
-                console.log(`[BACKGROUND] balance_updated: ${data.address}`);
-                console.log(data);
-                //chrome.runtime.sendMessage({ action: 'balance_updated', address: data.address, balance: data.balance });
+                //console.log(`[BACKGROUND] balance_updated: ${trigger}`);
+                await readyWS();
+                ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
                 break;
             default:
                 break;
@@ -88,9 +96,25 @@ function connectWS() {
 
     if (currentHeightInterval) { clearInterval(currentHeightInterval); }
     currentHeightInterval = setInterval(() => {
+        if (ws.readyState !== 1) {
+            console.info('WebSocket not ready!, stopping interval...');
+            clearInterval(currentHeightInterval);
+            return;
+        }
         try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
     }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL);
 } connectWS();
+async function readyWS() {
+    return new Promise((resolve, reject) => {
+        if (ws.readyState === 1) { resolve(); return; }
+        let interval = setInterval(() => {
+            if (ws.readyState === 1) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100);
+    });
+}
 
 chrome.runtime.onMessage.addListener(async function(request, sender, sendResponse) {
     if (typeof request.action !== "string") { return; }
@@ -99,19 +123,23 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     switch (request.action) {
         case 'get_address_exhaustive_data':
             console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}`);
+            await readyWS();
             ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: request.address }));
             break;
         case 'subscribe_balance_update':
-            console.log(`[BACKGROUND] subscribe_balance_update: ${request.address}`);
+            console.log(`[BACKGROUND] subscribing balance update: ${request.address}`);
+            //return;
+            await readyWS();
             ws.send(JSON.stringify({ type: 'subscribe_balance_update', data: request.address }));
             break;
         case 'authentified':
             console.log(`[BACKGROUND] ${request.action}!`);
             await initCryptoLightFromAuthInfo(request.password);
             break;
-        case 'broadcast_serialized_transaction':
-            console.log(`[BACKGROUND] broadcast_serialized_transaction!`);
-            ws.send(JSON.stringify({ type: 'broadcast_serialized_transaction', data: request.serialized_transaction }));
+        case 'broadcast_transaction':
+            console.log(`[BACKGROUND] broadcast_transaction!`);
+            await readyWS();
+            ws.send(JSON.stringify({ type: 'broadcast_transaction', data: request.transaction }));
             break;
         case "requestAuth":
             // open popup for authentication

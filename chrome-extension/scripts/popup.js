@@ -317,7 +317,7 @@ function updateBalances() {
 
     updateActiveAccountLabel();
 
-    console.log(`[POPUP] wallet accounts updated: ${activeWallet.accounts[activeAddressPrefix].length}`);
+    //console.log(`[POPUP] wallet accounts updated: ${activeWallet.accounts[activeAddressPrefix].length}`);
 }
 function updateLabelsBalances(addressPrefix = "W", showInLabelsWrap = false) {
     if (showInLabelsWrap) { eHTML.accountsWrap.innerHTML = ''; }
@@ -694,7 +694,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
         for (let i = 0; i < activeWallet.accounts[activeAddressPrefix].length; i++) {
             const address = activeWallet.accounts[activeAddressPrefix][i].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address });
-            //chrome.runtime.sendMessage({action: "subscribe_balance_update", address }); // TODO: IMPLEMENT
+            chrome.runtime.sendMessage({action: "subscribe_balance_update", address });
         }
     }
 
@@ -762,7 +762,7 @@ document.addEventListener('click', async function(e) {
 
             const lastAccountAddress = activeWallet.accounts["W"][nbOfExistingAccounts].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
-
+            chrome.runtime.sendMessage({action: "subscribe_balance_update", address: lastAccountAddress });
             break;
         case 'buttonBarSend':
             console.log('buttonBarSpend');
@@ -816,13 +816,13 @@ document.addEventListener('click', async function(e) {
             // utils.addressUtils.conformityCheck(eHTML.send.address.value);
             receiverAddress = eHTML.send.address.value;
             senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
-            transaction = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
-            if (!transaction) { console.error('Transaction creation failed'); return; }
-
-            serialized_transaction = utils.serializerFast.serialize.transaction(data);
-
-            console.log('transaction:', transaction);
-            chrome.runtime.sendMessage({action: "broadcast_transaction", serialized_transaction });
+            const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
+            if (!createdSignedTx.signedTx) { console.error('Transaction creation failed', createdSignedTx.error); return; }
+            
+            console.log('transaction:', createdSignedTx.signedTx);
+            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx });
+            /*serialized_transaction = utils.serializerFast.serialize.transaction(createdSignedTx.signedTx);
+            chrome.runtime.sendMessage({action: "broadcast_serialized_transaction", serialized_transaction });*/
             break;
         default:
             break;
@@ -880,7 +880,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     switch (request.action) {
         case 'address_exhaustive_data_requested':
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
-            console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
+            //console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
             
             const targetAccountAddressPrefix = request.address.slice(0, 1);
             targetAccountIndex = getWalletAccountIndexByAddress(request.address);

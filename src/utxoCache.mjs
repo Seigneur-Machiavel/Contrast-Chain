@@ -251,6 +251,7 @@ export class UtxoCache { // Used to store, addresses's UTXOs and balance.
                 addressAnchors[anchor] = true;
             }
             this.addressesAnchors[address] = utils.serializerFast.serialize.anchorsObjToArray(addressAnchors);
+            if (this.wsCallbacks.onBalanceUpdated) { this.wsCallbacks.onBalanceUpdated.execute('balance_updated', address); }
         }
 
         if (this.logPerformance) { performance.mark('digestNewUtxos-setUTXOs end'); }
@@ -284,6 +285,7 @@ export class UtxoCache { // Used to store, addresses's UTXOs and balance.
 
             if (Object.keys(addressAnchors).length === 0) { delete this.addressesAnchors[address]; continue; }
             this.addressesAnchors[address] = utils.serializerFast.serialize.anchorsObjToArray(addressAnchors);
+            if (this.wsCallbacks.onBalanceUpdated) { this.wsCallbacks.onBalanceUpdated.execute('balance_updated', address); }
         }
     }
 }

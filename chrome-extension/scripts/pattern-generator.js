@@ -22,17 +22,7 @@ class PatternGenerator {
             let num = this.base58.indexOf(char) || 0;
             randoms.push(num / 58);
         }
-        console.log('randoms:', randoms);
-        /*const random = (seed) => {
-            let num = parseInt(seed, 16) || 0;
-            console.log('num:', num);
-            return () => {
-                num = (num * 1664525 + 1013904223) % 4294967296;
-                return num / 4294967296;
-            };
-        };
-        console.log('seed:', seed);
-        const rand = random(seed);*/
+        //console.log('randoms:', randoms);
 
         const centerX = drawingCanvas.width / 2;
         const centerY = drawingCanvas.height / 2;
@@ -46,7 +36,7 @@ class PatternGenerator {
             const brightness = Math.floor(100 + (randoms[mod + 2] * 155));
             const lineWidth = this.SCALE * (.2 + (randoms[mod + 3] * 1.4));
             const isCircle = randoms[mod + 4] < circleThreshold;
-            console.log('size:', size, 'brightness:', brightness, 'lineWidth:', lineWidth, 'isCircle:', isCircle);
+            //console.log('size:', size, 'brightness:', brightness, 'lineWidth:', lineWidth, 'isCircle:', isCircle);
 
             this.shapes.push({ size, brightness, lineWidth, isCircle });
         }

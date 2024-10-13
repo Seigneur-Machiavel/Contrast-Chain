@@ -112,6 +112,9 @@ export class Wallet {
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
                 const account = await this.#deriveAccount(keyPair, desiredPrefix);
                 if (account) {
+                    // log pubkey : address
+                    console.log(`${keyPair.pubKeyHex} : ${account.address}`);
+                    console.log(`account.pubKeyHex: ${account.pubKey}`);
                     this.accountsGenerated[desiredPrefix].push({ address: account.address, seedModifierHex });
                     return { account, iterations: i };
                 }

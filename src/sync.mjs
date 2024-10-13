@@ -107,10 +107,11 @@ export class SyncHandler {
                 this.logger.debug({ count: blocks.length }, 'Sending blocks in response');
                 return { status: 'success', blocks };
             case 'getStatus':
+                if (!this.node.blockchain.currentHeight) { console.error(`[SYNC] currentHeight is: ${this.node.blockchain.currentHeight}`); }
                 return {
                     status: 'success',
                     currentHeight: this.node.blockchain.currentHeight,
-                    latestBlockHash: this.node.blockchain.getLatestBlockHash(),
+                    //latestBlockHash: this.node.blockchain.getLatestBlockHash(),
                 };
             default:
                 this.logger.warn({ type: msg.type }, 'Invalid request type');

@@ -209,8 +209,8 @@ const CALLBACKS_FUNCTIONS = {
     },
     utxoCache: {
         /** send the updated balance of the related account when the balance is updated */
-        onBalanceUpdated: (balance = 0, wsClients = [], trigger = '') => {
-            sendToClients({ type: 'balance_updated', data: balance, trigger }, wsClients);
+        onBalanceUpdated: (address = '', wsClients = [], trigger = '') => {
+            sendToClients({ type: 'balance_updated', data: address, trigger }, wsClients);
         },
     },
 }

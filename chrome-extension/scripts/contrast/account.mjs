@@ -8,11 +8,10 @@ import { AsymetricFunctions } from './conCrypto.mjs';
 export class Account {
     /** @type {string} */
     #privKey = '';
-    /** @type {string} */
-    #pubKey = '';
 
     constructor(pubKey = '', privKey = '', address = '') {
-        this.#pubKey = pubKey;
+        /** @type {string} */
+        this.pubKey = pubKey;
         this.#privKey = privKey;
 
         /** @type {string} */
@@ -31,13 +30,13 @@ export class Account {
     async signTransaction(transaction) {
         if (typeof this.#privKey !== 'string') { throw new Error('Invalid private key'); }
 
-        const { signatureHex } = await AsymetricFunctions.signMessage(transaction.id, this.#privKey, this.#pubKey);
+        const { signatureHex } = await AsymetricFunctions.signMessage(transaction.id, this.#privKey, this.pubKey);
         if (!Array.isArray(transaction.witnesses)) {
             throw new Error('Invalid witnesses');
         }
-        if (transaction.witnesses.includes(`${signatureHex}:${this.#pubKey}`)) { throw new Error('Signature already included'); }
+        if (transaction.witnesses.includes(`${signatureHex}:${this.pubKey}`)) { throw new Error('Signature already included'); }
 
-        transaction.witnesses.push(`${signatureHex}:${this.#pubKey}`);
+        transaction.witnesses.push(`${signatureHex}:${this.pubKey}`);
 
         return transaction;
     }
