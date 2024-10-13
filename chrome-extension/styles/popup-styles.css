@@ -435,8 +435,11 @@ button.disabled {
     display: flex;
     justify-content: space-between;
     width: 100%;
-    margin: 20px 0;
+    height: 176px;
+    margin: 0;
     /*transform: translateX(100%);*/
+    box-shadow: -1px 0px 10px 2px rgb(0 0 0 / 50%);
+    overflow: hidden;
     transform: rotateY(60deg) translateX(-160%);
     opacity: 0;
     background-color: var(--background-color);
@@ -445,21 +448,23 @@ button.disabled {
 }
 #spendMiniForm input, #stakeMiniForm input {
     height: 30px !important;
-    margin-bottom: 14px !important;
+    margin: 20px 0 0 0 !important;
 }
 #spendMiniForm button, #stakeMiniForm button {
     font-weight: bold;
     color: var(--neumo-color2) !important;
-    margin-bottom: 20px !important;
+    margin: 10px 0 !important;
+    transition: background 0.24s ease-in-out;
 }
 #spendMiniForm button.foldBtn, #stakeMiniForm button.foldBtn {
     position: absolute;
     border-radius: 0 20px 30px 0;
     left: 0px;
-    top: -20px;
-    width: 36px;
     filter: brightness(.5);
-    background: linear-gradient(151deg, #6d6d6d, transparent);
+    background: linear-gradient(90deg, #6d6d6d, transparent);
+    height: 100%;
+    width: 20px;
+    margin: 0 !important;
 }
 #spendMiniForm button.foldBtn img, #stakeMiniForm button.foldBtn img {
     pointer-events: none;

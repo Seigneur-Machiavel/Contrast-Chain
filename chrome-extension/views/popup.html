@@ -73,15 +73,15 @@
 
             <form id="walletForm" class="hidden">
                 <div id="spendMiniForm" class="miniFold">
-                    <button class="foldBtn"><img src="../images/fold64.png" alt="Fold"></button>
+                    <button class="foldBtn"></button>
                     <input type="number" placeholder="Amount to send">
                     <input type="text" placeholder="Receiver address">
                     <button class="sendBtn">Send</button>
                 </div>
                 <div id="stakeMiniForm" class="miniFold">
-                    <button class="foldBtn"><img src="../images/fold64.png" alt="Fold"></button>
+                    <button class="foldBtn"></button>
                     <input type="number" placeholder="Amount to stake">
-                    <input type="text" placeholder="Receiver address">
+                    <input type="text" placeholder="Receiver address" style="display: none;">
                     <button class="stakeBtn">Stake</button>
                 </div>
                 <h1><span id="spendableBalanceStr">0.00</span>c</h1>
@@ -89,8 +89,8 @@
                 <div class="buttonBar">
                     <!--<button><div class="btnBackground"></div><img src="../images/qr-code32.png" alt="Receive">Receive</button>-->
                     <button id="buttonBarSend"><div class="btnBackground"></div><img src="../images/send32.png" alt="Send">Send</button>
-                    <button id="buttonBarSwap"><div class="btnBackground"></div><img src="../images/swap32.png" alt="Swap">Swap</button>
                     <button id="buttonBarStake"><div class="btnBackground"></div><img src="../images/stake64.png" alt="Stake">Stake</button>
+                    <button id="buttonBarSwap" class="disabled"><div class="btnBackground"></div><img src="../images/swap32.png" alt="Swap">Swap</button>
                     <button id="buttonBarSpecial" class="disabled"><div class="btnBackground"></div><img src="../images/specialtx64.png" alt="Swap">Special</button>
                 </div>
                 <div class="wrap">

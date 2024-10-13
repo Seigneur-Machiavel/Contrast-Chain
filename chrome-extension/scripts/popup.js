@@ -92,6 +92,7 @@ const eHTML = {
         miniForm: document.getElementById('stakeMiniForm'),
         foldBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[0],
         amount: document.getElementById('stakeMiniForm').getElementsByTagName('input')[0],
+        address: document.getElementById('stakeMiniForm').getElementsByTagName('input')[1],
         confirmBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[1]
     },
 
@@ -787,6 +788,91 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     passwordReadyUse = null;
     busy.splice(busy.indexOf('loginForm'), 1);
 });
+
+document.addEventListener('mouseup', function(e) { // release click
+    switch (e.target.className) {
+        case 'sendBtn':
+            if (animations.sendBtn) { animations.sendBtn.pause(); }
+            animations.sendBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    e.target.style.background = 'white';
+                }
+            });
+            break;
+        case 'stakeBtn':
+            if (animations.stakeBtn) { animations.stakeBtn.pause(); }
+            animations.stakeBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    e.target.style.background = 'white';
+                }
+            });
+            break;
+        default:
+            break;
+    }
+});
+document.addEventListener('mousedown', function(e) { // hold click
+    switch (e.target.className) {
+        case 'sendBtn':
+            if (animations.sendBtn) { animations.sendBtn.pause(); }
+            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
+            animations.sendBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: async () => {
+                    console.log('sendBtn');
+                    amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
+                    console.log('amount:', amount);
+                    // utils.addressUtils.conformityCheck(eHTML.send.address.value);
+                    receiverAddress = eHTML.send.address.value;
+                    senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+                    const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
+                    if (!createdSignedTx.signedTx) { console.error('Transaction creation failed', createdSignedTx.error); return; }
+                    
+                    console.log('transaction:', createdSignedTx.signedTx);
+                    chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
+                }
+            });
+            break;
+        case 'stakeBtn':
+            if (animations.stakeBtn) { animations.stakeBtn.pause(); }
+            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
+            animations.stakeBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: async () => {
+                    console.log('stakeBtn');
+                    amount = parseInt(eHTML.stake.amount.value.replace(",","").replace(".",""));
+                    console.log('amount:', amount);
+        
+                    senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+                    createdTx = await Transaction_Builder.createStakingVss(senderAccount, senderAccount.address, amount);
+                    if (!createdTx) { console.error('Transaction creation failed'); return; }
+        
+                    signedTx = await senderAccount.signTransaction(createdTx);
+                    if (!signedTx) { console.error('Transaction signing failed'); return; }
+        
+                    console.log('transaction:', signedTx);
+                    chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
+                }
+            });
+            break;
+        default:
+            break;
+    }
+});
 document.addEventListener('click', async function(e) {
     let loadedWalletsInfo;
     let walletsInfo;
@@ -898,7 +984,7 @@ document.addEventListener('click', async function(e) {
             console.log('foldBtn');
             toggleMiniForm(e.target.parentElement);
             break;
-        case 'sendBtn':
+        /*case 'sendBtn': -> MOVED TO HOLD BUTTON LISTENER
             console.log('sendBtn');
             amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
             console.log('amount:', amount);
@@ -925,7 +1011,7 @@ document.addEventListener('click', async function(e) {
 
             console.log('transaction:', signedTx);
             chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
-            break;
+            break;*/
         default:
             break;
     }
