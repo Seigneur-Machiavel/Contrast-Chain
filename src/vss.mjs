@@ -1,6 +1,6 @@
 import { HashFunctions } from "./conCrypto.mjs";
 import { UTXO } from "./transaction.mjs";
-import utils from "./utils.mjs";
+
 
 /**
  * @typedef {Object} StakeReference
@@ -81,7 +81,10 @@ export class spectrumFunctions {
 }
 
 export class Vss {
-    constructor() {
+    /**
+     * @param {number} maxSupply - The maximum supply value to be used in the VSS.
+     */
+    constructor(maxSupply) {
         /** Validator Selection Spectrum (VSS)
          * - Can search key with number, will be converted to string.
          * @example { '100': { address: 'WCHMD65Q7qR2uH9XF5dJ', anchor: '0:bdadb7ab:0' } }
@@ -90,6 +93,8 @@ export class Vss {
         /** @type {StakeReference[]} */
         this.legitimacies = []; // the order of the stakes in the array is the order of legitimacy
         this.currentRoundHash = '';
+        /** @type {number} */
+        this.maxSupply = maxSupply; // Store the maxSupply passed in the constructor
     }
 
     /**
@@ -102,14 +107,33 @@ export class Vss {
         const amount = utxo.amount;
         
         if (upperBound) {
+            const lowerBound = upperBound - amount;
+            const existingUpperBounds = Object.keys(this.spectrum).map(key => parseInt(key));
+            existingUpperBounds.sort((a, b) => a - b);
+        
+            for (let i = 0; i < existingUpperBounds.length; i++) {
+                const existingUpperBound = existingUpperBounds[i];
+                const existingLowerBound = i === 0 ? 0 : existingUpperBounds[i - 1];
             
+                if (!(upperBound <= existingLowerBound || lowerBound >= existingUpperBound)) {
+                    throw new Error('VSS: Overlapping stake ranges.');
+                }
+            }
+            
+            if (upperBound > this.maxSupply) {
+                throw new Error('VSS: Max supply exceeded.');
+            }
+            
+            this.spectrum[upperBound] = StakeReference(address, anchor, amount);
         } else {
             const lastUpperBound = spectrumFunctions.getHighestUpperBound(this.spectrum);
-            // TODO: manage this case even if it's impossible to reach
-            if (lastUpperBound + amount >= utils.SETTINGS.maxSupply) { throw new Error('VSS: Max supply reached.'); }
+
+            if (lastUpperBound + amount > this.maxSupply) { throw new Error('VSS: Max supply reached.'); }
+
             this.spectrum[lastUpperBound + amount] = StakeReference(address, anchor, amount);
         }
     }
+    
     /** @param {UTXO[]} utxos */
     newStakes(utxos) {
         for (const utxo of utxos) { this.newStake(utxo); }
@@ -128,14 +152,15 @@ export class Vss {
 
         for (let i = 0; i < maxResultingArrayLength * 4; i++) {
             const maxRange = spectrumFunctions.getHighestUpperBound(this.spectrum);
-            // everyone has considered 0 legimacy when not enough stakes
+            // everyone has considered 0 legitimacy when not enough stakes
             if (maxRange < 999_999) { this.legitimacies = roundLegitimacies; return; }
             
             const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
             // can't be existing winner
-            if (roundLegitimacies.find(stake => stake.anchor === spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber).anchor)) { continue; }
+            const stakeReference = spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber);
+            if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
 
-            roundLegitimacies.push(spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber));
+            roundLegitimacies.push(stakeReference);
             
             if (roundLegitimacies.length >= spectrumLength) { break; } // If all stakes have been selected
             if (roundLegitimacies.length >= maxResultingArrayLength) { break; } // If the array is full
@@ -144,11 +169,13 @@ export class Vss {
         this.legitimacies = roundLegitimacies;
         this.currentRoundHash = blockHash;
     }
+    
     /** @param {string} address */
     getAddressLegitimacy(address) {
         const legitimacy = this.legitimacies.findIndex(stakeReference => stakeReference.address === address);
         return legitimacy !== -1 ? legitimacy : this.legitimacies.length; // if not found, return last index + 1
     }
+
     getAddressStakesInfo(address) {
         const references = this.legitimacies.filter(stakeReference => stakeReference.address === address);
         return references;

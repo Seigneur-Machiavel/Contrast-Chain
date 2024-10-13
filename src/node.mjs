@@ -57,7 +57,7 @@ export class Node {
         this.blockCandidate = null;
 
         /** @type {Vss} */
-        this.vss = new Vss();
+        this.vss = new Vss(1_000_000);
         /** @type {MemPool} */
         this.memPool = new MemPool();
         /** @type {number} */
