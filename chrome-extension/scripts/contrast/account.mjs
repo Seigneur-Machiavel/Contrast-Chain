@@ -22,6 +22,8 @@ export class Account {
         this.balance = 0;
         /** @type {number} */
         this.spendableBalance = 0;
+        /** @type {number} */
+        this.stakedBalance = 0;
         /** @type {Object.<string, UTXO>} */
         this.spentUTXOByAnchors = {};
     }

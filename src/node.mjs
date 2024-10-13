@@ -530,10 +530,12 @@ export class Node {
         try {
             await this.memPool.pushTransaction(this.utxoCache, transaction);
             await this.p2pBroadcast('new_transaction', transaction);
-            return { broadcasted: true, pushedInLocalMempool: true, error: null };
+            console.log(`Tx ${transaction.id} pushed in mempool`);
+            const consumedUTXOs = transaction.inputs;
+            return { broadcasted: true, pushedInLocalMempool: true, consumedUTXOs, error: null };
         } catch (error) {
             console.error(`Tx ${transaction.id} rejected: ${error.message}`);
-            return { broadcasted: false, pushedInLocalMempool: false, error: error.message };
+            return { broadcasted: false, pushedInLocalMempool: false, consumedUTXOs: [], error: error.message };
         }
     }
     async getBlocksInfo(fromHeight = 0, toHeight = 10) {
@@ -660,12 +662,27 @@ export class Node {
             if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
 
             balance += utxo.amount;
-            if (utxo.rule === "sigOrSlash") { continue; }
-
             UTXOs.push(utxo);
+            
+            if (utxo.rule === "sigOrSlash") { continue; }
             spendableBalance += utxo.amount;
         }
         
         return { spendableBalance, balance, UTXOs };
+    }
+    async getAddressUtxosOnly(address) {
+        const addressAnchors = this.utxoCache.getAddressAnchorsArray(address);
+        const UTXOs = [];
+        for (const anchor of addressAnchors) {
+            const associatedMemPoolTx = this.memPool.transactionByAnchor[anchor];
+            if (associatedMemPoolTx) { continue; } // pending spent UTXO
+
+            const utxo = await this.utxoCache.getUTXO(anchor);
+            if (!utxo) { console.error(`UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+
+            UTXOs.push(utxo);
+        }
+        return UTXOs;
     }
 }

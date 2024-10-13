@@ -401,6 +401,8 @@ export class ObserverWsApp {
                     const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(data);
                     ws.send(JSON.stringify({ type: 'address_exhaustive_data_requested', data: { address: data, addressUTXOs, addressTxsReferences } }));
                     break;
+                case 'address_utxos':
+                    ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs: await this.node.getAddressUtxos(data) } }));
                 case 'get_transaction_by_reference':
                     const resTx = await this.node.getTransactionByReference(data);
                     if (!res) { console.error(`[OBSERVER] Transaction not found: ${data}`); return; }
@@ -416,10 +418,10 @@ export class ObserverWsApp {
                     break;
                 case 'broadcast_transaction':
                     //const deserializeTx = contrast.utils.serializerFast.deserialize.transaction(data);
-                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data);
+                    const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data.transaction);
                     if (error) { console.error('Error broadcasting transaction', error); }
 
-                    ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { broadcasted, pushedInLocalMempool, error } }));
+                    ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
                     break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));

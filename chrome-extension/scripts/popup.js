@@ -10,6 +10,11 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { Transaction, Transaction_Builder } = require("./contrast/transaction.mjs");
 }
 
+/**
+* @typedef {import("../../src/transaction.mjs").Transaction} Transaction
+* @typedef {import("../../src/transaction.mjs").UTXO} UTXO
+*/
+
 const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
 
 class WalletInfo {
@@ -78,10 +83,16 @@ const eHTML = {
 
     send: {
         miniForm: document.getElementById('spendMiniForm'),
-        foldBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[1],
+        foldBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[0],
         amount: document.getElementById('spendMiniForm').getElementsByTagName('input')[0],
         address: document.getElementById('spendMiniForm').getElementsByTagName('input')[1],
-        confirmBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[0]
+        confirmBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[1]
+    },
+    stake: {
+        miniForm: document.getElementById('stakeMiniForm'),
+        foldBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[0],
+        amount: document.getElementById('stakeMiniForm').getElementsByTagName('input')[0],
+        confirmBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[1]
     },
 
     bottomBar: document.getElementById('bottomBar'),
@@ -230,12 +241,18 @@ function showFormDependingOnStoredPassword(sanitizedAuthInfo) {
 }
 function bottomInfo(targetForm, text, timeout = 3000) {
     const infoElmnt = targetForm.getElementsByClassName('bottomInfo')[0];
+    infoElmnt.innerText = text;
 
-	infoElmnt.innerText = text;
+    setTimeout(() => {
+        infoElmnt.innerText = "";
+    }, timeout);
 
+    /*const infoElmnts = targetForm.getElementsByClassName('bottomInfo');
+    for (const infoElmnt of infoElmnts) { infoElmnt.innerText = text; }
+    
 	setTimeout(() => {
-		infoElmnt.innerText = "";
-	}, timeout);
+        for (const infoElmnt of infoElmnts) { infoElmnt.innerText = ""; }
+	}, timeout);*/
 }
 function setWaitingForConnectionFormLoading(loading = true) {
     const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
@@ -298,22 +315,23 @@ function createAccountLabel(name, address, amount = 0) {
 
     return accountLabel;
 }
-function updateBalances() {
+async function updateBalances() {
     let walletTotalBalance = 0;
     let walletTotalSpendableBalance = 0;
+    let walletTotalStakedBalance = 0;
     // for each address type
     const addressTypes = Object.keys(activeWallet.accounts);
     for (let i = 0; i < addressTypes.length; i++) {
         const addressPrefix = addressTypes[i];
         const showInLabelsWrap = addressPrefix === activeAddressPrefix;
-        const { totalBalance, totalSpendableBalance } = updateLabelsBalances(addressPrefix, showInLabelsWrap);
+        const { totalBalance, totalSpendableBalance, totalStakedBalance } = updateLabelsBalances(addressPrefix, showInLabelsWrap);
         walletTotalBalance += totalBalance;
         walletTotalSpendableBalance += totalSpendableBalance;
+        walletTotalStakedBalance += totalStakedBalance;
     }
 
-    const stakedBalance = walletTotalBalance - walletTotalSpendableBalance;
     eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalBalance);
-    eHTML.stakedStr.innerText = utils.convert.number.formatNumberAsCurrency(stakedBalance);
+    eHTML.stakedStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalStakedBalance);
 
     updateActiveAccountLabel();
 
@@ -324,19 +342,21 @@ function updateLabelsBalances(addressPrefix = "W", showInLabelsWrap = false) {
 
     let totalBalance = 0;
     let totalSpendableBalance = 0;
+    let totalStakedBalance = 0;
     const nbOfAccounts = activeWallet.accounts[addressPrefix].length;
     for (let i = 0; i < nbOfAccounts; i++) {
         const account = activeWallet.accounts[addressPrefix][i];
         totalBalance += account.balance;
         totalSpendableBalance += account.spendableBalance;
+        totalStakedBalance += account.stakedBalance || 0;
         if (!showInLabelsWrap) { continue; }
 
         const accountName = `Account ${i + 1}`;
-        const accountLabel = createAccountLabel(accountName, account.address, account.balance);
+        const accountLabel = createAccountLabel(accountName, account.address, account.spendableBalance);
         eHTML.accountsWrap.appendChild(accountLabel);
     }
 
-    return { totalBalance, totalSpendableBalance };
+    return { totalBalance, totalSpendableBalance, totalStakedBalance };
 }
 function updateActiveAccountLabel() {
     const accountLabels = eHTML.accountsWrap.getElementsByClassName('accountLabel');
@@ -539,6 +559,70 @@ async function loadWalletGeneratedAccounts(walletInfo) {
 
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
 }
+async function addPendingAnchorsRelatedToAddress(address, anchors = []) {
+    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
+    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses || {};
+    if (!pendingAnchorsByAddresses[address]) { pendingAnchorsByAddresses[address] = []; }
+
+    pendingAnchorsByAddresses[address].push(...anchors);
+    await chrome.storage.local.set({ pendingAnchorsByAddresses });
+}
+async function getAllPendingAnchorsRelatedToAddress(address) {
+    const pendingAnchors = [];
+    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
+    if (!loadedPendingAnchors || !loadedPendingAnchors.pendingAnchorsByAddresses) { return pendingAnchors; }
+
+    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses;
+    if (!pendingAnchorsByAddresses[address]) { return pendingAnchors; }
+    for (const anchors of pendingAnchorsByAddresses[address]) {
+        pendingAnchors.push(anchors);
+    }
+
+    return pendingAnchors;
+}
+async function removePendingAnchorsRelatedToAddress(address, anchors = []) {
+    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
+    if (!loadedPendingAnchors || !loadedPendingAnchors.pendingAnchorsByAddresses) { console.error('No pending anchors'); return; }
+
+    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses;
+    if (!pendingAnchorsByAddresses[address]) { console.error('Address has no pending anchors'); return; }
+
+    const pendingAnchors = pendingAnchorsByAddresses[address];
+    for (const anchor of anchors) {
+        const index = pendingAnchors.indexOf(anchor);
+        if (index === -1) { console.error('Anchor not pending'); continue; }
+        pendingAnchors.splice(index, 1);
+    }
+
+    await chrome.storage.local.set({ pendingAnchorsByAddresses });
+}
+async function setPendingAnchorsRelatedToAddress(address, anchors = []) {
+    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
+    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses || {};
+    pendingAnchorsByAddresses[address] = anchors;
+    await chrome.storage.local.set({ pendingAnchorsByAddresses });
+}
+/** @param {UTXO[]} utxos */
+async function extractDataFromAccountUTXOs(address, utxos) {
+    let balance = 0;
+    let spendableBalance = 0;
+    let stakedBalance = 0;
+    const spendableUTXOs = [];
+
+    const pendingAnchors = await getAllPendingAnchorsRelatedToAddress(address); // pending anchors
+    const updatedPendingAnchors = [];
+    for (const utxo of utxos) {
+        balance += utxo.amount;
+        //if (address === 'WYnwjFkgumbp3jBCUoz5') console.log(`utxo: ${utxo.amount} ${utxo.rule} ${utxo.anchor}`);
+        if (utxo.rule === 'sigOrSlash') { stakedBalance += utxo.amount; continue; }
+        if (pendingAnchors.includes(utxo.anchor)) { updatedPendingAnchors.push(utxo.anchor); continue; }
+        spendableUTXOs.push(utxo);
+        spendableBalance += utxo.amount;
+    }
+    await setPendingAnchorsRelatedToAddress(address, updatedPendingAnchors);
+
+    return { balance, spendableBalance, stakedBalance, spendableUTXOs };
+}
 //#endregion
 
 //#region - EVENT LISTENERS
@@ -715,6 +799,10 @@ document.addEventListener('click', async function(e) {
     let senderAddress;
     let senderAccount;
     let transaction;
+    /** @type {Transaction} */
+    let createdTx;
+    /** @type {Transaction} */
+    let signedTx;
     switch (e.target.id) {
         case 'randomizeBtn':
             const rndSeedHex = cryptoLight.generateRdnHex(64);
@@ -773,6 +861,7 @@ document.addEventListener('click', async function(e) {
             break;
         case 'buttonBarStake':
             console.log('buttonBarStake');
+            toggleMiniForm(eHTML.stake.miniForm);
             break;
         case 'buttonBarSpecial':
             console.log('buttonBarSpecial');
@@ -820,9 +909,22 @@ document.addEventListener('click', async function(e) {
             if (!createdSignedTx.signedTx) { console.error('Transaction creation failed', createdSignedTx.error); return; }
             
             console.log('transaction:', createdSignedTx.signedTx);
-            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx });
-            /*serialized_transaction = utils.serializerFast.serialize.transaction(createdSignedTx.signedTx);
-            chrome.runtime.sendMessage({action: "broadcast_serialized_transaction", serialized_transaction });*/
+            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
+            break;
+        case 'stakeBtn':
+            console.log('stakeBtn');
+            amount = parseInt(eHTML.stake.amount.value.replace(",","").replace(".",""));
+            console.log('amount:', amount);
+
+            senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+            createdTx = await Transaction_Builder.createStakingVss(senderAccount, senderAccount.address, amount);
+            if (!createdTx) { console.error('Transaction creation failed'); return; }
+
+            signedTx = await senderAccount.signTransaction(createdTx);
+            if (!signedTx) { console.error('Transaction signing failed'); return; }
+
+            console.log('transaction:', signedTx);
+            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
             break;
         default:
             break;
@@ -888,11 +990,28 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             targetAccount = activeWallet.accounts[targetAccountAddressPrefix][targetAccountIndex];
             if (!targetAccount) { console.error('No target account'); return; }
 
-            targetAccount.UTXOs = request.UTXOs;
-            targetAccount.balance = request.balance;
-            targetAccount.spendableBalance = request.spendableBalance;
+            const { balance, spendableBalance, stakedBalance, spendableUTXOs } = await extractDataFromAccountUTXOs(request.address, request.UTXOs);
+            targetAccount.balance = balance;
+            targetAccount.spendableBalance = spendableBalance;
+            targetAccount.stakedBalance = stakedBalance;
+            targetAccount.UTXOs = spendableUTXOs;
 
             updateBalances();
+            break;
+        case 'address_utxos_requested':
+            console.log(`[POPUP] received address_utxos_requested: ${request.address}`);
+            break;
+        case 'transaction_broadcast_result':
+            // chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error, data.error, success: data.success});
+            if (!request.success) {
+                bottomInfo(eHTML.walletForm, `Transaction broadcast failed: ${request.error}`);
+                console.error('Transaction broadcast failed');
+                return; 
+            }
+            await addPendingAnchorsRelatedToAddress(request.senderAddress, request.consumedAnchors);
+
+            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: request.senderAddress });
+            bottomInfo(eHTML.walletForm, `Transaction sent, ID: ${request.txId}`, 5000);
             break;
         case 'derivedAccountResult': // DEPRECATED
             console.log('derivedAccountResult:', request.success);

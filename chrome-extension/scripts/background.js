@@ -62,6 +62,14 @@ function connectWS() {
                     spendableBalance: data.addressUTXOs.spendableBalance,
                 });
                 break;
+            case 'address_utxos_requested':
+                //console.log('[BACKGROUND] sending address_utxos_requested to popup...');
+                chrome.runtime.sendMessage({
+                    action: 'address_utxos_requested',
+                    address: data.address,
+                    UTXOs: data.UTXOs,
+                });
+                break;
             case 'transaction_requested':
                 // { transaction, balanceChange, txReference }
                 const transactionWithBalanceChange = data.transaction;
@@ -73,7 +81,7 @@ function connectWS() {
                 break;
             case 'transaction_broadcast_result':
                 console.log('[BACKGROUND] transaction_broadcast_result:', data);
-                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txReference: data.txReference, success: data.success});
+                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
                 /*if (!blockExplorerWidget) { return; }
                 if (data.success) {
                     blockExplorerWidget.fillTransactionRow(data.txReference, 'success');
@@ -85,8 +93,7 @@ function connectWS() {
                 console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
                 break;
             case 'balance_updated':
-                //console.log(`[BACKGROUND] balance_updated: ${trigger}`);
-                await readyWS();
+                console.log(`[BACKGROUND] balance_updated: ${trigger}`);
                 ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
                 break;
             default:
@@ -141,7 +148,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case 'broadcast_transaction':
             console.log(`[BACKGROUND] broadcast_transaction!`);
             await readyWS();
-            ws.send(JSON.stringify({ type: 'broadcast_transaction', data: request.transaction }));
+            ws.send(JSON.stringify({ type: 'broadcast_transaction', data: { transaction: request.transaction, senderAddress: request.senderAddress } }));
             break;
         case "requestAuth":
             // open popup for authentication
