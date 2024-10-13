@@ -66,18 +66,20 @@ function connectWS() {
                 // { transaction, balanceChange, txReference }
                 const transactionWithBalanceChange = data.transaction;
                 transactionWithBalanceChange.balanceChange = data.balanceChange;
-                blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithBalanceChange;
+                chrome.runtime.sendMessage({action: 'transaction_requested', transaction: transactionWithBalanceChange});
+                //blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithBalanceChange;
                 // set html
-                blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
+                //blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
                 break;
             case 'transaction_broadcast_result':
                 console.log('[BACKGROUND] transaction_broadcast_result:', data);
-                if (!blockExplorerWidget) { return; }
+                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txReference: data.txReference, success: data.success});
+                /*if (!blockExplorerWidget) { return; }
                 if (data.success) {
                     blockExplorerWidget.fillTransactionRow(data.txReference, 'success');
                 } else {
                     blockExplorerWidget.fillTransactionRow(data.txReference, 'error');
-                }
+                }*/
                 break;
             case 'subscribed_balance_update':
                 console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
