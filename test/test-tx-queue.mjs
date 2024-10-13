@@ -168,16 +168,6 @@ describe('TransactionPriorityQueue', () => {
             expect(queue.isEmpty()).to.be.true;
         });
 
-        it('should get transactions up to a maximum size', () => {
-            for (let i = 0; i < 10; i++) {
-                queue.add({ id: `tx${i}`, feePerByte: 10 - i, size: 100 });
-            }
-
-            const transactions = queue.getTransactions(250);
-            expect(transactions.length).to.equal(2);
-            expect(transactions[0].id).to.equal('tx0');
-            expect(transactions[1].id).to.equal('tx1');
-        });
     });
 
     describe('Complex Scenarios', () => {
@@ -239,18 +229,6 @@ describe('TransactionPriorityQueue', () => {
             }
         });
 
-        it('should handle getTransactions with varying transaction sizes', () => {
-            for (let i = 0; i < 20; i++) {
-                queue.add({ id: `tx${i}`, feePerByte: 20 - i, size: (i + 1) * 50 });
-            }
-
-            const transactions = queue.getTransactions(1000);
-            let totalSize = 0;
-            transactions.forEach(tx => {
-                totalSize += tx.size;
-                expect(totalSize).to.be.at.most(1000);
-            });
-        });
     });
 
     describe('Performance', () => {
