@@ -521,8 +521,7 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
     walletInfo.accountsGenerated = activeWallet.accountsGenerated || {};
     await setWalletInfo(walletIndex, walletInfo);
 }
-async function loadWalletGeneratedAccounts(walletIndex = 0) {
-    const walletInfo = await getWalletInfo(walletIndex);
+async function loadWalletGeneratedAccounts(walletInfo) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
 
     const nbOfExistingAccounts = walletInfo.accountsGenerated["W"].length;
@@ -686,8 +685,9 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     const walletsInfo = walletsInfoResult.walletsInfo;
     console.log(`Wallets info loaded, first walletName: ${walletsInfo[0].name}`);
 
-    activeWallet = new Wallet(passwordReadyUse);
-    await loadWalletGeneratedAccounts(selectedWalletIndex);
+    const walletInfo = await getWalletInfo(selectedWalletIndex);
+    activeWallet = new Wallet(await cryptoLight.decryptText(walletInfo.encryptedSeedHex));
+    await loadWalletGeneratedAccounts(walletInfo);
     
     chrome.runtime.sendMessage({action: 'authentified', password: passwordReadyUse });
     if (activeWallet.accounts[activeAddressPrefix][0]) {

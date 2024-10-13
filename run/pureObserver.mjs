@@ -1,7 +1,7 @@
-import { DashboardWsApp, ObserverWsApp } from './apps.mjs';
+import { ObserverWsApp } from './apps.mjs';
 import contrast from '../src/contrast.mjs';
 import { NodeFactory } from '../src/node-factory.mjs';
-import { extractBlocksMiningInfo, saveBlockchainInfoLocally } from '../storage/local-storage-management.mjs';
+//import { extractBlocksMiningInfo, saveBlockchainInfoLocally } from '../storage/local-storage-management.mjs';
 
 /**
 * @typedef {import("../src/account.mjs").Account} Account
