@@ -49,7 +49,7 @@ class P2PNetwork extends EventEmitter {
     /** @type {pino.Logger} */
     static logger = null;
     /** @returns {pino.Logger} */
-    
+
     #initLogger() {
         return pino({
             level: this.options.logLevel,
@@ -70,7 +70,7 @@ class P2PNetwork extends EventEmitter {
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
-            this.logger.info({peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress}, 'P2P network started');
+            this.logger.info({ peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress }, 'P2P network started');
 
             this.#setupEventListeners();
             await this.connectToBootstrapNodes();
@@ -102,7 +102,7 @@ class P2PNetwork extends EventEmitter {
                 filter: filters.all,
                 inboundSocketInactivityTimeout: 300000000,
                 outboundSocketInactivityTimeout: 300000000,
-              })],
+            })],
             streamMuxers: [yamux()],
             connectionEncryption: [noise()],
             services: {
@@ -145,7 +145,7 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePeerConnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.debug({peerId }, 'Peer connected');
+        this.logger.debug({ peerId }, 'Peer connected');
 
         this.updatePeer(peerId, { status: 'connected' });
         this.dial(event.detail);
@@ -154,7 +154,7 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePeerDisconnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.debug({peerId }, 'Peer disconnected');
+        this.logger.debug({ peerId }, 'Peer disconnected');
         this.peers.delete(peerId);
     };
 
@@ -187,22 +187,22 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         // check if binary
-        if (!(data instanceof Uint8Array)) {  console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
+        if (!(data instanceof Uint8Array)) { console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
         const byteLength = data.byteLength;
         try {
             let parsedMessage;
             switch (topic) {
                 case 'new_transaction':
                     // check the size of the tx before parsing it
-                    if (data.byteLength > utils.SETTINGS.maxTransactionSize * 1.02) {this.logger.error({ component: 'P2PNetwork', topic, from }, 'Transaction size exceeds the maximum allowed size'); return;}
+                    if (data.byteLength > utils.SETTINGS.maxTransactionSize * 1.02) { this.logger.error({ component: 'P2PNetwork', topic, from }, 'Transaction size exceeds the maximum allowed size'); return; }
                     parsedMessage = utils.serializerFast.deserialize.transaction(data);
                     break;
                 case 'new_block_candidate':
-                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) {this.logger.error({ component: 'P2PNetwork', topic, from }, 'Block candidate size exceeds the maximum allowed size'); return;}
+                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error({ component: 'P2PNetwork', topic, from }, 'Block candidate size exceeds the maximum allowed size'); return; }
                     parsedMessage = utils.serializer.block_candidate.fromBinary_v4(data);
                     break;
                 case 'new_block_finalized':
-                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) {this.logger.error({ component: 'P2PNetwork', topic, from }, 'Block finalized size exceeds the maximum allowed size'); return;}
+                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error({ component: 'P2PNetwork', topic, from }, 'Block finalized size exceeds the maximum allowed size'); return; }
                     parsedMessage = utils.serializer.block_finalized.fromBinary_v4(data);
                     break;
                 default:
@@ -334,7 +334,6 @@ class P2PNetwork extends EventEmitter {
             throw error;
         }
     }
-
     /**
      * Sends a serialized message over the provided stream and handles the response.
      * @param {Stream} stream - The libp2p stream to use for communication.
@@ -366,8 +365,6 @@ class P2PNetwork extends EventEmitter {
             throw error;
         }
     }
-
-
     /** @param {string} topic @param {Function} [callback] */
     async subscribe(topic, callback) {
         if (this.subscriptions.has(topic)) { return; }
@@ -391,7 +388,6 @@ class P2PNetwork extends EventEmitter {
     async subscribeMultipleTopics(topics, callback) {
         await Promise.all(topics.map((topic) => this.subscribe(topic, callback)));
     }
-    
     /** @param {string} topic */
     async unsubscribe(topic) {
         if (!this.subscriptions.has(topic)) {
@@ -434,7 +430,6 @@ class P2PNetwork extends EventEmitter {
         this.logger.debug({ component: 'P2PNetwork', peerId }, 'Peer updated');
         this.emit('peer:updated', peerId, data);
     }
-
 
     /** @returns {string[]} */
     getConnectedPeers() {
