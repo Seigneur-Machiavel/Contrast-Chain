@@ -67,6 +67,7 @@ export class Wallet {
         return true;
     }
     async deriveAccounts(nbOfAccounts = 1, addressPrefix = "C") {
+        this.accounts[addressPrefix] = [];
         const startTime = performance.now();
         //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
         const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;

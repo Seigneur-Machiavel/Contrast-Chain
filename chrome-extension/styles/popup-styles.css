@@ -253,6 +253,8 @@ button.disabled {
     align-items: center;
     overflow-y: auto;
     max-height: 200px;
+    padding-bottom: 10px;
+    min-height: 100px;
     /*width: 280px;*/
     width: 100%;
     box-shadow: inset 0px 0px 14px -6px black;

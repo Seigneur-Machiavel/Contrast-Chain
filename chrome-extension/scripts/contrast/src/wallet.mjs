@@ -67,6 +67,7 @@ export class Wallet {
         return true;
     }
     async deriveAccounts(nbOfAccounts = 1, addressPrefix = "C") {
+        this.accounts[addressPrefix] = [];
         const startTime = performance.now();
         //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
         const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;
@@ -114,7 +115,10 @@ export class Wallet {
             progressLogger.logProgress(this.accounts[addressPrefix].length - nbOfExistingAccounts);
         }
 
-        if (this.accounts[addressPrefix].length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
+        if (this.accounts[addressPrefix].length !== nbOfAccounts) {
+            console.error(`Failed to derive all accounts: ${this.accounts[addressPrefix].length}/${nbOfAccounts}`);
+            return {};
+        }
         
         const endTime = performance.now();
         const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);

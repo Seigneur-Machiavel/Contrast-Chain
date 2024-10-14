@@ -105,7 +105,7 @@ export class AccountDerivationWorker {
 
         /** @type {Worker} worker */
         this.worker = utils.isNode ?
-        utils.newWorker('./account-worker-nodejs.mjs') :
+        utils.newWorker('../workers/account-worker-nodejs.mjs') :
         utils.newWorker(undefined, accountWorkerCode);
     }
     async derivationUntilValidAccount(seedModifierStart, maxIterations, masterHex, desiredPrefix) {
@@ -171,7 +171,7 @@ export class AccountDerivationWorker {
         });
         const resolvedPromise = await promise;
         this.state = 'idle';
-        console.log(`DerivationWorker ${this.id} derivationUntilValidAccount result: ${JSON.stringify(resolvedPromise)}`);
+        //console.log(`DerivationWorker ${this.id} derivationUntilValidAccount result: ${JSON.stringify(resolvedPromise)}`);
         return resolvedPromise;
     }
     abortOperation() {
