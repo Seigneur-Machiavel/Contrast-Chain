@@ -546,6 +546,7 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
 async function loadWalletGeneratedAccounts(walletInfo) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
 
+    if (walletInfo.accountsGenerated[activeAddressPrefix] === undefined) { walletInfo.accountsGenerated[activeAddressPrefix] = []; }
     const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length;
     /** @type {Account[]} */
     const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, activeAddressPrefix);
