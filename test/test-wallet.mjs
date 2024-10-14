@@ -1,9 +1,7 @@
 import { expect } from 'chai';
-import { Wallet } from '../src/wallet.mjs';
+import { Wallet } from '../src/wallet_pariah.mjs';
 import { Account } from '../src/account.mjs';
-import utils from '../src/utils.mjs';
 import fs from 'fs/promises';
-import path from 'path';
 
 describe('Wallet Integration Tests', function () {
     this.timeout(30000); // Increase timeout for potentially slow cryptographic operations
