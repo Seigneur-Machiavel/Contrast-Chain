@@ -1,15 +1,13 @@
 import { expect } from 'chai';
-import { Wallet } from '../../src/wallet.mjs';
-import { Account } from '../../src/account.mjs';
-import utils from '../../src/utils.mjs';
+import { Wallet } from '../src/wallet_pariah.mjs';
+import { Account } from '../src/account.mjs';
 import fs from 'fs/promises';
-import path from 'path';
 
 describe('Wallet Integration Tests', function () {
     this.timeout(30000); // Increase timeout for potentially slow cryptographic operations
 
     let wallet;
-    const testMasterHex = 'f'.repeat(60);
+    const testMasterHex = 'a'.repeat(60);
     const testFolder = 'test_accounts';
 
     before(async function () {
@@ -35,10 +33,18 @@ describe('Wallet Integration Tests', function () {
     });
 
     describe('deriveAccounts', function () {
+        // longer timeout 
+        this.timeout(600000);
         it('should derive the correct number of accounts', async function () {
-            const { derivedAccounts } = await wallet.deriveAccounts(3, 'W');
-            expect(derivedAccounts).to.have.length(3);
-            expect(wallet.accounts.W).to.have.length(3);
+            const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(500, 'W');
+            console.log(`Average iterations: ${avgIterations}`);
+            // display three random accounts address 
+            console.log(derivedAccounts[0].address);
+            console.log(derivedAccounts[1].address);
+            console.log(derivedAccounts[2].address);
+
+            expect(derivedAccounts).to.have.length(500);
+            expect(wallet.accounts.W).to.have.length(500);
             derivedAccounts.forEach(account => {
                 expect(account).to.be.instanceOf(Account);
                 expect(account.address).to.have.lengthOf(20);
