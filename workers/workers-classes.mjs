@@ -99,17 +99,16 @@ export class ValidationWorker_v2 {
 }
 
 export class AccountDerivationWorker {
-    constructor (id = 0, workerPath = './account-worker-nodejs.mjs') {
+    constructor (id = 0) {
         this.id = id;
         this.state = 'idle';
 
         /** @type {Worker} worker */
-        this.worker = utils.newWorker(workerPath);
-        
-        /** @type {Promise<{ isValid: boolean, seedModifierHex: string, pubKeyHex: string, privKeyHex: string, addressBase58: string }>} */
-        this.promise = null;
+        this.worker = utils.isNode ?
+        utils.newWorker('../workers/account-worker-nodejs.mjs') :
+        utils.newWorker(undefined, accountWorkerCode);
     }
-    derivationUntilValidAccount(seedModifierStart, maxIterations, masterHex, desiredPrefix) {
+    async derivationUntilValidAccount(seedModifierStart, maxIterations, masterHex, desiredPrefix) {
         this.state = 'working';
 
         if (utils.isNode) {
@@ -120,11 +119,10 @@ export class AccountDerivationWorker {
         //this.promise = new Promise((resolve, reject) => {
         const promise = new Promise((resolve, reject) => {
             if (utils.isNode) {
+                this.state = 'working';
                 this.worker.on('exit', (code) => { console.log(`DerivationWorker ${this.id} stopped with exit code ${code}`); });
                 this.worker.on('close', () => { console.log('DerivationWorker ${this.id} closed'); });
                 this.worker.on('message', (message) => {
-                    this.state = 'idle';
-                    //setTimeout(() => { this.state = 'idle'; }, 100);
                     if (message.id !== this.id) { return; }
                     if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
 
@@ -142,12 +140,9 @@ export class AccountDerivationWorker {
                     resolve(result);
                 });
             } else {
-                this.worker.onmessage = function(e) {
-                    console.log(`DerivationWorker ${this.id} message: ${JSON.stringify(e.data)}`);
-                    this.state = 'idle';
-                    //setTimeout(() => { this.state = 'idle'; }, 100);
+                this.state = 'working';
+                this.worker.onmessage = (e) => {
                     const message = e.data;
-                    if (message.id !== this.id) { return; }
                     if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
 
                     //response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', error: false };
@@ -174,7 +169,10 @@ export class AccountDerivationWorker {
                 desiredPrefix
             });
         });
-        return promise;
+        const resolvedPromise = await promise;
+        this.state = 'idle';
+        //console.log(`DerivationWorker ${this.id} derivationUntilValidAccount result: ${JSON.stringify(resolvedPromise)}`);
+        return resolvedPromise;
     }
     abortOperation() {
         if (this.state === 'idle') { return; }

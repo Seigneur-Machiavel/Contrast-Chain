@@ -93,8 +93,7 @@ export class Wallet {
                 derivationResult = await this.tryDerivationUntilValidAccount(i, addressPrefix);
             } else {
                 for (let i = this.workers.length; i < this.nbOfWorkers; i++) {
-                    const workerPath = utils.isNode ? '../workers/account-worker-nodejs.mjs' : '../workers/account-worker-front.js';
-                    this.workers.push(new AccountDerivationWorker(i, workerPath));
+                    this.workers.push(new AccountDerivationWorker(i));
                 }
                 await new Promise(r => setTimeout(r, 10)); // avoid spamming the CPU/workers
                 derivationResult = await this.tryDerivationUntilValidAccountUsingWorkers(i, addressPrefix);
@@ -115,7 +114,10 @@ export class Wallet {
             progressLogger.logProgress(this.accounts[addressPrefix].length - nbOfExistingAccounts);
         }
 
-        if (this.accounts[addressPrefix].length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
+        if (this.accounts[addressPrefix].length !== nbOfAccounts) {
+            console.error(`Failed to derive all accounts: ${this.accounts[addressPrefix].length}/${nbOfAccounts}`);
+            return {};
+        }
         
         const endTime = performance.now();
         const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);
@@ -145,32 +147,27 @@ avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
                 desiredPrefix
             );
         }
+
+        const firstResult = await Promise.race(Object.values(promises));
+        this.accountsGenerated[desiredPrefix].push({
+            address: firstResult.addressBase58,
+            seedModifierHex: firstResult.seedModifierHex
+        });
+        const account = new Account(
+            firstResult.pubKeyHex,
+            firstResult.privKeyHex,
+            firstResult.addressBase58
+        );
+
+        // abort the running workers
+        for (const worker of this.workers) { worker.abortOperation(); }
+        await Promise.all(Object.values(promises));
         
-        let account;
-        let firstResult;
         let iterations = 0;
-        while (Object.keys(promises).length > 0) {
-            firstResult = await Promise.race(Object.values(promises)),
-            iterations += firstResult.iterations;
-            delete promises[firstResult.id];
-
-            if (!firstResult.isValid || account) { continue; }
-
-            this.accountsGenerated[desiredPrefix].push({
-                address: firstResult.addressBase58,
-                seedModifierHex: firstResult.seedModifierHex
-            });
-            account = new Account(
-                firstResult.pubKeyHex,
-                firstResult.privKeyHex,
-                firstResult.addressBase58
-            );
-
-            // abort the running workers
-            for (const worker of this.workers) { worker.abortOperation(); }
+        for (const promise of Object.values(promises)) {
+            const result = await promise;
+            iterations += result.iterations || 0;
         }
-
-        if (!account) { return false; }
 
         return { account, iterations };
     }

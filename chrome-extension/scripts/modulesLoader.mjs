@@ -11,11 +11,20 @@ window.Transaction_Builder = Transaction_Builder;
 import { cryptoLight } from './cryptoLight.js';
 window.cryptoLight = cryptoLight;
 
-console.log('Modules loaded!');
+async function loadScriptAsText(url) {
+    const response = await fetch(url);
+    const text = await response.text();
+    return text;
+}
+
+const accountWorkerCode = await loadScriptAsText('../scripts/contrast/workers/account-worker-front.js');
+window.accountWorkerCode = accountWorkerCode;
+
+/*console.log('Modules loaded!');
 
 console.log('Loading Wallet...');
 console.log('Wallet:', Wallet);
 
-const twallet = new Wallet('fffffffffffffffffffffffffffffffff00fffffffffffffffffffffffffffff');
-const taccount = await twallet.deriveAccounts(1, 'W');
-console.log('taccount:', taccount);
+window.twallet = new Wallet('fffffffffffffffffffffffffffffffff00fffffffffffffffffffffffffffff');
+const taccount = await window.twallet.deriveAccounts(1, 'W');
+console.log('taccount:', taccount);*/

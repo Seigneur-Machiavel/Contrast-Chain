@@ -58,13 +58,13 @@ const argon2Lib = await getArgon2Lib();
 const WokerModule = await getWorkerModule();*/
 const WorkerModule = isNode ? (await import('worker_threads')).Worker : Worker;
 
-
 const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function newWorker(scriptPath) {
+function newWorker(scriptPath, workerCode) {
     if (isNode) {
         return new WorkerModule(new URL(scriptPath, import.meta.url));
     } else {
-        return new WorkerModule(scriptPath);
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        return new Worker(URL.createObjectURL(blob));
     }
 }
 

@@ -1,3 +1,7 @@
+//console.log('Worker init convert...');
+
+const isNode = typeof process !== 'undefined' && process.versions != null && process.versions.node != null;
+const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 const convert = {
     hex: {
         toBase58: (hex) => {
@@ -30,6 +34,25 @@ const convert = {
             return bitsArrayAsNumbers;
         },
     },
+    bigInt: {
+        toBase58: (num) => {
+            let base58 = '';
+            let n = num;
+            while (n > 0) {
+                const remainder = n % BigInt(base58Alphabet.length);
+                base58 = base58Alphabet.charAt(Number(remainder)) + base58;
+                n = n / BigInt(base58Alphabet.length);
+            }
+
+            const bytes = isNode ? Buffer.from(base58) : new TextEncoder().encode(base58);
+
+            for (let i = 0; i < bytes.length && bytes[i] === 0; i++) {
+                base58 = '1' + base58;
+            }
+
+            return base58;
+        }
+    },
     uint8Array: {
         toHex: (uint8Array) => {
             let hexStr = '';
@@ -40,6 +63,7 @@ const convert = {
         }
     }
 }
+//console.log('Worker init fastConverter...');
 class FastConverter {
     constructor() {
         this.buffer2 = new ArrayBuffer(2);
@@ -93,6 +117,7 @@ class FastConverter {
         return new TextEncoder().encode(str);
     }
 }; const fastConverter = new FastConverter();
+//console.log('Worker init conditionnals...');
 const conditionnals = {
     binaryStringStartsWithZeros: (string, zeros) => {
         if (typeof string !== 'string') { return false; }
@@ -103,6 +128,7 @@ const conditionnals = {
         return string.startsWith(target);
     },
 };
+//console.log('Worker init HashFunctions...');
 class HashFunctions {
     static xxHash32 = (input, minLength = 8) => {
         const hashNumber = xxHash32(input);
@@ -118,6 +144,7 @@ class HashFunctions {
         return hashHex;
     }
 }
+//console.log('Worker init AsymetricFunctions...');
 class AsymetricFunctions {
     static async generateKeyPairFromHash (privKeyHex) {
         if (privKeyHex.length !== 64) { console.error('Hash must be 32 bytes long (hex: 64 chars)'); return false; }
@@ -129,7 +156,7 @@ class AsymetricFunctions {
         return { privKeyHex, pubKeyHex };
     }
 }
-
+//console.log('Worker init addressUtils...');
 const addressUtils = {
     params: {
         argon2DerivationMemory: 2 ** 16, // 2**16 should be great
@@ -211,9 +238,10 @@ const addressUtils = {
 
 let workerId = undefined;
 let abortOperation = false;
-console.log('Worker started');
+//console.log('Worker started');
 this.onmessage = async function(e) {
-    console.log('Worker received task:', e);
+    //console.log('Worker received task:', e);
+    const task = e.data;
     const id = task.id;
     workerId = workerId || id;
 	let response = {};

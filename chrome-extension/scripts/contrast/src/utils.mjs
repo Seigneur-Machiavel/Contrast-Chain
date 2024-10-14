@@ -4,7 +4,6 @@ const isNode = typeof process !== 'undefined' && process.versions != null && pro
 import ed25519 from '../externalLibs/noble-ed25519-03-2024.mjs';
 import { Transaction, UTXO } from './transaction.mjs';
 import { xxHash32 } from '../externalLibs/xxhash32.mjs';
-//import { MessagePack } from '../externalLibs/msgpack.min.js';
 async function msgPackLib() {
     if (isNode) {
         const m = await import('../externalLibs/msgpack.min.js');
@@ -59,13 +58,13 @@ const argon2Lib = await getArgon2Lib();
 const WokerModule = await getWorkerModule();*/
 const WorkerModule = isNode ? (await import('worker_threads')).Worker : Worker;
 
-
 const base58Alphabet = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-function newWorker(scriptPath) {
+function newWorker(scriptPath, workerCode) {
     if (isNode) {
         return new WorkerModule(new URL(scriptPath, import.meta.url));
     } else {
-        return new WorkerModule(scriptPath);
+        const blob = new Blob([workerCode], { type: 'application/javascript' });
+        return new Worker(URL.createObjectURL(blob));
     }
 }
 
@@ -150,7 +149,7 @@ class AddressTypeInfo {
     zeroBits = 0;
     nbOfSigners = 1;
 };
-const addressUtils = {
+export const addressUtils = {
     params: {
         argon2DerivationMemory: 2 ** 16, // 2**16 should be great
         addressDerivationBytes: 16, // the hex return will be double this value
@@ -158,10 +157,10 @@ const addressUtils = {
     },
     glossary: {
         W: { name: 'Weak', description: 'No condition', zeroBits: 0 },
-        C: { name: 'Contrast', description: '16 times harder to generate', zeroBits: 16 },
-        S: { name: 'Secure', description: '256 times harder to generate', zeroBits: 16 * 16 },
-        P: { name: 'Powerful', description: '4096 times harder to generate', zeroBits: 16 * 16 * 16 },
-        U: { name: 'Ultimate', description: '65536 times harder to generate', zeroBits: 16 * 16 * 16 * 16 },
+        C: { name: 'Contrast', description: '16 times harder to generate', zeroBits: 4 },
+        S: { name: 'Secure', description: '256 times harder to generate', zeroBits: 8 },
+        P: { name: 'Powerful', description: '4096 times harder to generate', zeroBits: 12 },
+        U: { name: 'Ultimate', description: '65536 times harder to generate', zeroBits: 16 },
         M: { name: 'MultiSig', description: 'Multi-signature address', zeroBits: 0 }
     },
 
