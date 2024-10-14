@@ -104,7 +104,8 @@ const eHTML = {
 
 /** @type {Wallet} */
 let activeWallet;
-let activeAddressPrefix = "W";
+const defaultAddressPrefix = "C";
+let activeAddressPrefix = "C";
 let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
 const busy = [];
 //#region - UX FUNCTIONS
@@ -338,7 +339,7 @@ async function updateBalances() {
 
     //console.log(`[POPUP] wallet accounts updated: ${activeWallet.accounts[activeAddressPrefix].length}`);
 }
-function updateLabelsBalances(addressPrefix = "W", showInLabelsWrap = false) {
+function updateLabelsBalances(addressPrefix = defaultAddressPrefix, showInLabelsWrap = false) {
     if (showInLabelsWrap) { eHTML.accountsWrap.innerHTML = ''; }
 
     let totalBalance = 0;
@@ -545,14 +546,14 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
 async function loadWalletGeneratedAccounts(walletInfo) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
 
-    const nbOfExistingAccounts = walletInfo.accountsGenerated["W"].length;
+    const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length;
     /** @type {Account[]} */
-    const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, "W");
+    const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, activeAddressPrefix);
     if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
-    const nbOfAccounts = activeWallet.accounts["W"].length;
+    const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
     for (let i = 0; i < nbOfAccounts; i++) {
-        const account = activeWallet.accounts["W"][i];
+        const account = activeWallet.accounts[activeAddressPrefix][i];
         const accountName = `Account ${i + 1}`;
         const accountLabel = createAccountLabel(accountName, account.address, account.balance);
         eHTML.accountsWrap.appendChild(accountLabel);
@@ -943,15 +944,15 @@ document.addEventListener('click', async function(e) {
 
             newAddressBtnLoadingToggle();
             console.log('privateKeyHex:', privateKeyHex);
-            const nbOfExistingAccounts = activeWallet.accounts["W"].length;
-            const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, "W");
+            const nbOfExistingAccounts = activeWallet.accounts[activeAddressPrefix].length;
+            const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, activeAddressPrefix);
             newAddressBtnLoadingToggle();
             if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');
 
-            const lastAccountAddress = activeWallet.accounts["W"][nbOfExistingAccounts].address;
+            const lastAccountAddress = activeWallet.accounts[activeAddressPrefix][nbOfExistingAccounts].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
             chrome.runtime.sendMessage({action: "subscribe_balance_update", address: lastAccountAddress });
             break;
