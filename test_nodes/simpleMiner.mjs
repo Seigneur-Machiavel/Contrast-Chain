@@ -13,7 +13,7 @@ async function main() {
     if (!restored) { console.error('Failed to restore wallet.'); return; }
 
     wallet.loadAccounts();
-    const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(1, "W");
+    const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(1, "C");
     if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
     wallet.saveAccounts();
     

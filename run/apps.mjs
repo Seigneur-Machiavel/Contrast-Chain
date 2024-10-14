@@ -145,7 +145,7 @@ export class DashboardWsApp {
         const restored = await wallet.restore();
         if (!restored) { console.error('Failed to restore wallet.'); return; }
         wallet.loadAccounts();
-        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "W");
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
         if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
         wallet.saveAccounts();
 
