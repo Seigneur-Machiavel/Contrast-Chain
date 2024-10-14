@@ -545,9 +545,11 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
 }
 async function loadWalletGeneratedAccounts(walletInfo) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
+    if (!walletInfo.accountsGenerated || walletInfo.accountsGenerated[activeAddressPrefix]) { return; }
+    if (walletInfo.accountsGenerated[activeAddressPrefix].length === 0) { return; }
 
-    if (!walletInfo.accountsGenerated) { walletInfo.accountsGenerated = { "W": [], "C": [] }; }
-    const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length;
+    const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length 
+
     /** @type {Account[]} */
     const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, activeAddressPrefix);
     if (!derivedAccounts) { console.error('Derivation failed'); return; }
@@ -922,12 +924,13 @@ document.addEventListener('click', async function(e) {
             bottomInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
             break;
         case 'confirmPrivateKeyBtn':
+            if (e.target.classList.contains('disabled')) { return; }
             encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
             activeWallet = new Wallet(eHTML.privateKeyHexInput.placeholder);
             eHTML.privateKeyHexInput.placeholder = 'Private key';
             walletInfo = new WalletInfo({name: 'wallet1', encryptedSeedHex: encryptedSeedHex});
             loadedWalletsInfo = await chrome.storage.local.get('walletsInfo');
-            walletsInfo = loadedWalletsInfo && loadedWalletsInfo.walletsInf ? loadedWalletsInfo.walletsInfo : [];
+            walletsInfo = loadedWalletsInfo && loadedWalletsInfo.walletsInfo ? loadedWalletsInfo.walletsInfo : [];
             walletsInfo.push(walletInfo.extractVarsObjectToSave());
 
             await chrome.storage.local.set({walletsInfo});
@@ -1044,7 +1047,7 @@ document.addEventListener('click', async function(e) {
             break;
     }
 });
-document.addEventListener('input', (event) => {
+document.addEventListener('input', async (event) => {
 	const isLoginForm = event.target.form.id === 'loginForm';
     if (isLoginForm) {
         const input = event.target;
@@ -1072,15 +1075,26 @@ document.addEventListener('input', (event) => {
 
     const isPrivateKeyHexInput = event.target.id === 'privateKeyHexInput';
     if (isPrivateKeyHexInput) {
+        //await new Promise(resolve => setTimeout(resolve, 0));
         console.log(`privKeyHex: ${event.target.value}`);
+
         if (event.target.value.length === 64) {
             eHTML.privateKeyHexInput.placeholder = event.target.value;
             eHTML.confirmPrivateKeyBtn.classList.remove('disabled');
         } else {
             eHTML.confirmPrivateKeyBtn.classList.add('disabled');
+            if (event.target.value.length > 64) {
+                bottomInfo(eHTML.createWalletForm, 'Private key too long');
+            } else if (event.target.value.length < 64) {
+                bottomInfo(eHTML.createWalletForm, 'Private key too short');
+            }
         }
     }
 });
+/*document.getElementById('privateKeyHexInput').addEventListener('paste', function(event) {
+    setTimeout(() => console.log(event.target.value), 0);
+
+});*/
 window.addEventListener('beforeunload', function(e) {
     console.log('beforeunload');
     cryptoLight.clear();

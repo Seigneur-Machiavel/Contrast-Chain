@@ -253,8 +253,9 @@ const cryptoLight = {
         return result;
     },
     generateRdnHex(length = 32) {
+        if (length % 2 !== 0) { length += 1; }
         // use crypto
-        const array = new Uint8Array(length);
+        const array = new Uint8Array(length / 2);
         crypto.getRandomValues(array);
 
         let hex = '';
