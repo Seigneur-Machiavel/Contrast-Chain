@@ -1,4 +1,5 @@
 this.onmessage = async function(e) {
+    console.log('Worker received message:', e.data);
     if (!e.data) { this.postMessage('No data received!'); return; }
     if (typeof e.data.pass !== 'string') { this.postMessage('Password must be a string!'); return; }
     if (typeof e.data.time !== 'number') { this.postMessage('Time must be a number!'); return; }

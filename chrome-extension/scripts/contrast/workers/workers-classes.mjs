@@ -123,7 +123,8 @@ export class AccountDerivationWorker {
                 this.worker.on('exit', (code) => { console.log(`DerivationWorker ${this.id} stopped with exit code ${code}`); });
                 this.worker.on('close', () => { console.log('DerivationWorker ${this.id} closed'); });
                 this.worker.on('message', (message) => {
-                    setTimeout(() => { this.state = 'idle'; }, 100);
+                    this.state = 'idle';
+                    //setTimeout(() => { this.state = 'idle'; }, 100);
                     if (message.id !== this.id) { return; }
                     if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
 
@@ -141,9 +142,11 @@ export class AccountDerivationWorker {
                     resolve(result);
                 });
             } else {
-                this.worker.onmessage = (event) => {
-                    setTimeout(() => { this.state = 'idle'; }, 100);
-                    const message = event.data;
+                this.worker.onmessage = function(e) {
+                    console.log(`DerivationWorker ${this.id} message: ${JSON.stringify(e.data)}`);
+                    this.state = 'idle';
+                    //setTimeout(() => { this.state = 'idle'; }, 100);
+                    const message = e.data;
                     if (message.id !== this.id) { return; }
                     if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
 

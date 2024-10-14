@@ -70,12 +70,13 @@ export class Wallet {
         const startTime = performance.now();
         //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
         const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;
-        const accountToGenerate = nbOfAccounts - nbOfExistingAccounts;
+        const accountToGenerate = nbOfAccounts - nbOfExistingAccounts < 0 ? 0 : nbOfAccounts - nbOfExistingAccounts;
         console.log(`[WALLET] deriving ${accountToGenerate} accounts with prefix: ${addressPrefix}`);
         const progressLogger = new utils.ProgressLogger(accountToGenerate, '[WALLET] deriving accounts');
         let iterationsPerAccount = 0;
 
-        for (let i = 0; i < nbOfExistingAccounts; i++) {
+        const accountToLoad = Math.min(nbOfExistingAccounts, nbOfAccounts);
+        for (let i = 0; i < accountToLoad; i++) {
             if (this.accountsGenerated[addressPrefix][i]) { // from saved account
                 const { address, seedModifierHex } = this.accountsGenerated[addressPrefix][i];
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
@@ -92,7 +93,7 @@ export class Wallet {
                 derivationResult = await this.tryDerivationUntilValidAccount(i, addressPrefix);
             } else {
                 for (let i = this.workers.length; i < this.nbOfWorkers; i++) {
-                    const workerPath = utils.isNode ? '../workers/account-worker-nodejs.mjs' : null;
+                    const workerPath = utils.isNode ? '../workers/account-worker-nodejs.mjs' : '../workers/account-worker-front.js';
                     this.workers.push(new AccountDerivationWorker(i, workerPath));
                 }
                 await new Promise(r => setTimeout(r, 10)); // avoid spamming the CPU/workers
@@ -121,7 +122,7 @@ export class Wallet {
         const avgIterations = derivedAccounts.length > 0 ? Math.round(iterationsPerAccount / derivedAccounts.length) : 0;
         console.info(`[WALLET] ${derivedAccounts.length} accounts derived with prefix: ${addressPrefix}
 avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
-        return { derivedAccounts, avgIterations: avgIterations };
+        return { derivedAccounts: this.accounts[addressPrefix], avgIterations: avgIterations };
     }
     async tryDerivationUntilValidAccountUsingWorkers(accountIndex = 0, desiredPrefix = "C") {
         /** @type {AddressTypeInfo} */
@@ -153,7 +154,7 @@ avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
             iterations += firstResult.iterations;
             delete promises[firstResult.id];
 
-            if (!firstResult.isValid) { continue; }
+            if (!firstResult.isValid || account) { continue; }
 
             this.accountsGenerated[desiredPrefix].push({
                 address: firstResult.addressBase58,

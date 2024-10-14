@@ -15,6 +15,7 @@ async function initMultiNode(local = false, useDevArgon2 = false) {
     const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
     const restored = await wallet.restore();
     if (!restored) { console.error('Failed to restore wallet.'); return; }
+    
     wallet.loadAccounts();
     const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(1, "W");
     if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }

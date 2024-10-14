@@ -70,12 +70,13 @@ export class Wallet {
         const startTime = performance.now();
         //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
         const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;
-        const accountToGenerate = nbOfAccounts - nbOfExistingAccounts;
+        const accountToGenerate = nbOfAccounts - nbOfExistingAccounts < 0 ? 0 : nbOfAccounts - nbOfExistingAccounts;
         console.log(`[WALLET] deriving ${accountToGenerate} accounts with prefix: ${addressPrefix}`);
         const progressLogger = new utils.ProgressLogger(accountToGenerate, '[WALLET] deriving accounts');
         let iterationsPerAccount = 0;
 
-        for (let i = 0; i < nbOfExistingAccounts; i++) {
+        const accountToLoad = Math.min(nbOfExistingAccounts, nbOfAccounts);
+        for (let i = 0; i < accountToLoad; i++) {
             if (this.accountsGenerated[addressPrefix][i]) { // from saved account
                 const { address, seedModifierHex } = this.accountsGenerated[addressPrefix][i];
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
@@ -117,9 +118,9 @@ export class Wallet {
         if (this.accounts[addressPrefix].length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
         
         const endTime = performance.now();
-        const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts).length;
-        const avgIterations = derivedAccounts > 0 ? Math.round(iterationsPerAccount / derivedAccounts) : 0;
-        console.info(`[WALLET] ${derivedAccounts} accounts derived with prefix: ${addressPrefix}
+        const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);
+        const avgIterations = derivedAccounts.length > 0 ? Math.round(iterationsPerAccount / derivedAccounts.length) : 0;
+        console.info(`[WALLET] ${derivedAccounts.length} accounts derived with prefix: ${addressPrefix}
 avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
         return { derivedAccounts: this.accounts[addressPrefix], avgIterations: avgIterations };
     }
@@ -153,7 +154,7 @@ avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
             iterations += firstResult.iterations;
             delete promises[firstResult.id];
 
-            if (!firstResult.isValid) { continue; }
+            if (!firstResult.isValid || account) { continue; }
 
             this.accountsGenerated[desiredPrefix].push({
                 address: firstResult.addressBase58,

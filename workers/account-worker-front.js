@@ -211,7 +211,9 @@ const addressUtils = {
 
 let workerId = undefined;
 let abortOperation = false;
-this.onmessage = async function(task) {
+console.log('Worker started');
+this.onmessage = async function(e) {
+    console.log('Worker received task:', e);
     const id = task.id;
     workerId = workerId || id;
 	let response = {};
@@ -257,7 +259,7 @@ this.onmessage = async function(task) {
             break;
     }
 
-	parentPort.postMessage(response);
+    this.postMessage(response);
 }
 
 async function deriveKeyPair(masterHex, seedModifierHex) {

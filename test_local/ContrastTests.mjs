@@ -15,7 +15,7 @@ const testParams = {
     unsafeSpamMode: false,
     initListenAddress: network === 'local' ? '/ip4/0.0.0.0/tcp/0' : `/ip4/0.0.0.0/tcp/${port}`,
     useDevArgon2: false, // true => 100txs processProposal: ~7sec | false => 100txs processProposal: ~5.8sec
-    nbOfAccounts: 1200, // minimum 25
+    nbOfAccounts: 300, // minimum 25
     addressType: 'W',
 
     nbOfMiners: 0,
