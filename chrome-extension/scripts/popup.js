@@ -561,6 +561,7 @@ async function loadWalletGeneratedAccounts(walletInfo) {
         const accountLabel = createAccountLabel(accountName, account.address, account.balance);
         eHTML.accountsWrap.appendChild(accountLabel);
     }
+    updateActiveAccountLabel();
 
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
 }
