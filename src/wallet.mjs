@@ -46,7 +46,7 @@ export class Wallet {
         this.useDevArgon2 = useDevArgon2;
         /** @type {AccountDerivationWorker[]} */
         this.workers = [];
-        this.nbOfWorkers = 0;
+        this.nbOfWorkers = 4;
     }
     async restore(mnemonicHex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") {
         const argon2HashResult = await HashFunctions.Argon2(mnemonicHex, "Contrast's Salt Isnt Pepper But It Is Tasty", 27, 1024, 1, 2, 26);
@@ -148,39 +148,33 @@ avgIterations: ${Math.round(iterationsPerAccount / nbOfAccounts)} | time: ${(end
             ));
         }
         
-        let validFound = false;
+        let account;
         let firstResult;
-        while (!validFound && promises.length > 0) {
-            firstResult = await Promise.race(promises);
-            if (!firstResult.isValid) { // if not valid, remove the promise
-                const index = promises.indexOf(firstResult);
-                promises.
-                splice(index, 1);
-                continue;
-            }
-            validFound = true;
-        }
-        if (!validFound) { return false; }
-
-        this.accountsGenerated[desiredPrefix].push({
-            address: firstResult.addressBase58,
-            seedModifierHex: firstResult.seedModifierHex
-        });
-        const account = new Account(
-            firstResult.pubKeyHex,
-            firstResult.privKeyHex,
-            firstResult.addressBase58
-        );
-
-        // abort the running workers
-        for (const worker of this.workers) { worker.abortOperation(); }
-
-        await Promise.all(promises);
         let iterations = 0;
-        for (const promise of promises) {
-            const resoledPromise = await promise;
-            iterations += resoledPromise.iterations;
+        while (promises.length > 0) {
+            firstResult = await Promise.race(promises);
+            iterations += firstResult.iterations;
+            const index = promises.indexOf(firstResult);
+            promises.splice(index, 1);
+
+            if (!firstResult.isValid) { continue; }
+
+            this.accountsGenerated[desiredPrefix].push({
+                address: firstResult.addressBase58,
+                seedModifierHex: firstResult.seedModifierHex
+            });
+            account = new Account(
+                firstResult.pubKeyHex,
+                firstResult.privKeyHex,
+                firstResult.addressBase58
+            );
+
+            // abort the running workers
+            for (const worker of this.workers) { worker.abortOperation(); }
         }
+
+        if (!account) { 
+            return false; }
 
         return { account, iterations };
     }
