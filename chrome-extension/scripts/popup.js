@@ -545,10 +545,10 @@ async function saveWalletGeneratedAccounts(walletIndex = 0) {
 }
 async function loadWalletGeneratedAccounts(walletInfo) {
     activeWallet.accountsGenerated = walletInfo.accountsGenerated || {};
-    if (!walletInfo.accountsGenerated || walletInfo.accountsGenerated[activeAddressPrefix]) { return; }
+    if (!walletInfo.accountsGenerated || !walletInfo.accountsGenerated[activeAddressPrefix]) { return; }
     if (walletInfo.accountsGenerated[activeAddressPrefix].length === 0) { return; }
 
-    const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length 
+    const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length;
 
     /** @type {Account[]} */
     const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, activeAddressPrefix);
@@ -776,6 +776,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
 
     const walletInfo = await getWalletInfo(selectedWalletIndex);
     activeWallet = new Wallet(await cryptoLight.decryptText(walletInfo.encryptedSeedHex));
+    console.log('walletInfo:', walletInfo);
     await loadWalletGeneratedAccounts(walletInfo);
     
     chrome.runtime.sendMessage({action: 'authentified', password: passwordReadyUse });
