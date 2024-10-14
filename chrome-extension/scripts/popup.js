@@ -822,6 +822,8 @@ document.addEventListener('mouseup', function(e) { // release click
 document.addEventListener('mousedown', function(e) { // hold click
     switch (e.target.className) {
         case 'sendBtn':
+            if (eHTML.send.address.value === '') { bottomInfo(eHTML.send.miniForm, 'Address is empty'); return; }
+            if (eHTML.send.amount.value === '') { bottomInfo(eHTML.send.miniForm, 'Amount is empty'); return; }
             if (animations.sendBtn) { animations.sendBtn.pause(); }
             e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
             animations.sendBtn = anime({
@@ -837,14 +839,20 @@ document.addEventListener('mousedown', function(e) { // hold click
                     receiverAddress = eHTML.send.address.value;
                     senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
                     const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
-                    if (!createdSignedTx.signedTx) { console.error('Transaction creation failed', createdSignedTx.error); return; }
+                    if (!createdSignedTx.signedTx) {
+                        console.error('Transaction creation failed', createdSignedTx.error);
+                        bottomInfo(eHTML.send.miniForm, createdSignedTx.error);
+                        return;
+                    }
                     
                     console.log('transaction:', createdSignedTx.signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
+                    e.target.style.background = 'white';
                 }
             });
             break;
         case 'stakeBtn':
+            if (eHTML.stake.amount.value === '') { bottomInfo(eHTML.stake.miniForm, 'Amount is empty'); return; }
             if (animations.stakeBtn) { animations.stakeBtn.pause(); }
             e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
             animations.stakeBtn = anime({
@@ -859,13 +867,22 @@ document.addEventListener('mousedown', function(e) { // hold click
         
                     senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
                     createdTx = await Transaction_Builder.createStakingVss(senderAccount, senderAccount.address, amount);
-                    if (!createdTx) { console.error('Transaction creation failed'); return; }
+                    if (!createdTx) {
+                        console.error('Transaction creation failed');
+                        bottomInfo(eHTML.stake.miniForm, 'Transaction creation failed');
+                        return;
+                    }
         
                     signedTx = await senderAccount.signTransaction(createdTx);
-                    if (!signedTx) { console.error('Transaction signing failed'); return; }
+                    if (!signedTx) {
+                        console.error('Transaction signing failed');
+                        bottomInfo(eHTML.stake.miniForm, 'Transaction signing failed');
+                        return;
+                    }
         
                     console.log('transaction:', signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
+                    e.target.style.background = 'white';
                 }
             });
             break;

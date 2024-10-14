@@ -1,6 +1,7 @@
 import { HashFunctions, AsymetricFunctions } from './conCrypto.mjs';
 import { Account } from './account.mjs';
 import utils from './utils.mjs';
+import { AccountDerivationWorker } from '../workers/workers-classes.mjs';
 
 async function localStorage_v1Lib() {
     if (utils.isNode) {
@@ -42,8 +43,10 @@ export class Wallet {
             P: [],
             U: []
         };
-
         this.useDevArgon2 = useDevArgon2;
+        /** @type {AccountDerivationWorker[]} */
+        this.workers = [];
+        this.nbOfWorkers = 0;
     }
     async restore(mnemonicHex = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff") {
         const argon2HashResult = await HashFunctions.Argon2(mnemonicHex, "Contrast's Salt Isnt Pepper But It Is Tasty", 27, 1024, 1, 2, 26);
@@ -64,14 +67,16 @@ export class Wallet {
         return true;
     }
     async deriveAccounts(nbOfAccounts = 1, addressPrefix = "C") {
-        console.log(`[WALLET] deriving ${nbOfAccounts} accounts with prefix: ${addressPrefix}`);
-        const nbOfExistingAccounts = this.accounts[addressPrefix].length;
+        const startTime = performance.now();
+        //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
+        const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;
         const accountToGenerate = nbOfAccounts - nbOfExistingAccounts;
+        console.log(`[WALLET] deriving ${accountToGenerate} accounts with prefix: ${addressPrefix}`);
         const progressLogger = new utils.ProgressLogger(accountToGenerate, '[WALLET] deriving accounts');
         //const iterationsPerAccount = []; // used for control
         let iterationsPerAccount = 0;
 
-        for (let i = nbOfExistingAccounts; i < nbOfAccounts; i++) {
+        for (let i = 0; i < nbOfExistingAccounts; i++) {
             if (this.accountsGenerated[addressPrefix][i]) { // from saved account
                 const { address, seedModifierHex } = this.accountsGenerated[addressPrefix][i];
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
@@ -82,8 +87,29 @@ export class Wallet {
                 this.accounts[addressPrefix].push(account);
                 continue;
             }
+        }
 
-            const { account, iterations } = await this.tryDerivationUntilValidAccount(i, addressPrefix);
+        for (let i = nbOfExistingAccounts; i < nbOfAccounts; i++) {
+            let derivationResult;
+            if (this.nbOfWorkers === 0) {
+                derivationResult = await this.tryDerivationUntilValidAccount(i, addressPrefix);
+            } else {
+                for (let i = this.workers.length; i < this.nbOfWorkers; i++) {
+                    const workerPath = utils.isNode ? '../workers/account-worker-nodejs.mjs' : null;
+                    this.workers.push(new AccountDerivationWorker(i, workerPath));
+                }
+                await new Promise(r => setTimeout(r, 10)); // avoid spamming the CPU/workers
+                derivationResult = await this.tryDerivationUntilValidAccountUsingWorkers(i, addressPrefix);
+            }
+
+            if (!derivationResult) {
+                const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts).length;
+                console.error(`Failed to derive account (derived: ${derivedAccounts})`);
+                return {};
+            }
+
+            const account = derivationResult.account;
+            const iterations = derivationResult.iterations;
             if (!account) { console.error('deriveAccounts interrupted!'); return {}; }
 
             //iterationsPerAccount.push(iterations);
@@ -94,24 +120,91 @@ export class Wallet {
 
         const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);
         if (derivedAccounts.length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
+        
+        const endTime = performance.now();
+        console.info(`[WALLET] ${nbOfAccounts} accounts derived with prefix: ${addressPrefix}
+avgIterations: ${Math.round(iterationsPerAccount / nbOfAccounts)} | time: ${(endTime - startTime).toFixed(3)}ms`);
         return { derivedAccounts, avgIterations: Math.round(iterationsPerAccount / nbOfAccounts) };
     }
-    async tryDerivationUntilValidAccount(accountIndex = 0, desiredPrefix = "C") {
+    async tryDerivationUntilValidAccountUsingWorkers(accountIndex = 0, desiredPrefix = "C") {
         /** @type {AddressTypeInfo} */
         const addressTypeInfo = utils.addressUtils.glossary[desiredPrefix];
         if (addressTypeInfo === undefined) { throw new Error(`Invalid desiredPrefix: ${desiredPrefix}`); }
 
         // To be sure we have enough iterations, but avoid infinite loop
         const maxIterations = 65_536 * (2 ** addressTypeInfo.zeroBits); // max with zeroBits(16): 65 536 * (2^16) => 4 294 967 296
-        const seedModifierStart = accountIndex * maxIterations; // max with accountIndex: 65 535 * 4 294 967 296 => 281 470 681 743 360
+        const seedModifierStart = accountIndex * maxIterations; // max with accountIndex: 65 535 * 4 294 967 296 => 281 470 681 743 360 
+        const workerMaxIterations = Math.floor(maxIterations / this.nbOfWorkers);
+        // split the job between workers
+        const promises = [];
+        for (let i = 0; i < this.nbOfWorkers; i++) {
+            const worker = this.workers[i];
+            const workerSeedModifierStart = seedModifierStart + (i * workerMaxIterations);
+            promises.push(worker.derivationUntilValidAccount(
+                workerSeedModifierStart,
+                workerMaxIterations,
+                this.masterHex,
+                desiredPrefix
+            ));
+        }
+        
+        let validFound = false;
+        let firstResult;
+        while (!validFound && promises.length > 0) {
+            firstResult = await Promise.race(promises);
+            if (!firstResult.isValid) { // if not valid, remove the promise
+                const index = promises.indexOf(firstResult);
+                promises.
+                splice(index, 1);
+                continue;
+            }
+            validFound = true;
+        }
+        if (!validFound) { return false; }
+
+        this.accountsGenerated[desiredPrefix].push({
+            address: firstResult.addressBase58,
+            seedModifierHex: firstResult.seedModifierHex
+        });
+        const account = new Account(
+            firstResult.pubKeyHex,
+            firstResult.privKeyHex,
+            firstResult.addressBase58
+        );
+
+        // abort the running workers
+        for (const worker of this.workers) { worker.abortOperation(); }
+
+        await Promise.all(promises);
+        let iterations = 0;
+        for (const promise of promises) {
+            const resoledPromise = await promise;
+            iterations += resoledPromise.iterations;
+        }
+
+        return { account, iterations };
+    }
+    async tryDerivationUntilValidAccount(accountIndex = 0, desiredPrefix = "C") { // SINGLE THREAD
+        /** @type {AddressTypeInfo} */
+        const addressTypeInfo = utils.addressUtils.glossary[desiredPrefix];
+        if (addressTypeInfo === undefined) { throw new Error(`Invalid desiredPrefix: ${desiredPrefix}`); }
+
+        // To be sure we have enough iterations, but avoid infinite loop
+        const maxIterations = 65_536 * (2 ** addressTypeInfo.zeroBits); // max with zeroBits(16): 65 536 * (2^16) => 4 294 967 296
+        const seedModifierStart = accountIndex * maxIterations; // max with accountIndex: 65 535 * 4 294 967 296 => 281 470 681 743 360 
         for (let i = 0; i < maxIterations; i++) {
             const seedModifier = seedModifierStart + i;
             const seedModifierHex = seedModifier.toString(16).padStart(12, '0'); // padStart(12, '0') => 48 bits (6 bytes), maxValue = 281 474 976 710 655
 
             try {
+                //const kpStart = performance.now();
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
-                const account = await this.#deriveAccount(keyPair, desiredPrefix);
-                if (account) {
+                //console.log(`[WALLET] keyPair derived in: ${(performance.now() - kpStart).toFixed(3)}ms`);
+                //const aStart = performance.now();
+                const addressBase58 = await this.#deriveAccount(keyPair.pubKeyHex, desiredPrefix);
+                //console.log(`[WALLET] account derived in: ${(performance.now() - aStart).toFixed(3)}ms`);
+                if (addressBase58) {
+                    const account = new Account(keyPair.pubKeyHex, keyPair.privKeyHex, addressBase58);
                     this.accountsGenerated[desiredPrefix].push({ address: account.address, seedModifierHex });
                     return { account, iterations: i };
                 }
@@ -131,20 +224,20 @@ export class Wallet {
 
         return keyPair;
     }
-    async #deriveAccount(keyPair, desiredPrefix = "C") {
+    async #deriveAccount(pubKeyHex, desiredPrefix = "C") {
         const argon2Fnc = this.useDevArgon2 ? HashFunctions.devArgon2 : HashFunctions.Argon2;
-        const addressBase58 = await utils.addressUtils.deriveAddress(argon2Fnc, keyPair.pubKeyHex);
+        const addressBase58 = await utils.addressUtils.deriveAddress(argon2Fnc, pubKeyHex);
         if (!addressBase58) { throw new Error('Failed to derive address'); }
 
         if (addressBase58.substring(0, 1) !== desiredPrefix) { return false; }
 
         utils.addressUtils.conformityCheck(addressBase58);
-        await utils.addressUtils.securityCheck(addressBase58, keyPair.pubKeyHex);
+        await utils.addressUtils.securityCheck(addressBase58, pubKeyHex);
 
-        return new Account(keyPair.pubKeyHex, keyPair.privKeyHex, addressBase58);
+        return addressBase58;
     }
     // PUBLIC
-    async loadOrCreateAccounts(params) {
+    async loadOrCreateAccounts(params) { // DEPRECATED
         if (params === undefined) {
             console.warn('No params provided, using default dev params to derive accounts');
             params = utils.devParams;

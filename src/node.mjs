@@ -530,7 +530,7 @@ export class Node {
         try {
             await this.memPool.pushTransaction(this.utxoCache, transaction);
             await this.p2pBroadcast('new_transaction', transaction);
-            console.log(`Tx ${transaction.id} pushed in mempool`);
+            //console.log(`Tx ${transaction.id} pushed in mempool`);
             const consumedUTXOs = transaction.inputs;
             return { broadcasted: true, pushedInLocalMempool: true, consumedUTXOs, error: null };
         } catch (error) {

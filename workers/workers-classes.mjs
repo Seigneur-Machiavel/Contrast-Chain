@@ -97,3 +97,74 @@ export class ValidationWorker_v2 {
         });
     }
 }
+
+export class AccountDerivationWorker {
+    constructor (id = 0, workerPath = '../workers/account-worker-nodejs.mjs') {
+        this.id = id;
+        this.state = 'idle';
+
+        /** @type {Worker} worker */
+        this.worker = utils.newWorker(workerPath);
+        
+        
+        /** @type {Promise<{ isValid: boolean, seedModifierHex: string, pubKeyHex: string, privKeyHex: string, addressBase58: string }>} */
+        this.promise = null;
+    }
+    derivationUntilValidAccount(seedModifierStart, maxIterations, masterHex, desiredPrefix) {
+        this.state = 'working';
+
+        this.worker.removeAllListeners();
+        this.worker.on('exit', (code) => { console.log(`DerivationWorker ${this.id} stopped with exit code ${code}`); });
+        this.worker.on('close', () => { console.log('DerivationWorker ${this.id} closed'); });
+        //this.promise = new Promise((resolve, reject) => {
+        const promise = new Promise((resolve, reject) => {
+            this.worker.postMessage({
+                id: this.id,
+                type: 'derivationUntilValidAccount',
+                seedModifierStart,
+                maxIterations,
+                masterHex,
+                desiredPrefix
+            });
+            this.worker.on('message', (message) => {
+            //this.worker.onmessage = (message) => {
+                this.state = 'idle';
+                if (message.id !== this.id) { return; }
+                if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
+
+                //response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', error: false };
+                const result = {
+                    isValid: message.isValid,
+                    seedModifierHex: message.seedModifierHex,
+                    pubKeyHex: message.pubKeyHex,
+                    privKeyHex: message.privKeyHex,
+                    addressBase58: message.addressBase58,
+                    iterations: message.iterations
+                };
+
+                resolve(result);
+            });
+            
+        });
+        return promise;
+    }
+    abortOperation() {
+        if (this.state === 'idle') { return; }
+        this.worker.postMessage({ type: 'abortOperation' });
+    }
+    terminateAsync() {
+        //console.info(`DerivationWorker ${this.id} terminating...`);
+        this.worker.postMessage({ type: 'terminate', id: this.id });
+        return new Promise((resolve, reject) => {
+            this.worker.on('message', (message) => {
+                if (message.id !== this.id) { return; }
+                if (message.error) { reject(message.error); }
+                resolve();
+            });
+            this.worker.on('exit', (code) => {
+                console.log(`DerivationWorker ${this.id} stopped with exit code ${code}`);
+                resolve();
+            });
+        });
+    }
+}
