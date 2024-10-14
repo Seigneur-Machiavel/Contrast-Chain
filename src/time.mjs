@@ -15,10 +15,14 @@ class TimeSynchronizer {
         this.roundInterval = options.roundInterval || 60_000; // 1 minute
         this.retryAttempts = options.retryAttempts || 5;
         this.retryDelay = options.retryDelay || 5000; // 5 seconds delay between retries
+        this.autoStart = options.autoStart !== undefined ? options.autoStart : true; // Add this line
 
         this.lastSyncedTime = null;
         this.offset = 0; // Time offset between system time and NTP time
-        this.#startSyncLoop();
+
+        if (this.autoStart) {
+            this.#startSyncLoop(); // Start the sync loop only if autoStart is true
+        }
     }
 
     getCurrentNtpServer() {
@@ -51,6 +55,7 @@ class TimeSynchronizer {
             await this.syncTimeWithRetry(); // Re-sync every syncInterval with retry
         }
     }
+    
     async syncTimeWithNTP() {
         console.log(`Syncing time with NTP server: ${this.getCurrentNtpServer()}`);
         return new Promise((resolve, reject) => {
