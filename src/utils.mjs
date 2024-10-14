@@ -113,6 +113,7 @@ const MINING_PARAMS = {
     blocksBeforeAdjustment: 30, // ~120sec * 30 = ~3600 sec = ~1 hour
     thresholdPerDiffIncrement: 3.2, // meaning 3.4% threshold for 1 diff point
     maxDiffIncrementPerAdjustment: 32, // 32 diff points = 100% of diff
+    diffAdjustPerLegitimacy: 16, // 16 diff points = 50% of diff
     maxTimeDifferenceAdjustment: 128, // in difficutly points, affect max penalty, but max bonus is infinite
 };
 
@@ -2011,7 +2012,8 @@ const mining = {
         const differenceRatio = (timestamp - posTimestamp) / SETTINGS.targetBlockTime;
         const timeDiffAdjustment = MINING_PARAMS.maxTimeDifferenceAdjustment - Math.round(differenceRatio * MINING_PARAMS.maxTimeDifferenceAdjustment);
         
-        const finalDifficulty = Math.max(difficulty + timeDiffAdjustment + legitimacy, 1); // cap at 1 minimum
+        const legitimacyAdjustment = legitimacy * MINING_PARAMS.diffAdjustPerLegitimacy;
+        const finalDifficulty = Math.max(difficulty + timeDiffAdjustment + legitimacyAdjustment, 1); // cap at 1 minimum
 
         return { difficulty, timeDiffAdjustment, legitimacy, finalDifficulty };
     },
