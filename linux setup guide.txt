@@ -14,14 +14,18 @@ NAVIGATE TO PROJECT FOLDER AND INSTALL DEPENDENCIES:
 cd Contrast-Chain && npm i
 
 CREATE BLOCKCHAIN FOLDER:
-mkdir -p nodes-data/W8tPnfZiU2GLSLBQgRS6/blockchain
+mkdir -p nodes-data/W8tPnfZiU2GLSLBQgRS6/blockchain // USELESS ???
 
 TEST (choose one option):
 node run/pureObserver.mjs
 node run/dashboard.mjs
 node run/runMultiNodeWithDashboard.mjs
+node test_local
 
 RUN (choose one option):
 nohup node run/pureObserver.mjs > output.log 2>&1 &
 nohup node run/dashboard.mjs > output.log 2>&1 &
 nohup node run/runMultiNodeWithDashboard.mjs > output.log 2>&1 &
+
+IF YOU WANT TO DELETE CONTRAST REPO FOLDER:
+rm -rf -r Contrast-Chain

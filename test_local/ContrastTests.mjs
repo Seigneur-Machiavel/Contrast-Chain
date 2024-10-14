@@ -27,7 +27,7 @@ const testParams = {
     txsSeqs: {
         userSendToAllOthers: { active: true, start: 10, end: 100000, interval: 3 },
         stakeVss: { active: true, start: 100, end: 120, interval: 1 },
-        simpleUserToUser: { active: true, start: 2, end: 100000, interval: 2 },
+        simpleUserToUser: { active: false, start: 2, end: 100000, interval: 2 },
         userSendToNextUser: { active: true, start: 20, end: 100000, interval: 2 }
     },
 }
@@ -92,17 +92,17 @@ async function userSendToNextUser(node, accounts) {
 * @param {number} senderAccountIndex
  */
 async function userSendToAllOthers(node, accounts, senderAccountIndex = 0) {
+    //const startTime = Date.now();
+    const senderAccount = accounts[senderAccountIndex];
+    const transfers = [];
+    for (let i = 0; i < accounts.length; i++) {
+        if (i === senderAccountIndex) { continue; }
+        // from 5_000 to 10_000
+        const amount = Math.floor(Math.random() * 5_000 + 5_000);
+        const transfer = { recipientAddress: accounts[i].address, amount };
+        transfers.push(transfer);
+    }
     try {
-        //const startTime = Date.now();
-        const senderAccount = accounts[senderAccountIndex];
-        const transfers = [];
-        for (let i = 0; i < accounts.length; i++) {
-            if (i === senderAccountIndex) { continue; }
-            // from 5_000 to 10_000
-            const amount = Math.floor(Math.random() * 5_000 + 5_000);
-            const transfer = { recipientAddress: accounts[i].address, amount };
-            transfers.push(transfer);
-        }
         const transaction = await contrast.Transaction_Builder.createTransfer(senderAccount, transfers);
         const signedTx = await senderAccount.signTransaction(transaction);
 
@@ -231,7 +231,7 @@ async function nodeSpecificTest(accounts) {
     //const listenAddress = () => nodesPromises.length === 0 ? initListenAddress : '/ip4/0.0.0.0/tcp/0/ws'
 
     //#region init nodes
-    const factory = new NodeFactory();
+    const factory = new NodeFactory(port);
     const nodesPromises = [];
     for (let i = 0; i < testParams.nbOfMiners; i++) {
         nodesPromises.push(initMinerNode(factory, accounts[i], listenAddress()));

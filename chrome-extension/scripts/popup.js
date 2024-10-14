@@ -953,6 +953,15 @@ document.addEventListener('click', async function(e) {
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');
 
+            eHTML.accountsWrap.innerHTML = '';
+            const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
+            for (let i = 0; i < nbOfAccounts; i++) {
+                const account = activeWallet.accounts[activeAddressPrefix][i];
+                const accountName = `Account ${i + 1}`;
+                const accountLabel = createAccountLabel(accountName, account.address, account.balance);
+                eHTML.accountsWrap.appendChild(accountLabel);
+            }
+
             const lastAccountAddress = activeWallet.accounts[activeAddressPrefix][nbOfExistingAccounts].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
             chrome.runtime.sendMessage({action: "subscribe_balance_update", address: lastAccountAddress });

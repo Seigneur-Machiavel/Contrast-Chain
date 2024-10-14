@@ -237,8 +237,8 @@ const addressUtils = {
 };
 
 let workerId = undefined;
+let isWorking = false;
 let abortOperation = false;
-//console.log('Worker started');
 this.onmessage = async function(e) {
     //console.log('Worker received task:', e);
     const task = e.data;
@@ -247,6 +247,8 @@ this.onmessage = async function(e) {
 	let response = {};
     switch (task.type) {
         case 'derivationUntilValidAccount':
+            abortOperation = false;
+            isWorking = true;
             response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', iterations: 0, error: false };
             const seedModifierStart = task.seedModifierStart;
             const maxIterations = task.maxIterations;
@@ -277,16 +279,18 @@ this.onmessage = async function(e) {
             }
             break;
         case 'abortOperation':
+            if (!isWorking) { return; }
             abortOperation = true;
-            break;
+            return;
 		case 'terminate':
 			parentPort.close(); // close the worker
-			break;
+			return;
         default:
 			response.error = 'Invalid task type';
             break;
     }
 
+    isWorking = false;
     this.postMessage(response);
 }
 

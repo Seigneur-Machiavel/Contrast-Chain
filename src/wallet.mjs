@@ -162,7 +162,8 @@ avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
 
         // abort the running workers
         for (const worker of this.workers) { worker.abortOperation(); }
-        await Promise.all(Object.values(promises));
+        //await Promise.all(Object.values(promises));
+        for (const promise of Object.values(promises)) { await promise; }
         
         let iterations = 0;
         for (const promise of Object.values(promises)) {

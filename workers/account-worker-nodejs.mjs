@@ -4,6 +4,7 @@ import { addressUtils } from '../src/utils.mjs';
 
 // WORKER SIDE
 let workerId = undefined;
+let isWorking = false;
 let abortOperation = false;
 parentPort.on('message', async (task) => {
     const id = task.id;
@@ -11,6 +12,8 @@ parentPort.on('message', async (task) => {
 	let response = {};
     switch (task.type) {
         case 'derivationUntilValidAccount':
+            abortOperation = false;
+            isWorking = true;
             response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', iterations: 0, error: false };
             const seedModifierStart = task.seedModifierStart;
             const maxIterations = task.maxIterations;
@@ -46,17 +49,19 @@ parentPort.on('message', async (task) => {
             }
             break;
         case 'abortOperation':
+            if (!isWorking) { return; }
             abortOperation = true;
-            break;
+            return;
 		case 'terminate':
             //console.log(`[VALIDATION_WORKER ${workerId}] Terminating...`);
 			parentPort.close(); // close the worker
-			break;
+			return;
         default:
 			response.error = 'Invalid task type';
             break;
     }
 
+    isWorking = false;
 	parentPort.postMessage(response);
 });
 
