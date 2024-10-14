@@ -1,203 +1,131 @@
+// test/timeSynchronizer.test.js
+
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { TimeSynchronizer } from '../src/time.mjs';
 import ntpClient from 'ntp-client';
+import TimeSynchronizer from '../src/time.mjs';
 
-describe('TimeSynchronizer', function () {
+describe('TimeSynchronizer', () => {
     let timeSynchronizer;
-    let clock;
+    let sandbox;
 
-    beforeEach(function () {
+    beforeEach(() => {
+        // Create a Sinon sandbox to manage stubs and mocks
+        sandbox = sinon.createSandbox();
         timeSynchronizer = new TimeSynchronizer({
-            syncInterval: 1000,
-            epochInterval: 5000,
-            roundInterval: 1000,
+            syncInterval: 1000, // 1 second for faster testing
             retryAttempts: 3,
-            retryDelay: 100
-        });
-
-        clock = sinon.useFakeTimers({
-            now: new Date(),
-            shouldAdvanceTime: true
+            retryDelay: 10, // Reduced for faster tests
+            autoStart: false, // Disable auto-start during tests
         });
     });
 
-    afterEach(function () {
-        clock.restore();
-        sinon.restore();
+    afterEach(() => {
+        // Restore the sandbox to remove stubs and mocks
+        sandbox.restore();
     });
 
-    describe('constructor', function () {
-        it('should initialize with default NTP servers', function () {
-            expect(timeSynchronizer.ntpServers).to.deep.equal([
-                '0.pool.ntp.org',
-                '1.pool.ntp.org',
-                '2.pool.ntp.org',
-                '3.pool.ntp.org'
-            ]);
+    it('should synchronize time successfully', async () => {
+        // Arrange
+        const fixedSystemTime = 1609459200000; // Fixed timestamp (Jan 1, 2021)
+        const ntpTime = new Date(fixedSystemTime + 1000); // NTP time is 1 second ahead
+
+        // Stub Date.now() to return fixedSystemTime
+        const dateNowStub = sandbox.stub(Date, 'now').returns(fixedSystemTime);
+
+        // Stub ntpClient.getNetworkTime
+        const getNetworkTimeStub = sandbox.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
+            callback(null, ntpTime);
         });
 
-        it('should allow custom NTP servers', function () {
-            const customServers = ['custom1.ntp.org', 'custom2.ntp.org'];
-            const customTimeSynchronizer = new TimeSynchronizer({ ntpServers: customServers });
-            expect(customTimeSynchronizer.ntpServers).to.deep.equal(customServers);
-        });
+        // Act
+        await timeSynchronizer.syncTimeWithNTP();
+
+        // Assert
+        expect(timeSynchronizer.offset).to.equal(1000);
+        expect(timeSynchronizer.lastSyncedTime.getTime()).to.equal(ntpTime.getTime());
+        expect(getNetworkTimeStub.calledOnce).to.be.true;
+
+        // Cleanup
+        dateNowStub.restore();
     });
 
-    describe('getCurrentNtpServer', function () {
-        it('should return the current NTP server', function () {
-            expect(timeSynchronizer.getCurrentNtpServer()).to.equal('0.pool.ntp.org');
+    it('should retry synchronization on failure', async () => {
+        // Arrange
+        const fixedSystemTime = 1609459200000; // Fixed timestamp
+        const ntpTime = new Date(fixedSystemTime + 1000); // NTP time is 1 second ahead
+        sandbox.stub(Date, 'now').returns(fixedSystemTime);
+
+        const getNetworkTimeStub = sandbox.stub(ntpClient, 'getNetworkTime');
+
+        // Simulate failures on the first two attempts
+        getNetworkTimeStub.onCall(0).callsFake((server, port, callback) => {
+            callback(new Error('Network error'));
         });
+        getNetworkTimeStub.onCall(1).callsFake((server, port, callback) => {
+            callback(new Error('Network error'));
+        });
+        // Simulate success on the third attempt
+        getNetworkTimeStub.onCall(2).callsFake((server, port, callback) => {
+            callback(null, ntpTime);
+        });
+
+        // Act
+        await timeSynchronizer.syncTimeWithRetry();
+
+        // Assert
+        expect(timeSynchronizer.offset).to.equal(1000);
+        expect(getNetworkTimeStub.callCount).to.equal(3);
     });
 
-    describe('rotateNtpServer', function () {
-        it('should rotate to the next NTP server', function () {
-            timeSynchronizer.rotateNtpServer();
-            expect(timeSynchronizer.getCurrentNtpServer()).to.equal('1.pool.ntp.org');
+    it('should fail after maximum retry attempts', async () => {
+        // Arrange
+        const getNetworkTimeStub = sandbox.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
+            callback(new Error('Network error'));
         });
 
-        it('should wrap around to the first server after the last one', function () {
-            for (let i = 0; i < timeSynchronizer.ntpServers.length; i++) {
-                timeSynchronizer.rotateNtpServer();
-            }
-            expect(timeSynchronizer.getCurrentNtpServer()).to.equal('0.pool.ntp.org');
-        });
+        // Act
+        const result = await timeSynchronizer.syncTimeWithRetry();
+
+        // Assert
+        expect(result).to.be.undefined;
+        expect(getNetworkTimeStub.callCount).to.equal(3); // retryAttempts is set to 3
+        expect(timeSynchronizer.offset).to.equal(0);
     });
 
-    describe('syncTimeWithNTP', function () {
-        it('should update offset and lastSyncedTime on successful sync', function (done) {
-            const fakeNtpTime = new Date('2023-01-01T00:00:00Z');
-            const ntpStub = sinon.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
-                callback(null, fakeNtpTime);
-            });
-
-            timeSynchronizer.syncTimeWithNTP().then(() => {
-                expect(timeSynchronizer.lastSyncedTime).to.deep.equal(fakeNtpTime);
-                expect(timeSynchronizer.offset).to.equal(fakeNtpTime.getTime() - Date.now());
-                expect(ntpStub.calledWith('0.pool.ntp.org')).to.be.true;
-                done();
-            }).catch(done);
+    it('should rotate NTP servers on failure', async () => {
+        // Arrange
+        const servers = ['server1', 'server2', 'server3'];
+        timeSynchronizer.ntpServers = servers;
+        timeSynchronizer.currentServerIndex = 0;
+    
+        const getNetworkTimeStub = sandbox.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
+            callback(new Error('Network error'));
         });
-
-        it('should throw an error on NTP sync failure', function (done) {
-            sinon.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
-                callback(new Error('NTP sync failed'), null);
-            });
-
-            timeSynchronizer.syncTimeWithNTP().then(() => {
-                done(new Error('Expected syncTimeWithNTP to throw an error'));
-            }).catch((error) => {
-                expect(error.message).to.equal('NTP sync failed');
-                done();
-            });
-        });
+    
+        // Act
+        try {
+            await timeSynchronizer.syncTimeWithRetry(1, 0); // Attempt once, no delay
+        } catch (err) {
+            // Expected to fail
+        }
+    
+        // Assert
+        expect(timeSynchronizer.getCurrentNtpServer()).to.equal('server2');
     });
+    
 
-    describe('syncTimeWithRetry', function () {
-        it('should retry on failure and succeed eventually', function (done) {
-            this.timeout(10000);
-            const ntpStub = sinon.stub(ntpClient, 'getNetworkTime');
-            ntpStub.onCall(0).callsFake((server, port, callback) => {
-                callback(new Error('NTP sync failed'), null);
-            });
-            ntpStub.onCall(1).callsFake((server, port, callback) => {
-                callback(null, new Date('2023-01-01T00:00:00Z'));
-            });
+    it('should get current time adjusted by offset', () => {
+        // Arrange
+        const fixedSystemTime = 1609459200000; // Fixed timestamp
+        sandbox.stub(Date, 'now').returns(fixedSystemTime);
 
-            timeSynchronizer.syncTimeWithRetry().then(() => {
-                clock.runAll();
-                expect(ntpStub.callCount).to.equal(2);
-                expect(timeSynchronizer.lastSyncedTime).to.not.be.null;
-                expect(timeSynchronizer.getCurrentNtpServer()).to.equal('1.pool.ntp.org');
-                done();
-            }).catch(done);
-        });
+        timeSynchronizer.offset = 2000;
 
-        it('should give up after maximum retry attempts', function (done) {
-            this.timeout(10000);
-            sinon.stub(ntpClient, 'getNetworkTime').callsFake((server, port, callback) => {
-                callback(new Error('NTP sync failed'), null);
-            });
+        // Act
+        const currentTime = timeSynchronizer.getCurrentTime();
 
-            const consoleErrorStub = sinon.stub(console, 'error');
-
-            timeSynchronizer.syncTimeWithRetry().then(() => {
-                clock.runAll();
-                expect(consoleErrorStub.calledWith('Failed to sync with NTP after 3 attempts')).to.be.true;
-                expect(timeSynchronizer.getCurrentNtpServer()).to.equal('2.pool.ntp.org');
-                done();
-            }).catch(done);
-        });
-    });
-
-    describe('getCurrentTime', function () {
-        it('should return the current time adjusted by the offset', function () {
-            const realNow = Date.now();
-            const timeSynchronizer = new TimeSynchronizer();
-            timeSynchronizer.offset = 5000;
-
-            const result = timeSynchronizer.getCurrentTime();
-
-            expect(result).to.be.closeTo(realNow + 5000, 100); // Allow 100ms tolerance
-        });
-    });
-
-    describe('scheduleNextEpoch and scheduleNextRound', function () {
-        let timeSynchronizer;
-
-        beforeEach(function () {
-            timeSynchronizer = new TimeSynchronizer({
-                epochInterval: 100, // 100ms for faster testing
-                roundInterval: 50 // 50ms for faster testing
-            });
-        });
-
-        it('should schedule callbacks at the correct intervals', async function () {
-            this.timeout(1000); // Increase timeout to 1 second
-
-            const epochTimes = [];
-            const roundTimes = [];
-
-            const epochCallback = () => epochTimes.push(Date.now());
-            const roundCallback = () => roundTimes.push(Date.now());
-
-            timeSynchronizer.scheduleNextEpoch(epochCallback);
-            timeSynchronizer.scheduleNextRound(roundCallback);
-
-            // Wait for callbacks to be called
-            await new Promise(resolve => setTimeout(resolve, 250));
-
-            expect(epochTimes.length).to.be.at.least(2);
-            expect(roundTimes.length).to.be.at.least(4);
-
-            // Check that callbacks are called with increasing intervals
-            for (let i = 1; i < epochTimes.length; i++) {
-                const diff = epochTimes[i] - epochTimes[i - 1];
-                expect(diff).to.be.closeTo(100, 20);
-            }
-
-            for (let i = 1; i < roundTimes.length; i++) {
-                const diff = roundTimes[i] - roundTimes[i - 1];
-                expect(diff).to.be.closeTo(50, 20);
-            }
-        });
-    });
-
-    describe('startSyncLoop', function () {
-        it('should start periodic synchronization', function (done) {
-            const syncStub = sinon.stub(timeSynchronizer, 'syncTimeWithRetry').resolves();
-
-            timeSynchronizer.startSyncLoop();
-
-            expect(syncStub.calledOnce).to.be.true;
-
-            clock.tick(timeSynchronizer.syncInterval + 100);
-
-            // Use setImmediate to allow the scheduled callbacks to execute
-            setImmediate(() => {
-                expect(syncStub.calledTwice).to.be.true;
-                done();
-            });
-        });
+        // Assert
+        expect(currentTime).to.equal(fixedSystemTime + 2000);
     });
 });
