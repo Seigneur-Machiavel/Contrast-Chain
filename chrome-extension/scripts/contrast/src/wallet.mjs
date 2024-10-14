@@ -117,11 +117,11 @@ export class Wallet {
         if (this.accounts[addressPrefix].length !== nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
         
         const endTime = performance.now();
-        const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts);
-        const avgIterations = derivedAccounts.length > 0 ? Math.round(iterationsPerAccount / derivedAccounts.length) : 0;
-        console.info(`[WALLET] ${derivedAccounts.length} accounts derived with prefix: ${addressPrefix}
+        const derivedAccounts = this.accounts[addressPrefix].slice(nbOfExistingAccounts).length;
+        const avgIterations = derivedAccounts > 0 ? Math.round(iterationsPerAccount / derivedAccounts) : 0;
+        console.info(`[WALLET] ${derivedAccounts} accounts derived with prefix: ${addressPrefix}
 avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
-        return { derivedAccounts, avgIterations: avgIterations };
+        return { derivedAccounts: this.accounts[addressPrefix], avgIterations: avgIterations };
     }
     async tryDerivationUntilValidAccountUsingWorkers(accountIndex = 0, desiredPrefix = "C") {
         /** @type {AddressTypeInfo} */

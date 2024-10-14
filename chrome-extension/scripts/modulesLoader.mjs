@@ -1,10 +1,10 @@
-import utils from '../scripts/contrast/utils.mjs';
+import utils from './contrast/src/utils.mjs';
 window.utils = utils;
 
-import { Wallet } from '../scripts/contrast/wallet.mjs';
+import { Wallet } from './contrast/src/wallet.mjs';
 window.Wallet = Wallet;
 
-import { Transaction, Transaction_Builder } from './contrast/transaction.mjs';
+import { Transaction, Transaction_Builder } from './contrast/src/transaction.mjs';
 window.Transaction = Transaction;
 window.Transaction_Builder = Transaction_Builder;
 

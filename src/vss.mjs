@@ -59,7 +59,6 @@ export class spectrumFunctions {
      * @param {number} maxAttempts
      */
     static async hashToIntWithRejection(blockHash, lotteryRound = 0, maxRange = 1000000, maxAttempts = 1000) {
-
         let nonce = 0;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             // Generate a hash including the nonce to get different results if needed
@@ -97,52 +96,41 @@ export class Vss {
         this.maxSupply = maxSupply; // Store the maxSupply passed in the constructor
     }
 
-    /**
-     * @param {UTXO} utxo
-     * @param {number | undefined} upperBound
-     */
+    /** @param {UTXO} utxo @param {number | undefined} upperBound */
     newStake(utxo, upperBound) {
         const address = utxo.address;
         const anchor = utxo.anchor;
         const amount = utxo.amount;
         
-        if (upperBound) {
-            const lowerBound = upperBound - amount;
-            const existingUpperBounds = Object.keys(this.spectrum).map(key => parseInt(key));
-            existingUpperBounds.sort((a, b) => a - b);
-        
-            for (let i = 0; i < existingUpperBounds.length; i++) {
-                const existingUpperBound = existingUpperBounds[i];
-                const existingLowerBound = i === 0 ? 0 : existingUpperBounds[i - 1];
-            
-                if (!(upperBound <= existingLowerBound || lowerBound >= existingUpperBound)) {
-                    throw new Error('VSS: Overlapping stake ranges.');
-                }
-            }
-            
-            if (upperBound > this.maxSupply) {
-                throw new Error('VSS: Max supply exceeded.');
-            }
-            
-            this.spectrum[upperBound] = StakeReference(address, anchor, amount);
-        } else {
+        if (!upperBound) {
             const lastUpperBound = spectrumFunctions.getHighestUpperBound(this.spectrum);
-
             if (lastUpperBound + amount > this.maxSupply) { throw new Error('VSS: Max supply reached.'); }
-
             this.spectrum[lastUpperBound + amount] = StakeReference(address, anchor, amount);
+            return;
         }
-    }
+
+        const lowerBound = upperBound - amount;
+        const existingUpperBounds = Object.keys(this.spectrum).map(key => parseInt(key));
+        existingUpperBounds.sort((a, b) => a - b);
     
+        for (let i = 0; i < existingUpperBounds.length; i++) {
+            const existingUpperBound = existingUpperBounds[i];
+            const existingLowerBound = i === 0 ? 0 : existingUpperBounds[i - 1];
+        
+            if (!(upperBound <= existingLowerBound || lowerBound >= existingUpperBound)) {
+                throw new Error('VSS: Overlapping stake ranges.');
+            }
+        }
+        
+        if (upperBound > this.maxSupply) { throw new Error('VSS: Max supply exceeded.'); }
+        
+        this.spectrum[upperBound] = StakeReference(address, anchor, amount);
+    }
     /** @param {UTXO[]} utxos */
     newStakes(utxos) {
         for (const utxo of utxos) { this.newStake(utxo); }
     }
-
-    /**
-     * @param {spectrum} spectrum
-     * @param {string} blockHash
-     */
+    /** @param {spectrum} spectrum @param {string} blockHash */
     async calculateRoundLegitimacies(blockHash, maxResultingArrayLength = 100) {
         if (blockHash === this.currentRoundHash) { return; } // already calculated
 
@@ -169,13 +157,11 @@ export class Vss {
         this.legitimacies = roundLegitimacies;
         this.currentRoundHash = blockHash;
     }
-    
     /** @param {string} address */
     getAddressLegitimacy(address) {
         const legitimacy = this.legitimacies.findIndex(stakeReference => stakeReference.address === address);
         return legitimacy !== -1 ? legitimacy : this.legitimacies.length; // if not found, return last index + 1
     }
-
     getAddressStakesInfo(address) {
         const references = this.legitimacies.filter(stakeReference => stakeReference.address === address);
         return references;

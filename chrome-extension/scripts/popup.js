@@ -4,10 +4,10 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
     const { htmlAnimations } = require("./htmlAnimations.js");
-    const { Wallet } = require("./contrast/wallet.mjs");
-    const utils = require("./contrast/utils.mjs").default;
-    const { Account } = require("./contrast/account.mjs");
-    const { Transaction, Transaction_Builder } = require("./contrast/transaction.mjs");
+    const { Wallet } = require("./contrast/src/wallet.mjs");
+    const utils = require("./contrast/src/utils.mjs").default;
+    const { Account } = require("./contrast/src/account.mjs");
+    const { Transaction, Transaction_Builder } = require("./contrast/src/transaction.mjs");
 }
 
 /**
