@@ -117,8 +117,8 @@ export class DashboardWsApp {
         const usablePrivKey = privateKey || defaultPrivKey;
         if (!this.node && usablePrivKey) {
             /** @type {Node} */
-            const multiNode = await this.initMultiNode(usablePrivKey);
-            this.factory.nodes.set(multiNode.id, multiNode);
+            await this.initMultiNode(usablePrivKey);
+            //this.factory.nodes.set(multiNode.id, multiNode);
         }
 
         if (!this.node) { console.info("Not active Node and No private keys provided, can't auto init node..."); return; }
