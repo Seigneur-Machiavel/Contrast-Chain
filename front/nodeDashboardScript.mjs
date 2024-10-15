@@ -126,6 +126,12 @@ const eHTML = {
             minerAddressInput: document.getElementById('minerAddressInputWrap').getElementsByTagName('input')[0],
             confirmBtn: document.getElementById('minerAddressInputWrap').getElementsByTagName('button')[0],
         },
+        resetInfoModal: {
+            wrap: document.getElementById('resetInfoModalWrap'),
+            modal: document.getElementById('resetInfoModalWrap').getElementsByClassName('modal')[0],
+            confirmBtn: document.getElementById('confirmResetBtn'),
+            cancelBtn: document.getElementById('cancelResetBtn'),
+        }
     },
 
     validatorAddress: document.getElementById('validatorAddress'),
@@ -161,12 +167,7 @@ const eHTML = {
     toggleAdminPanelBtn : document.getElementById('toggleAdminPanel'),
 
     resetInfoBtn: document.getElementById('resetInfo'),
-    resetInfoModal: {
-        wrap: document.getElementById('resetInfoModalWrap'),
-        modal: document.getElementById('resetInfoModalWrap').getElementsByClassName('modal')[0],
-        confirmBtn: document.getElementById('confirmResetBtn'),
-        cancelBtn: document.getElementById('cancelResetBtn'),
-    },
+
 }
 
 function displayNodeInfo(data) {
@@ -326,12 +327,12 @@ eHTML.resetInfoBtn.addEventListener('click', () => {
     openModal('resetInfo');
 });
 
-eHTML.resetInfoModal.confirmBtn.addEventListener('click', () => {
+eHTML.modals.resetInfoModal.confirmBtn.addEventListener('click', () => {
     performResetInfo(); // Function to perform the reset action
     closeModal();
 });
 
-eHTML.resetInfoModal.cancelBtn.addEventListener('click', () => {
+eHTML.modals.resetInfoModal.cancelBtn.addEventListener('click', () => {
     closeModal();
 });
 
@@ -367,7 +368,7 @@ function openModal(modalName = 'setup') {
         easing: 'easeOutQuad',
         complete: () => {
             if (modalName === 'setup') { eHTML.modals.setup.privateKeyInput.focus(); }
-            if (modalName === 'resetInfo') { eHTML.resetInfoModal.confirmBtn.focus(); }
+            if (modalName === 'resetInfo') { eHTML.modals.resetInfoModal.confirmBtn.focus(); }
         }
     });
     anime({
