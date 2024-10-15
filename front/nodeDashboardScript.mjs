@@ -106,7 +106,8 @@ const eHTML = {
 			setupPrivateKeyForm: document.getElementById('setupPrivateKeyForm'),
 			privateKeyInputWrap: document.getElementById('privateKeyInputWrap'),
             privateKeyInput: document.getElementById('privateKeyInputWrap').getElementsByTagName('input')[0],
-            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[0],
+            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[1],
+            togglePrivateKeyBtn: document.getElementById('togglePrivateKey'),
 			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
 		},
         validatorAddress: {
@@ -150,7 +151,22 @@ const eHTML = {
         input: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('input')[0],
         decrementBtn: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('button')[0],
         incrementBtn: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('button')[1],
-    }
+    },
+    peersConnected: document.getElementById('peersConnected'),
+    lastBlockInfo: document.getElementById('lastBlockInfo'),
+    txInMempool: document.getElementById('txInMempool'),
+    averageBlockTime: document.getElementById('averageBlockTime'),
+    adminPanelButtons: document.querySelector('#topBar .btnWrap'),
+    resetInfoBtn: document.getElementById('resetInfo'),
+    toggleAdminPanelBtn : document.getElementById('toggleAdminPanel'),
+
+    resetInfoBtn: document.getElementById('resetInfo'),
+    resetInfoModal: {
+        wrap: document.getElementById('resetInfoModalWrap'),
+        modal: document.getElementById('resetInfoModalWrap').getElementsByClassName('modal')[0],
+        confirmBtn: document.getElementById('confirmResetBtn'),
+        cancelBtn: document.getElementById('cancelResetBtn'),
+    },
 }
 
 function displayNodeInfo(data) {
@@ -160,25 +176,34 @@ function displayNodeInfo(data) {
     const validatorBalance = data.validatorBalance ? data.validatorBalance : 0;
     const minerBalance = data.minerBalance ? data.minerBalance : 0;
 
-    eHTML.roles.textContent = data.roles.join(' - ')
+    // Update roles
+    eHTML.roles.textContent = data.roles.join(' - ');
 
-    eHTML.validatorAddress.textContent = data.validatorAddress ? data.validatorAddress : '', // utils.addressUtils.formatAddress(data.validatorAddress, " ");
-    eHTML.validatorRewardAddress.textContent = data.validatorRewardAddress ? data.validatorRewardAddress : '', // utils.addressUtils.formatAddress(data.validatorRewardAddress, " ");
+    // Update Validator information
+    eHTML.validatorAddress.textContent = data.validatorAddress ? data.validatorAddress : ''; 
+    eHTML.validatorRewardAddress.textContent = data.validatorRewardAddress ? data.validatorRewardAddress : '';
     eHTML.validatorBalance.textContent = utils.convert.number.formatNumberAsCurrency(validatorBalance);
     eHTML.validatorHeight.textContent = data.currentHeight ? data.currentHeight : 0;
     eHTML.validatorStaked.textContent = utils.convert.number.formatNumberAsCurrency(validatorStaked);
 
-    eHTML.minerAddress.textContent = data.minerAddress ? data.minerAddress : '',
+    // Update Miner information
+    eHTML.minerAddress.textContent = data.minerAddress ? data.minerAddress : '';
     eHTML.minerBalance.textContent = utils.convert.number.formatNumberAsCurrency(minerBalance);
     eHTML.minerHeight.textContent = data.highestBlockIndex ? data.highestBlockIndex : 0;
     eHTML.minerThreads.input.value = data.minerThreads ? data.minerThreads : 1;
     eHTML.hashRate.textContent = data.minerHashRate ? data.minerHashRate.toFixed(2) : 0;
+
+    // Update Global Information
+    eHTML.peersConnected.textContent = data.peersConnected ? data.peersConnected : 0;
+    eHTML.lastBlockInfo.textContent = data.lastBlockInfo ? data.lastBlockInfo : 'No Block Info';
+    eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
+    eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
 }
+
 //#region - EVENT LISTENERS
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
 eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
 eHTML.RevalidateBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId })));
-eHTML.syncClock.addEventListener('click', () => ws.send(JSON.stringify({ type: 'sync_clock', data: Date.now() })));
 eHTML.modals.wrap.addEventListener('click', (event) => {
 	if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
 });
@@ -187,6 +212,15 @@ eHTML.modals.setup.confirmBtn.addEventListener('click', () => {
     console.log('privateKeyInput value:', eHTML.modals.setup.privateKeyInput.value);
     ws.send(JSON.stringify({ type: 'set_private_key', data: eHTML.modals.setup.privateKeyInput.value }));
     closeModal();
+});
+eHTML.modals.setup.togglePrivateKeyBtn.addEventListener('click', () => {
+    if (eHTML.modals.setup.privateKeyInput.type === 'password') {
+        eHTML.modals.setup.privateKeyInput.type = 'text';
+        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Hide';
+    } else {
+        eHTML.modals.setup.privateKeyInput.type = 'password';
+        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Show';
+    }
 });
 eHTML.validatorAddressEditBtn.addEventListener('click', () => {
     console.log('validatorAddressEditBtn clicked');
@@ -209,10 +243,28 @@ eHTML.modals.minerAddress.confirmBtn.addEventListener('click', () => {
     closeModal();
 });
 document.addEventListener('submit', function(event) { event.preventDefault(); });
-eHTML.stakeInput.input.addEventListener('input', () => {
-    formatInputValueAsCurrency(eHTML.stakeInput.input);
-    ws.send(JSON.stringify({ type: 'set_stake', data: eHTML.stakeInput.input.value }));
+document.addEventListener('input', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        console.log('amountInput input');
+        event.target.value = event.target.value.replace(/[^\d.]/g, '');
+        const nbOfDecimals = event.target.value.split('.')[1] ? event.target.value.split('.')[1].length : 0;
+        if (nbOfDecimals > 6) { event.target.value = parseFloat(event.target.value).toFixed(6); }
+    }
 });
+document.addEventListener('focusout', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        console.log('amountInput focusout');
+        if (isNaN(parseFloat(event.target.value))) { event.target.value = ''; return; }
+        event.target.value = parseFloat(event.target.value).toFixed(6);
+
+        const amountMicro = parseInt(event.target.value.replace('.',''));
+        const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
+        event.target.value = formatedValue;
+    }
+});
+
 eHTML.stakeInput.confirmBtn.addEventListener('click', async () => {
     const amountToStake = parseInt(eHTML.stakeInput.input.value.replace(",","").replace(".",""));
     const validatorAddress = eHTML.validatorAddress.textContent;
@@ -231,49 +283,102 @@ eHTML.minerThreads.input.addEventListener('change', () => {
 });
 eHTML.minerThreads.decrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, -1));
 eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, 1));
+
+eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
+
+function toggleAdminPanel() {
+    const isHidden = eHTML.adminPanelButtons.classList.contains('hidden');
+
+    if (isHidden) {
+        // Show the panel
+        console.log('toggleAdminPanelBtn clicked - Show');
+        eHTML.adminPanelButtons.classList.remove('hidden');
+        eHTML.adminPanelButtons.style.maxHeight = '0px';
+        anime({
+            targets: eHTML.adminPanelButtons,
+            maxHeight: ['0px', '200px'], // adjust as needed
+            duration: 3000,
+            easing: 'easeOutQuart',
+            begin: () => {
+                eHTML.toggleAdminPanelBtn.textContent = 'Hide Admin Panel';
+            }
+        });
+    } else {
+        // Hide the panel
+        console.log('toggleAdminPanelBtn clicked - Hide');
+        anime({
+            targets: eHTML.adminPanelButtons,
+            maxHeight: ['200px', '0px'], // adjust as needed
+            duration: 1000,
+            easing: 'easeOutQuart',
+            complete: () => {
+                eHTML.adminPanelButtons.classList.add('hidden');
+                eHTML.adminPanelButtons.style.maxHeight = '0px';
+                eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
+            }
+        });
+    }
+}
+
+eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
+
+eHTML.resetInfoBtn.addEventListener('click', () => {
+    openModal('resetInfo');
+});
+
+eHTML.resetInfoModal.confirmBtn.addEventListener('click', () => {
+    performResetInfo(); // Function to perform the reset action
+    closeModal();
+});
+
+eHTML.resetInfoModal.cancelBtn.addEventListener('click', () => {
+    closeModal();
+});
+
 //#endregion
 
 //#region - UX FUNCTIONS
 function openModal(modalName = 'setup') {
     modalOpen = true;
-	const modals = eHTML.modals;
-	if (!modals.wrap.classList.contains('fold')) { return; }
+    const modals = eHTML.modals;
+    if (!modals.wrap.classList.contains('fold')) { return; }
 
-	modals.wrap.classList.remove('hidden');
-	modals.wrap.classList.remove('fold');
+    modals.wrap.classList.remove('hidden');
+    modals.wrap.classList.remove('fold');
 
-	for (let modalKey in modals) {
-		if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
-		const modalWrap = modals[modalKey].wrap;
-		modalWrap.classList.add('hidden');
-		if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
-	}
+    for (let modalKey in modals) {
+        if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
+        const modalWrap = modals[modalKey].wrap;
+        modalWrap.classList.add('hidden');
+        if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
+    }
 
-	const modalsWrap = eHTML.modals.wrap;
-	modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
-	modalsWrap.style.opacity = 0;
-	modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
+    const modalsWrap = eHTML.modals.wrap;
+    modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
+    modalsWrap.style.opacity = 0;
+    modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
 
-	anime({
-		targets: modalsWrap,
-		//skewX: '1.2deg',
-		scaleX: 1,
-		scaleY: 1,
-		opacity: 1,
-		duration: 600,
-		easing: 'easeOutQuad',
-		complete: () => {
-			if (modalName === 'setupModalWrap') { eHTML.modals.setup.privateKeyInput.focus(); }
-		}
-	});
-	anime({
-		targets: modalsWrap,
-		clipPath: 'circle(100% at 50% 50%)',
-		delay: 200,
-		duration: 800,
-		easing: 'easeOutQuad',
-	});
+    anime({
+        targets: modalsWrap,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        duration: 600,
+        easing: 'easeOutQuad',
+        complete: () => {
+            if (modalName === 'setup') { eHTML.modals.setup.privateKeyInput.focus(); }
+            if (modalName === 'resetInfo') { eHTML.resetInfoModal.confirmBtn.focus(); }
+        }
+    });
+    anime({
+        targets: modalsWrap,
+        clipPath: 'circle(100% at 50% 50%)',
+        delay: 200,
+        duration: 800,
+        easing: 'easeOutQuad',
+    });
 }
+
 function closeModal() {
     modalOpen = false;
 	const modalsWrap = eHTML.modals.wrap;

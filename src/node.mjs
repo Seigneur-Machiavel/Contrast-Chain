@@ -83,6 +83,8 @@ export class Node {
         this.workers = [];
         this.nbOfWorkers = 16;
         this.configManager = new ConfigManager("config/config.json");
+
+        this.blockchainStats = {};
     }
 
     async start(startFromScratch = false) {
@@ -433,6 +435,7 @@ export class Node {
 
             const olderBlock = await this.blockchain.getBlockFromDiskByHeight(this.blockchain.lastBlock.index - utils.MINING_PARAMS.blocksBeforeAdjustment);
             const averageBlockTimeMS = utils.mining.calculateAverageBlockTime(this.blockchain.lastBlock, olderBlock);
+            this.blockchainStats.averageBlockTime = averageBlockTimeMS;
             const newDifficulty = utils.mining.difficultyAdjustment(this.blockchain.lastBlock, averageBlockTimeMS);
             const coinBaseReward = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock);
             blockCandidate = BlockData(this.blockchain.lastBlock.index + 1, this.blockchain.lastBlock.supply + this.blockchain.lastBlock.coinBase, coinBaseReward, newDifficulty, myLegitimacy, this.blockchain.lastBlock.hash, Txs, posTimestamp);
