@@ -149,7 +149,11 @@ const eHTML = {
         input: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('input')[0],
         decrementBtn: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('button')[0],
         incrementBtn: document.getElementById('minerThreadsIncrementalInput').getElementsByTagName('button')[1],
-    }
+    },
+    peersConnected: document.getElementById('peersConnected'),
+    lastBlockInfo: document.getElementById('lastBlockInfo'),
+    txInMempool: document.getElementById('txInMempool'),
+    averageBlockTime: document.getElementById('averageBlockTime')
 }
 
 function displayNodeInfo(data) {
@@ -159,19 +163,29 @@ function displayNodeInfo(data) {
     const validatorBalance = data.validatorBalance ? data.validatorBalance : 0;
     const minerBalance = data.minerBalance ? data.minerBalance : 0;
 
-    eHTML.roles.textContent = data.roles.join(' - ')
+    // Update roles
+    eHTML.roles.textContent = data.roles.join(' - ');
 
-    eHTML.validatorAddress.textContent = data.validatorAddress ? data.validatorAddress : '', // utils.addressUtils.formatAddress(data.validatorAddress, " ");
-    eHTML.validatorRewardAddress.textContent = data.validatorRewardAddress ? data.validatorRewardAddress : '', // utils.addressUtils.formatAddress(data.validatorRewardAddress, " ");
+    // Update Validator information
+    eHTML.validatorAddress.textContent = data.validatorAddress ? data.validatorAddress : ''; 
+    eHTML.validatorRewardAddress.textContent = data.validatorRewardAddress ? data.validatorRewardAddress : '';
     eHTML.validatorBalance.textContent = utils.convert.number.formatNumberAsCurrency(validatorBalance);
     eHTML.validatorHeight.textContent = data.currentHeight ? data.currentHeight : 0;
     eHTML.validatorStaked.textContent = utils.convert.number.formatNumberAsCurrency(validatorStaked);
 
-    eHTML.minerAddress.textContent = data.minerAddress ? data.minerAddress : '',
+    // Update Miner information
+    eHTML.minerAddress.textContent = data.minerAddress ? data.minerAddress : '';
     eHTML.minerBalance.textContent = utils.convert.number.formatNumberAsCurrency(minerBalance);
     eHTML.minerHeight.textContent = data.highestBlockIndex ? data.highestBlockIndex : 0;
     eHTML.minerThreads.input.value = data.minerThreads ? data.minerThreads : 1;
+
+    // Update Global Information
+    eHTML.peersConnected.textContent = data.peersConnected ? data.peersConnected : 0;
+    eHTML.lastBlockInfo.textContent = data.lastBlockInfo ? data.lastBlockInfo : 'No Block Info';
+    eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
+    eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
 }
+
 //#region - EVENT LISTENERS
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
 eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
