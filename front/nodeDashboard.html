@@ -80,26 +80,35 @@
             padding: 2px 10px;
             margin: 0;
         }
+
         #topBar {
             display: flex;
             justify-content: space-between;
+            flex-wrap: wrap;
             padding: 20px;
             border-bottom: solid 1px var(--color3);
         }
+
         #topBar h3 {
             font-size: 20px;
-            width: 250px;
+            width: auto;
             opacity: .8;
+            margin: 5px 0;
         }
+
         #topBar h3:nth-child(2) {
-            width: 300px;
+            flex-grow: 1;
+            text-align: center;
+            width: 100%;
         }
+
         #topBar .btnWrap {
             display: flex;
-            width: 250px;
             align-items: flex-start;
             justify-content: space-around;
+            width: auto;
         }
+
         #topBar .btnWrap div {
             display: flex;
             justify-content: flex-end;
@@ -253,9 +262,6 @@
         <h3>roles: <span id="roles"></span></h3>
         <div class="btnWrap">
             <div>
-                <button id="syncClock">Sync Clock</button>
-            </div>
-            <div>
                 <button id="forceRestart">Restart</button>
                 <button id="Revalidate">Revalidate</button>
             </div>
@@ -291,8 +297,8 @@
                 </div>
                 <div class="spacedText">
                     <h3>Staking:</h3>
-                    <div id="stakeInputWrap" style="transform: translateY(26%);">
-                        <input type="text" value="1.000000" min="0">
+                    <div id="stakeInputWrap"style="transform: translateY(26%);">
+                        <input type="text" class ="amountInput" value="1.000000" min="0">
                         <button>Send Tx</button>
                     </div>
                 </div>

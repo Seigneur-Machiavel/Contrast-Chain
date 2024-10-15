@@ -105,7 +105,7 @@ const eHTML = {
 			privateKeyInputWrap: document.getElementById('privateKeyInputWrap'),
             privateKeyInput: document.getElementById('privateKeyInputWrap').getElementsByTagName('input')[0],
             confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[1],
-            togglePrivateKeyBtn: document.getElementById('togglePrivateKey') // Register Toggle Button
+            togglePrivateKeyBtn: document.getElementById('togglePrivateKey'),
 			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
 		},
         validatorAddress: {
@@ -190,7 +190,6 @@ function displayNodeInfo(data) {
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
 eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
 eHTML.RevalidateBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId })));
-eHTML.syncClock.addEventListener('click', () => ws.send(JSON.stringify({ type: 'sync_clock', data: Date.now() })));
 eHTML.modals.wrap.addEventListener('click', (event) => {
 	if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
 });
@@ -230,10 +229,28 @@ eHTML.modals.minerAddress.confirmBtn.addEventListener('click', () => {
     closeModal();
 });
 document.addEventListener('submit', function(event) { event.preventDefault(); });
-eHTML.stakeInput.input.addEventListener('input', () => {
-    formatInputValueAsCurrency(eHTML.stakeInput.input);
-    ws.send(JSON.stringify({ type: 'set_stake', data: eHTML.stakeInput.input.value }));
+document.addEventListener('input', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        console.log('amountInput input');
+        event.target.value = event.target.value.replace(/[^\d.]/g, '');
+        const nbOfDecimals = event.target.value.split('.')[1] ? event.target.value.split('.')[1].length : 0;
+        if (nbOfDecimals > 6) { event.target.value = parseFloat(event.target.value).toFixed(6); }
+    }
 });
+document.addEventListener('focusout', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        console.log('amountInput focusout');
+        if (isNaN(parseFloat(event.target.value))) { event.target.value = ''; return; }
+        event.target.value = parseFloat(event.target.value).toFixed(6);
+
+        const amountMicro = parseInt(event.target.value.replace('.',''));
+        const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
+        event.target.value = formatedValue;
+    }
+});
+
 eHTML.stakeInput.confirmBtn.addEventListener('click', async () => {
     const amountToStake = parseInt(eHTML.stakeInput.input.value.replace(",","").replace(".",""));
     const validatorAddress = eHTML.validatorAddress.textContent;
@@ -330,11 +347,6 @@ function closeModal() {
 //#endregion
 
 //#region FUNCTIONS -------------------------------------------------------
-function formatInputValueAsCurrency(input) {
-    const cleanedValue = input.value.replace(",","").replace(".","");
-    const intValue = parseInt(cleanedValue);
-    input.value = utils.convert.number.formatNumberAsCurrency(intValue);
-}
 function adjustInputValue(targetInput, delta, min = 1, max = 16) {
     const currentValue = parseInt(targetInput.value);
     if (delta < 0) {
