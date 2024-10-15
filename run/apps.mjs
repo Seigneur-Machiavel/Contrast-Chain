@@ -73,9 +73,8 @@ class AppStaticFncs {
         
         result.lastBlockInfo = lastBlockInfo;
         result.txInMempool = node.memPool.getTxNumberInMempool().toString();
-        result.averageBlockTime = "0 seconds"; // TODO: implement
-
-
+        result.averageBlockTime = node.blockchainStats?.averageBlockTime ? (node.blockchainStats.averageBlockTime / 1000).toFixed(2) : 'No Data';
+        
         return result;
     }
     /** @param {Node} node */
