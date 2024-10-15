@@ -273,8 +273,14 @@ eHTML.minerThreads.input.addEventListener('change', () => {
 eHTML.minerThreads.decrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, -1));
 eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, 1));
 
-eHTML.toggleAdminPanelBtn.addEventListener('click', () => {
-    if (eHTML.adminPanelButtons.classList.contains('hidden')) {
+eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
+
+function toggleAdminPanel() {
+    const isHidden = eHTML.adminPanelButtons.classList.contains('hidden');
+
+    if (isHidden) {
+        // Show the panel
+        console.log('toggleAdminPanelBtn clicked - Show');
         eHTML.adminPanelButtons.classList.remove('hidden');
         eHTML.adminPanelButtons.style.maxHeight = '0px';
         anime({
@@ -287,8 +293,8 @@ eHTML.toggleAdminPanelBtn.addEventListener('click', () => {
             }
         });
     } else {
-        eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
-        // Animate maxHeight to 0 before hiding
+        // Hide the panel
+        console.log('toggleAdminPanelBtn clicked - Hide');
         anime({
             targets: eHTML.adminPanelButtons,
             maxHeight: ['200px', '0px'], // adjust as needed
@@ -297,11 +303,14 @@ eHTML.toggleAdminPanelBtn.addEventListener('click', () => {
             complete: () => {
                 eHTML.adminPanelButtons.classList.add('hidden');
                 eHTML.adminPanelButtons.style.maxHeight = '0px';
+                eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
             }
         });
     }
-});
+}
 
+// Attach the toggle function to the button click event
+eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
 
 
 eHTML.resetInfoBtn.addEventListener('click', () => {
