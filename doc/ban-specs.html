@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Ban System Specifications</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: #2a2a2a;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.1);
+        }
+        h1, h2, h3, h4 {
+            color: #ffffff;
+            margin-top: 1.5em;
+            margin-bottom: 0.5em;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #3a3a3a;
+            border-radius: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+            background-color: #4a4a4a;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #5a5a5a;
+            color: #ffffff;
+        }
+        tr:nth-child(even) {
+            background-color: #4a4a4a;
+        }
+        tr:hover {
+            background-color: #555555;
+        }
+        ul, ol {
+            margin-left: 20px;
+        }
+        code, pre {
+            background-color: #4a4a4a;
+            color: #d4d4d4;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+        pre {
+            padding: 15px;
+            overflow-x: auto;
+        }
+        .math {
+            background-color: #4a4a4a;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+            overflow-x: auto;
+        }
+        blockquote {
+            border-left: 4px solid #555;
+            padding-left: 15px;
+            color: #bbb;
+            margin: 1.5em 0;
+        }
+        a {
+            color: #61dafb;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <h1>Blockchain Ban System Specifications</h1>
+
+        <div class="section">
+            <h2>1. Introduction</h2>
+            <p>
+                The Ban System is designed to maintain the integrity, security, and performance of the hybrid Proof-of-Stake (PoS) and Proof-of-Work (PoW) blockchain network. It identifies, penalizes, and isolates malicious or disruptive peers using predefined categories of offenses and standardized enforcement procedures.
+            </p>
+        </div>
+
+        <div class="section">
+            <h2>2. Offenses</h2>
+
+            <h3>2.1. Major Faults</h3>
+            <p>Severe violations that can compromise network security and consensus.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Offense Type</th>
+                        <th>Description</th>
+                        <th>Detection Methods</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Invalid Block Submission</td>
+                        <td>Submitting blocks that violate consensus rules or contain invalid data.</td>
+                        <td>
+                            <ul>
+                                <li>Automated block validation</li>
+                                <li>Signature verification</li>
+                                <li>VSS-based legitimacy checks</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Low Legitimacy Block Submission</td>
+                        <td>Consistently submitting blocks with questionable legitimacy.</td>
+                        <td>
+                            <ul>
+                                <li>Reputation monitoring</li>
+                                <li>Content analysis</li>
+                                <li>VSS legitimacy mismatch detection</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Message Spamming</td>
+                        <td>Flooding the network with excessive pubsub messages.</td>
+                        <td>
+                            <ul>
+                                <li>Rate limiting</li>
+                                <li>Message pattern analysis</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Double-Signing / Equivocation</td>
+                        <td>Signing multiple blocks at the same height to create forks.</td>
+                        <td>
+                            <ul>
+                                <li>Conflict detection</li>
+                                <li>Blockchain state comparison</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Sybil Attacks</td>
+                        <td>Creating multiple peer identities to gain undue influence.</td>
+                        <td>
+                            <ul>
+                                <li>Peer identity analysis</li>
+                                <li>Resource allocation checks</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Propagation of Invalid Transactions</td>
+                        <td>Distributing transactions that do not comply with network rules.</td>
+                        <td>
+                            <ul>
+                                <li>Transaction validation</li>
+                                <li>Signature and format verification</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Consensus Manipulation</td>
+                        <td>Attempting to unfairly influence the consensus mechanism.</td>
+                        <td>
+                            <ul>
+                                <li>Behavioral analysis</li>
+                                <li>Anomaly detection</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Denial of Service (DoS) Attacks</td>
+                        <td>Overwhelming network resources to disrupt operations.</td>
+                        <td>
+                            <ul>
+                                <li>Traffic analysis</li>
+                                <li>Resource usage monitoring</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.2. Minor Faults</h3>
+            <p>Less severe issues that can impact network performance.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Offense Type</th>
+                        <th>Description</th>
+                        <th>Detection Methods</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Frequent Resync Requests</td>
+                        <td>Repeatedly requesting to resynchronize with the network.</td>
+                        <td>
+                            <ul>
+                                <li>Request rate monitoring</li>
+                                <li>Historical behavior analysis</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Excessive Block Indexing</td>
+                        <td>Submitting blocks with unexpected indexes.</td>
+                        <td>
+                            <ul>
+                                <li>Block index verification</li>
+                                <li>Sequence tracking</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Minor Protocol Violations</td>
+                        <td>Occasional deviations from network protocols.</td>
+                        <td>
+                            <ul>
+                                <li>Protocol compliance checks</li>
+                                <li>Error logging</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Low Resource Utilization</td>
+                        <td>Failing to contribute adequately to network operations.</td>
+                        <td>
+                            <ul>
+                                <li>Resource contribution monitoring</li>
+                                <li>Peer performance metrics</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Transient Connectivity Issues</td>
+                        <td>Frequent disconnections or reconnections.</td>
+                        <td>
+                            <ul>
+                                <li>Connection stability monitoring</li>
+                                <li>Latency and packet loss analysis</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3>2.3. Additional Offenses</h3>
+            <p>Other actions that may warrant banning to enhance network security.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Offense Type</th>
+                        <th>Description</th>
+                        <th>Detection Methods</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Invalid Transaction Broadcasting</td>
+                        <td>Sending malformed or unauthorized transactions.</td>
+                        <td>
+                            <ul>
+                                <li>Transaction validation</li>
+                                <li>Signature and integrity checks</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Time Manipulation</td>
+                        <td>Altering timestamps to disrupt consensus.</td>
+                        <td>
+                            <ul>
+                                <li>Timestamp validation</li>
+                                <li>Consistency checks across peers</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Resource Exhaustion</td>
+                        <td>Intentionally overloading network resources.</td>
+                        <td>
+                            <ul>
+                                <li>Resource monitoring</li>
+                                <li>Anomaly detection</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Privacy Violations</td>
+                        <td>Attempting to de-anonymize other peers.</td>
+                        <td>
+                            <ul>
+                                <li>Traffic analysis</li>
+                                <li>Behavioral monitoring</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Software Tampering</td>
+                        <td>Distributing malicious code or altering network software.</td>
+                        <td>
+                            <ul>
+                                <li>Integrity checks</li>
+                                <li>Behavioral anomaly detection</li>
+                            </ul>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Exploit Attempts</td>
+                        <td>Trying to exploit network or protocol vulnerabilities.</td>
+                        <td>
+                            <ul>
+                                <li>Intrusion Detection Systems (IDS)</li>
+                                <li>Signature-based and heuristic analysis</li>
+                            </ul>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>3. Ban Criteria and Categories</h2>
+            <p>Determining the severity of offenses and appropriate actions.</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Category</th>
+                        <th>Offenses</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Major Fault</td>
+                        <td>
+                            <ul>
+                                <li>Invalid Block Submission</li>
+                                <li>Low Legitimacy Block Submission</li>
+                                <li>Message Spamming</li>
+                                <li>Double-Signing / Equivocation</li>
+                                <li>Sybil Attacks</li>
+                                <li>Propagation of Invalid Transactions</li>
+                                <li>Consensus Manipulation</li>
+                                <li>Denial of Service (DoS) Attacks</li>
+                            </ul>
+                        </td>
+                        <td>Immediate Permanent Ban</td>
+                    </tr>
+                    <tr>
+                        <td>Minor Fault</td>
+                        <td>
+                            <ul>
+                                <li>Frequent Resync Requests</li>
+                                <li>Excessive Block Indexing</li>
+                                <li>Minor Protocol Violations</li>
+                                <li>Low Resource Utilization</li>
+                                <li>Transient Connectivity Issues</li>
+                            </ul>
+                        </td>
+                        <td>Temporary Ban or Warning</td>
+                    </tr>
+                    <tr>
+                        <td>Additional Offenses</td>
+                        <td>
+                            <ul>
+                                <li>Invalid Transaction Broadcasting</li>
+                                <li>Time Manipulation</li>
+                                <li>Resource Exhaustion</li>
+                                <li>Privacy Violations</li>
+                                <li>Software Tampering</li>
+                                <li>Exploit Attempts</li>
+                            </ul>
+                        </td>
+                        <td>Based on Severity: Temporary or Permanent Ban</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="section">
+            <h2>4. Detection Mechanisms</h2>
+            <p>Methods to identify and classify offenses.</p>
+            <ul>
+                <li><strong>Automated Validation:</strong> Validate blocks and transactions against consensus rules.</li>
+                <li><strong>Rate Limiting:</strong> Monitor message and request rates to detect spamming.</li>
+                <li><strong>Behavioral Analysis:</strong> Analyze peer behaviors for patterns indicative of malicious intent.</li>
+                <li><strong>Anomaly Detection:</strong> Use statistical or machine learning methods to identify unusual activities.</li>
+                <li><strong>VSS-Based Verification:</strong> Ensure validators are legitimately selected via VSS for block proposals.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>5. Ban Enforcement Procedures</h2>
+            <h3>5.1. Detection</h3>
+            <p>Continuous monitoring to identify offenses in real-time.</p>
+
+            <h3>5.2. Penalty Application</h3>
+            <ol>
+                <li><strong>Log the Offense:</strong> Record peer ID, offense type, timestamp, and severity.</li>
+                <li><strong>Assign Category:</strong> Classify the offense as Major, Minor, or Additional.</li>
+                <li><strong>Enforce Ban:</strong>
+                    <ul>
+                        <li><strong>Temporary Ban:</strong> Restrict access for a defined period.</li>
+                        <li><strong>Permanent Ban:</strong> Isolate peer indefinitely.</li>
+                    </ul>
+                </li>
+                <li><strong>Notification (Optional):</strong> Inform the peer of the ban and reason.</li>
+            </ol>
+
+            <h3>5.3. Ban Duration and Appeal</h3>
+            <ul>
+                <li><strong>Temporary Bans:</strong> Automatically lifted after the specified duration.</li>
+                <li><strong>Permanent Bans:</strong> Require manual intervention or an appeal process.</li>
+                <li><strong>Appeal Process:</strong> Allow peers to appeal bans through a transparent and fair mechanism.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>6. Implementation Considerations</h2>
+
+            <h3>6.1. Integration with libp2p</h3>
+            <ul>
+                <li><strong>Connection Management:</strong> Disconnect and blacklist peers based on ban criteria.</li>
+                <li><strong>Peer Reputation:</strong> Maintain a ledger tracking peer behavior and offenses.</li>
+                <li><strong>Efficient Blacklisting:</strong> Use data structures like bloom filters for managing banned peers.</li>
+            </ul>
+
+            <h3>6.2. Scalability</h3>
+            <ul>
+                <li><strong>Distributed Ban Lists:</strong> Synchronize ban lists across nodes.</li>
+                <li><strong>Performance Optimization:</strong> Minimize latency and resource consumption in monitoring and enforcement.</li>
+            </ul>
+
+            <h3>6.3. Security</h3>
+            <ul>
+                <li><strong>Immutable Logs:</strong> Use tamper-evident logs to record offenses and bans.</li>
+                <li><strong>Access Control:</strong> Restrict administrative actions to authorized entities.</li>
+            </ul>
+
+            <h3>6.4. Transparency and Governance</h3>
+            <ul>
+                <li><strong>Public Ban Policies:</strong> Clearly publish criteria and enforcement policies.</li>
+                <li><strong>Community Involvement:</strong> Engage the community in defining and updating ban rules.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>7. Technical Integration of VSS-Based Validator Legitimacy</h2>
+            <ul>
+                <li><strong>Legitimacy Verification:</strong> Ensure validators are selected via VSS for each block.</li>
+                <li><strong>Fraud Detection:</strong> Flag blocks from non-legitimate validators or multiple submissions.</li>
+                <li><strong>VSS Integrity:</strong> Maintain cryptographic security and transparency in the VSS process.</li>
+            </ul>
+        </div>
+
+        <div class="section">
+            <h2>8. Conclusion</h2>
+            <p>
+                The Ban System is critical for protecting the blockchain network from malicious activities and ensuring smooth operations. By categorizing offenses, implementing robust detection mechanisms, and enforcing clear penalties, the system maintains network integrity and trust. Continuous monitoring, community governance, and adaptive policies further enhance the system's resilience.
+            </p>
+        </div>
+
+    </div>
+
+</body>
+</html>
