@@ -84,6 +84,7 @@ const eHTML = {
     send: {
         miniForm: document.getElementById('spendMiniForm'),
         foldBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[0],
+        senderAddress: document.getElementById('spendMiniForm').getElementsByClassName('senderAddress')[0],
         amount: document.getElementById('spendMiniForm').getElementsByTagName('input')[0],
         address: document.getElementById('spendMiniForm').getElementsByTagName('input')[1],
         confirmBtn: document.getElementById('spendMiniForm').getElementsByTagName('button')[1]
@@ -91,6 +92,7 @@ const eHTML = {
     stake: {
         miniForm: document.getElementById('stakeMiniForm'),
         foldBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[0],
+        senderAddress: document.getElementById('stakeMiniForm').getElementsByClassName('senderAddress')[0],
         amount: document.getElementById('stakeMiniForm').getElementsByTagName('input')[0],
         address: document.getElementById('stakeMiniForm').getElementsByTagName('input')[1],
         confirmBtn: document.getElementById('stakeMiniForm').getElementsByTagName('button')[1]
@@ -192,6 +194,7 @@ function setVisibleForm(formId, applyBLur = true) {
     resizePopUp(applyBLur, largePopUp);
 }
 function toggleMiniForm(miniFormElmnt) {
+    updateMiniFormsInfoRelatedToActiveAccount();
     const isFold = miniFormElmnt.classList.contains('miniFold');
     if (animations[miniFormElmnt.id]) { animations[miniFormElmnt.id].pause(); }
 
@@ -370,6 +373,11 @@ function updateActiveAccountLabel() {
         if (i !== activeAccountIndex) { continue; }
         accountLabels[i].classList.add('active');
     }
+}
+function updateMiniFormsInfoRelatedToActiveAccount() {
+    const activeAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+    eHTML.send.senderAddress.innerText = activeAccount.address;
+    eHTML.stake.senderAddress.innerText = activeAccount.address;
 }
 function newAddressBtnLoadingToggle() {
     const isGenerating = eHTML.newAddressBtn.innerHTML !== '+';
@@ -1008,43 +1016,12 @@ document.addEventListener('click', async function(e) {
             //console.log(`accountIndex: ${accountIndex}`);
             activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
             updateActiveAccountLabel();
+            updateMiniFormsInfoRelatedToActiveAccount();
             break;
-        /*case 'btnBackground':
-            console.log(`btnBackground, clicking parent: ${e.target.parentElement.id}`);
-            e.target.parentElement.click();
-            break;*/
         case 'foldBtn':
             console.log('foldBtn');
             toggleMiniForm(e.target.parentElement);
             break;
-        /*case 'sendBtn': -> MOVED TO HOLD BUTTON LISTENER
-            console.log('sendBtn');
-            amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
-            console.log('amount:', amount);
-            // utils.addressUtils.conformityCheck(eHTML.send.address.value);
-            receiverAddress = eHTML.send.address.value;
-            senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
-            const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
-            if (!createdSignedTx.signedTx) { console.error('Transaction creation failed', createdSignedTx.error); return; }
-            
-            console.log('transaction:', createdSignedTx.signedTx);
-            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
-            break;
-        case 'stakeBtn':
-            console.log('stakeBtn');
-            amount = parseInt(eHTML.stake.amount.value.replace(",","").replace(".",""));
-            console.log('amount:', amount);
-
-            senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
-            createdTx = await Transaction_Builder.createStakingVss(senderAccount, senderAccount.address, amount);
-            if (!createdTx) { console.error('Transaction creation failed'); return; }
-
-            signedTx = await senderAccount.signTransaction(createdTx);
-            if (!signedTx) { console.error('Transaction signing failed'); return; }
-
-            console.log('transaction:', signedTx);
-            chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
-            break;*/
         default:
             break;
     }
@@ -1092,11 +1069,29 @@ document.addEventListener('input', async (event) => {
             }
         }
     }
-});
-/*document.getElementById('privateKeyHexInput').addEventListener('paste', function(event) {
-    setTimeout(() => console.log(event.target.value), 0);
 
-});*/
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        event.target.value = event.target.value.replace(/[^\d.]/g, '');
+        const nbOfDecimals = event.target.value.split('.')[1] ? event.target.value.split('.')[1].length : 0;
+        if (nbOfDecimals > 6) { event.target.value = parseFloat(event.target.value).toFixed(6); }
+    }
+});
+document.addEventListener('focusin', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) { event.target.value = ''; }
+});
+document.addEventListener('focusout', async (event) => {
+    const amountInput = event.target.classList.contains('amountInput');
+    if (amountInput) {
+        if (isNaN(parseFloat(event.target.value))) { event.target.value = ''; return; }
+        event.target.value = parseFloat(event.target.value).toFixed(6);
+
+        const amountMicro = parseInt(event.target.value.replace('.',''));
+        const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
+        event.target.value = formatedValue;
+    }
+});
 window.addEventListener('beforeunload', function(e) {
     console.log('beforeunload');
     cryptoLight.clear();

@@ -7,6 +7,7 @@
     --neumo-color1: #2b2828;
     --neumo-color2: #383838;
 
+    --input-color: #212121;
     --button-color: #ebebeb;
     --invalid-color: indianred;
     --valid-color: cornflowerblue;
@@ -133,7 +134,7 @@ input {
     margin-bottom: 20px;
     font-size: large;
     text-align: center;
-    background-color: #171717;
+    background-color: var(--input-color);
     color: var(--text-color);
 }
 input.wrong {
@@ -157,12 +158,14 @@ button {
     border-style: none;
     border-radius: 10px;
     font-size: large;
+    background-color: var(--button-color);
+    transition: background .12s ease-in-out, transform .08s ease-in-out;
 }
 button:not(.disabled):hover {
     transform: scale(1.02);
 }
 button.disabled {
-    background-color: #171717;
+    background-color: var(--input-color);
     color: #c1c1c1;
     cursor: not-allowed;
 }
@@ -276,6 +279,9 @@ button.disabled {
     position: relative;
     width: 52px;
     height: 52px;
+}
+.accountLabel .accountImgWrap:hover {
+    transform: scale(1.02);
 }
 .accountLabel .accountImgWrap div {
     pointer-events: none;
@@ -456,8 +462,14 @@ button.disabled {
     flex-direction: column;
     align-items: center;
 }
+#spendMiniForm h2, #stakeMiniForm h2 {
+    color: var(--text-color3);
+}
 #spendMiniForm input, #stakeMiniForm input {
     height: 30px !important;
+    margin: 10px 0 0 0 !important;
+}
+#spendMiniForm input:first-child, #stakeMiniForm input:first-child {
     margin: 20px 0 0 0 !important;
 }
 #spendMiniForm button, #stakeMiniForm button {

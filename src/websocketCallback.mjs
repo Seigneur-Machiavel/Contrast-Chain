@@ -50,11 +50,11 @@ export class CallBackManager {
             validatorDashboard: {
                 node: ['onBroadcastNewCandidate:all'],
                 memPool: ['pushTransaction:all', 'uxtoSpent:all'],
-                utxoCache: [`onBalanceUpdated:${this.node.account.address}`],
+                //utxoCache: [`onBalanceUpdated:${this.node.account.address}`],
             },
             minerDashboard: {
                 miner: ['onBroadcastFinalizedBlock:all', 'onHashRateUpdated:all'],
-                utxoCache: [`onBalanceUpdated:${this.node.miner.address}`],
+                //utxoCache: [`onBalanceUpdated:${this.node.miner.address}`],
             },
             observer: {
                 node: ['onBroadcastNewCandidate:all',  'onBlockConfirmed:all'],

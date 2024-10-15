@@ -77,6 +77,8 @@ function connectWS() {
                 eHTML.hashRate.textContent = data.toFixed(2);
                 break;
             case 'balance_updated':
+                //console.log('balance_updated', data);
+                return; // not used anymore, we fetch node_info frequently
                 if(trigger === eHTML.validatorAddress.textContent) { eHTML.validatorBalance.textContent = utils.convert.number.formatNumberAsCurrency(data); }
                 if(trigger === eHTML.minerAddress.textContent) { eHTML.minerBalance.textContent = utils.convert.number.formatNumberAsCurrency(data); }
                 break;
@@ -170,6 +172,7 @@ function displayNodeInfo(data) {
     eHTML.minerBalance.textContent = utils.convert.number.formatNumberAsCurrency(minerBalance);
     eHTML.minerHeight.textContent = data.highestBlockIndex ? data.highestBlockIndex : 0;
     eHTML.minerThreads.input.value = data.minerThreads ? data.minerThreads : 1;
+    eHTML.hashRate.textContent = data.minerHashRate ? data.minerHashRate.toFixed(2) : 0;
 }
 //#region - EVENT LISTENERS
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
@@ -309,6 +312,7 @@ function closeModal() {
 function formatInputValueAsCurrency(input) {
     const cleanedValue = input.value.replace(",","").replace(".","");
     const intValue = parseInt(cleanedValue);
+    if (isNaN(intValue)) { input.value = ''; return; }
     input.value = utils.convert.number.formatNumberAsCurrency(intValue);
 }
 function adjustInputValue(targetInput, delta, min = 1, max = 16) {

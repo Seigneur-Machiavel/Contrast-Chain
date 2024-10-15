@@ -60,6 +60,7 @@ class AppStaticFncs {
             result.minerSpendableBalance = spendableBalance;
             result.highestBlockIndex = node.miner.highestBlockIndex;
             result.minerThreads = node.miner.nbOfWorkers;
+            result.minerHashRate = node.miner.hashRate;
         }
         
         return result;
