@@ -61,7 +61,21 @@ class AppStaticFncs {
             result.highestBlockIndex = node.miner.highestBlockIndex;
             result.minerThreads = node.miner.nbOfWorkers;
         }
+        result.peersConnected = node.p2pNetwork?.getConnectedPeers().length ?? "Not Connected";
+
+        const lastBlock = node.blockchain.lastBlock;
+        const lastBlockIndex = lastBlock?.index ?? 0;
+        const lastBlockTxInfo = lastBlock?.Txs.length ?? 0;
+        const lastBlockValidator = lastBlock?.Txs[1]?.inputs[0]?.split(':')[0] ?? 'No Validator';
+        const lastBlockMiner = lastBlock?.Txs[0]?.outputs[0]?.address ?? 'No Miner';
+
+        const lastBlockInfo = `Block ${lastBlockIndex} - ${lastBlockTxInfo} txs - Validator ${lastBlockValidator} - Miner ${lastBlockMiner}`;
         
+        result.lastBlockInfo = lastBlockInfo;
+        result.txInMempool = node.memPool.getTxNumberInMempool().toString();
+        result.averageBlockTime = "0 seconds"; // TODO: implement
+
+
         return result;
     }
     /** @param {Node} node */

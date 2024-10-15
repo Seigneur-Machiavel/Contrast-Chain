@@ -210,4 +210,8 @@ export class MemPool {
 
         return transactions;
     }
+
+    getTxNumberInMempool() {
+        return this.transactionQueue.size();
+    }
 }
