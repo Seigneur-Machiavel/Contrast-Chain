@@ -104,7 +104,8 @@ const eHTML = {
 			setupPrivateKeyForm: document.getElementById('setupPrivateKeyForm'),
 			privateKeyInputWrap: document.getElementById('privateKeyInputWrap'),
             privateKeyInput: document.getElementById('privateKeyInputWrap').getElementsByTagName('input')[0],
-            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[0],
+            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[1],
+            togglePrivateKeyBtn: document.getElementById('togglePrivateKey') // Register Toggle Button
 			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
 		},
         validatorAddress: {
@@ -184,6 +185,15 @@ eHTML.modals.setup.confirmBtn.addEventListener('click', () => {
     console.log('privateKeyInput value:', eHTML.modals.setup.privateKeyInput.value);
     ws.send(JSON.stringify({ type: 'set_private_key', data: eHTML.modals.setup.privateKeyInput.value }));
     closeModal();
+});
+eHTML.modals.setup.togglePrivateKeyBtn.addEventListener('click', () => {
+    if (eHTML.modals.setup.privateKeyInput.type === 'password') {
+        eHTML.modals.setup.privateKeyInput.type = 'text';
+        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Hide';
+    } else {
+        eHTML.modals.setup.privateKeyInput.type = 'password';
+        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Show';
+    }
 });
 eHTML.validatorAddressEditBtn.addEventListener('click', () => {
     console.log('validatorAddressEditBtn clicked');

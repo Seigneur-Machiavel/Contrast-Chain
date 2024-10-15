@@ -153,9 +153,19 @@
             width: 260px;
             text-align: center;
         }
-        #privateKeyInputWrap input {
-            text-align: center;
-            width: 320px !important;
+
+        #privateKeyInputWrap {
+        display: flex;
+        align-items: center;
+        }
+        #togglePrivateKey {
+            margin-right: 10px;
+            background-color: var(--color3);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
         }
 
         .dashboard {
@@ -308,13 +318,16 @@
         <div class="modalsWrapBackground"></div>
         <div class="modalWrap hidden" id="setupModalWrap">
             <div class="modal">
+                
                 <form id="setupPrivateKeyForm">
                     <div class="spacedText">
                         <h3>Private key:</h3>
                         <div id="privateKeyInputWrap">
-                            <input type="text" value="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff">
+                            <input type="password" id="privateKeyInput" value="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff">
+                            <button type="button" id="togglePrivateKey">Show</button>
                             <button>Confirm</button>
                         </div>
+                        
                     </div>
                     <!--<div class="loadingSvgDiv"></div>-->
                 </form>
