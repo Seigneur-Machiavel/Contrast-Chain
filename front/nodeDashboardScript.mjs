@@ -324,7 +324,7 @@ function toggleAdminPanel() {
 eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
 
 eHTML.resetInfoBtn.addEventListener('click', () => {
-    openModal('resetInfo');
+    openModal('resetInfoModal');
 });
 
 eHTML.modals.resetInfoModal.confirmBtn.addEventListener('click', () => {
