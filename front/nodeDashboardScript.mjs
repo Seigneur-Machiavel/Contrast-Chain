@@ -156,7 +156,15 @@ const eHTML = {
     averageBlockTime: document.getElementById('averageBlockTime'),
     adminPanelButtons: document.querySelector('#topBar .btnWrap'),
     resetInfoBtn: document.getElementById('resetInfo'),
-    toggleAdminPanelBtn : document.getElementById('toggleAdminPanel')
+    toggleAdminPanelBtn : document.getElementById('toggleAdminPanel'),
+
+    resetInfoBtn: document.getElementById('resetInfo'),
+    resetInfoModal: {
+        wrap: document.getElementById('resetInfoModalWrap'),
+        modal: document.getElementById('resetInfoModalWrap').getElementsByClassName('modal')[0],
+        confirmBtn: document.getElementById('confirmResetBtn'),
+        cancelBtn: document.getElementById('cancelResetBtn'),
+    },
 }
 
 function displayNodeInfo(data) {
@@ -309,58 +317,65 @@ function toggleAdminPanel() {
     }
 }
 
-// Attach the toggle function to the button click event
 eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
 
-
 eHTML.resetInfoBtn.addEventListener('click', () => {
-    console.log('resetInfoBtn clicked');
+    openModal('resetInfo');
 });
 
+eHTML.resetInfoModal.confirmBtn.addEventListener('click', () => {
+    performResetInfo(); // Function to perform the reset action
+    closeModal();
+});
+
+eHTML.resetInfoModal.cancelBtn.addEventListener('click', () => {
+    closeModal();
+});
 
 //#endregion
 
 //#region - UX FUNCTIONS
 function openModal(modalName = 'setup') {
     modalOpen = true;
-	const modals = eHTML.modals;
-	if (!modals.wrap.classList.contains('fold')) { return; }
+    const modals = eHTML.modals;
+    if (!modals.wrap.classList.contains('fold')) { return; }
 
-	modals.wrap.classList.remove('hidden');
-	modals.wrap.classList.remove('fold');
+    modals.wrap.classList.remove('hidden');
+    modals.wrap.classList.remove('fold');
 
-	for (let modalKey in modals) {
-		if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
-		const modalWrap = modals[modalKey].wrap;
-		modalWrap.classList.add('hidden');
-		if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
-	}
+    for (let modalKey in modals) {
+        if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
+        const modalWrap = modals[modalKey].wrap;
+        modalWrap.classList.add('hidden');
+        if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
+    }
 
-	const modalsWrap = eHTML.modals.wrap;
-	modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
-	modalsWrap.style.opacity = 0;
-	modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
+    const modalsWrap = eHTML.modals.wrap;
+    modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
+    modalsWrap.style.opacity = 0;
+    modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
 
-	anime({
-		targets: modalsWrap,
-		//skewX: '1.2deg',
-		scaleX: 1,
-		scaleY: 1,
-		opacity: 1,
-		duration: 600,
-		easing: 'easeOutQuad',
-		complete: () => {
-			if (modalName === 'setupModalWrap') { eHTML.modals.setup.privateKeyInput.focus(); }
-		}
-	});
-	anime({
-		targets: modalsWrap,
-		clipPath: 'circle(100% at 50% 50%)',
-		delay: 200,
-		duration: 800,
-		easing: 'easeOutQuad',
-	});
+    anime({
+        targets: modalsWrap,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        duration: 600,
+        easing: 'easeOutQuad',
+        complete: () => {
+            if (modalName === 'setup') { eHTML.modals.setup.privateKeyInput.focus(); }
+            if (modalName === 'resetInfo') { eHTML.resetInfoModal.confirmBtn.focus(); }
+        }
+    });
+    anime({
+        targets: modalsWrap,
+        clipPath: 'circle(100% at 50% 50%)',
+        delay: 200,
+        duration: 800,
+        easing: 'easeOutQuad',
+    });
 }
+
 function closeModal() {
     modalOpen = false;
 	const modalsWrap = eHTML.modals.wrap;
