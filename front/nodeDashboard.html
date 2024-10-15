@@ -83,12 +83,36 @@
 
         #topBar {
             display: flex;
-            justify-content: space-between;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: center;
             padding: 20px;
             border-bottom: solid 1px var(--color3);
         }
+        .adminPanelContainer {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-top: 10px;
+        }
+        .btnWrap {
+            overflow: hidden;
+            max-height: 0;
+        }
 
+        .btnWrap.visible {
+            max-height: 200px; 
+        }
+
+        .toggleAdminPanelButton {
+            font-family: 'IBM Plex Mono';
+            font-weight: 500;
+            background: var(--color2);
+            border-radius: 6px;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
         #topBar h3 {
             font-size: 20px;
             width: auto;
@@ -102,22 +126,16 @@
             width: 100%;
         }
 
-        #topBar .btnWrap {
+        #topBar .btnWrap div button {
+            cursor: pointer;
+            margin: 0 0 5px 0;
+        }
+        #topBar .btnWrap div {
             display: flex;
             align-items: flex-start;
             justify-content: space-around;
             width: auto;
-        }
-
-        #topBar .btnWrap div {
-            display: flex;
-            justify-content: flex-end;
-            flex-direction: column;
-            width: 120px;
-        }
-        #topBar .btnWrap div button {
-            cursor: pointer;
-            margin: 0 0 5px 0;
+            overflow: hidden;
         }
 
         .modalsWrap {
@@ -260,13 +278,18 @@
     <div id="topBar">
         <h3>Node Dashboard v1.0</h3>
         <h3>roles: <span id="roles"></span></h3>
-        <div class="btnWrap">
-            <div>
-                <button id="forceRestart">Restart</button>
-                <button id="Revalidate">Revalidate</button>
+        <div class="adminPanelContainer">
+            <div class="btnWrap hidden">
+                <div>
+                    <button id="forceRestart">Restart</button>
+                    <button id="Revalidate">Revalidate</button>
+                    <button id="resetInfo">Reset Info</button>
+                </div>
             </div>
+            <button id="toggleAdminPanel" class="toggleAdminPanelButton">Show Admin Panel</button>
         </div>
-    </div>
+    </div> 
+    
 
     <div id="dashboard">
         <div class="dashboard-inner">
@@ -364,8 +387,6 @@
         </div>
 
     </div>
-    
-    
     
     <div class="modalsWrap hidden fold">
         <div class="modalsWrapBackground"></div>

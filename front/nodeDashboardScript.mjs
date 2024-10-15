@@ -153,7 +153,10 @@ const eHTML = {
     peersConnected: document.getElementById('peersConnected'),
     lastBlockInfo: document.getElementById('lastBlockInfo'),
     txInMempool: document.getElementById('txInMempool'),
-    averageBlockTime: document.getElementById('averageBlockTime')
+    averageBlockTime: document.getElementById('averageBlockTime'),
+    adminPanelButtons: document.querySelector('#topBar .btnWrap'),
+    resetInfoBtn: document.getElementById('resetInfo'),
+    toggleAdminPanelBtn : document.getElementById('toggleAdminPanel')
 }
 
 function displayNodeInfo(data) {
@@ -269,6 +272,43 @@ eHTML.minerThreads.input.addEventListener('change', () => {
 });
 eHTML.minerThreads.decrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, -1));
 eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, 1));
+
+eHTML.toggleAdminPanelBtn.addEventListener('click', () => {
+    if (eHTML.adminPanelButtons.classList.contains('hidden')) {
+        eHTML.adminPanelButtons.classList.remove('hidden');
+        eHTML.adminPanelButtons.style.maxHeight = '0px';
+        anime({
+            targets: eHTML.adminPanelButtons,
+            maxHeight: ['0px', '200px'], // adjust as needed
+            duration: 3000,
+            easing: 'easeOutQuart',
+            begin: () => {
+                eHTML.toggleAdminPanelBtn.textContent = 'Hide Admin Panel';
+            }
+        });
+    } else {
+        eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
+        // Animate maxHeight to 0 before hiding
+        anime({
+            targets: eHTML.adminPanelButtons,
+            maxHeight: ['200px', '0px'], // adjust as needed
+            duration: 1000,
+            easing: 'easeOutQuart',
+            complete: () => {
+                eHTML.adminPanelButtons.classList.add('hidden');
+                eHTML.adminPanelButtons.style.maxHeight = '0px';
+            }
+        });
+    }
+});
+
+
+
+eHTML.resetInfoBtn.addEventListener('click', () => {
+    console.log('resetInfoBtn clicked');
+});
+
+
 //#endregion
 
 //#region - UX FUNCTIONS
