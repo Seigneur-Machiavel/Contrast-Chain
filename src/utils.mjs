@@ -1554,6 +1554,20 @@ const serializerFast = {
             }
             return bufferView;
         },
+        /** @param {string[]} txsRef */
+        txsReferencesArray(txsRef) {
+            const anchorsBuffer = new ArrayBuffer(8 * txsRef.length);
+            const bufferView = new Uint8Array(anchorsBuffer);
+            for (let j = 0; j < txsRef.length; j++) { // -> anchor ex: "3:f996a9d1:0"
+                const splitted = txsRef[j].split(':');
+                const blockHeight = fastConverter.numberTo4BytesUint8Array(splitted[0]);
+                const hash = fastConverter.hexToUint8Array(splitted[1]);
+
+                bufferView.set(blockHeight, j * 8);
+                bufferView.set(hash, j * 8 + 4);
+            };
+            return bufferView;
+        },
         witnessesArray(witnesses) {
             const witnessesBuffer = new ArrayBuffer(96 * witnesses.length); // (sig + pubKey) * nb of witnesses
             const witnessesBufferView = new Uint8Array(witnessesBuffer);
@@ -1699,6 +1713,16 @@ const serializerFast = {
             console.log('Total anchors deserialization time:', totalAnchorsDeserializationTime, 'ms');
             console.log('Total deserialization time:', totalDeserializationTime, 'ms');*/
             return miniUTXOsObj;
+        },
+        /** @param {Uint8Array} serializedTxsRef */
+        txsReferencesArray(serializedTxsRef) {
+            const txsRef = [];
+            for (let i = 0; i < serializedTxsRef.length; i += 8) {
+                const blockHeight = fastConverter.uint84BytesToNumber(serializedTxsRef.slice(i, i + 4));
+                const hash = fastConverter.uint8ArrayToHex(serializedTxsRef.slice(i + 4, i + 8));
+                txsRef.push(`${blockHeight}:${hash}`);
+            }
+            return txsRef;
         },
         /** @param {Uint8Array} serializedWitnesses */
         witnessesArray(serializedWitnesses) {

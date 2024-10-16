@@ -320,7 +320,7 @@ export class BlockUtils {
     /** @param {BlockData} blockData @param {Object<string, string>} blockPubKeysAddresses */
     static getFinalizedBlockTransactionsReferencesSortedByAddress(blockData, blockPubKeysAddresses) {
         /** @type {Object<string, string[]>} */
-        const txrefsRelatedToAddress = {};
+        const txRefsRelatedToAddress = {};
         for (const Tx of blockData.Txs) {
             const addressesRelatedToTx = Tx.outputs.map(output => output.address);
             for (const witness of Tx.witnesses) {
@@ -330,11 +330,11 @@ export class BlockUtils {
             }
             
             for (const address of addressesRelatedToTx) {
-                if (!txrefsRelatedToAddress[address]) { txrefsRelatedToAddress[address] = []; }
-                txrefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
+                if (!txRefsRelatedToAddress[address]) { txRefsRelatedToAddress[address] = []; }
+                txRefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
             }
         }
 
-        return txrefsRelatedToAddress;
+        return txRefsRelatedToAddress;
     }
 }

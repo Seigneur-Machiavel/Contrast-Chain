@@ -107,7 +107,6 @@ describe('Blockchain', function () {
 
         it('should persist oldest block to disk when exceeding max in-memory blocks', async function () {
             // Test persisting blocks to disk when memory limit is reached
-            blockchain.maxInMemoryBlocks = 2;
             await blockchain.addConfirmedBlock(createMockBlock(1));
             await blockchain.addConfirmedBlock(createMockBlock(2));
             await blockchain.addConfirmedBlock(createMockBlock(3));

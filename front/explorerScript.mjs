@@ -119,12 +119,15 @@ function connectWS() {
                 blockExplorerWidget.navigateUntilTarget(true);
                 break;
             case 'transaction_requested':
-                // { transaction, balanceChange, txReference }
-                const transactionWithBalanceChange = data.transaction;
-                transactionWithBalanceChange.balanceChange = data.balanceChange;
-                blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithBalanceChange;
+                // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
+                const transactionWithDetails = data.transaction;
+                transactionWithDetails.balanceChange = data.balanceChange;
+                transactionWithDetails.inAmount = data.inAmount;
+                transactionWithDetails.outAmount = data.outAmount;
+                transactionWithDetails.fee = data.fee;
+                blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithDetails;
                 // set html
-                blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
+                blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange, data.fee);
                 break;
             default:
                 break;
@@ -453,6 +456,8 @@ class BlockExplorerWidget {
 
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, modalContentCreated ? 1000 : 200); });
 
+        // wait for txs table to be filled
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, 800); });
         // scroll to the tx line
         const modalContentWrap = this.cbeHTML.modalContentWrap();
         const txRow = this.#getTxRowElement(txId, modalContentWrap);
@@ -624,11 +629,12 @@ class BlockExplorerWidget {
         contentWrap.style = 'margin-top: 56px; padding-top: 0; height: calc(100% - 76px);';
         this.#createAddressInfoElement(addressExhaustiveData, 'cbe-addressExhaustiveData', contentWrap);
     }
-    fillAddressTxRow(txReference, balanceChange) {
+    fillAddressTxRow(txReference, balanceChange, fee) {
         const addressTxRows = document.querySelectorAll(`.cbe-addressTxRow`);
         for (const addressTxRow of addressTxRows) {
             if (addressTxRow.querySelector('.cbe-addressTxReference').textContent === txReference) {
                 addressTxRow.querySelector('.cbe-addressTxAmount').textContent = utils.convert.number.formatNumberAsCurrencyChange(balanceChange);
+                addressTxRow.querySelector('.cbe-addressTxFee').textContent = utils.convert.number.formatNumberAsCurrency(fee);
                 return;
             }
         }
@@ -853,10 +859,12 @@ class BlockExplorerWidget {
     }
     /** @param {AddressExhaustiveData} addressExhaustiveData @param {HTMLElement} divToInject */
     #createTxHistoryFilledWithTxsReferencesElement(addressExhaustiveData, divToInject) {
+        // FILLING THE ADDRESS TXS HISTORY
         const table = createHtmlElement('table', undefined, ['cbe-TxHistoryTable', 'cbe-Table'], divToInject);
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
         createHtmlElement('th', undefined, [], headerRow).textContent = 'Amount';
+        createHtmlElement('th', undefined, [], headerRow).textContent = 'Fee';
         createHtmlElement('th', undefined, [], headerRow).textContent = 'Anchor';
         
         thead.appendChild(headerRow);
@@ -866,11 +874,11 @@ class BlockExplorerWidget {
         const txsReferences = addressExhaustiveData.addressTxsReferences;
         for (const txReference of txsReferences) {
             const transaction = this.transactionsByReference[txReference];
-            const balanceChange = transaction ? transaction.balanceChange : undefined;
             const row = createHtmlElement('tr', undefined, ['cbe-addressTxRow'], tbody);
             const amountText = createHtmlElement('td', undefined, ['cbe-addressTxAmount'], row);
-            amountText.textContent = '...';
-            if (balanceChange !== undefined) { amountText.textContent = utils.convert.number.formatNumberAsCurrencyChange(balanceChange); }
+            amountText.textContent = transaction ? utils.convert.number.formatNumberAsCurrencyChange(transaction.balanceChange) : '...';
+            const feeText = createHtmlElement('td', undefined, ['cbe-addressTxFee'], row);
+            feeText.textContent = transaction ? utils.convert.number.formatNumberAsCurrency(transaction.fee) : '...';
             createHtmlElement('td', undefined, ['cbe-addressTxReference'], row).textContent = txReference;
         }
         

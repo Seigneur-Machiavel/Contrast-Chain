@@ -605,11 +605,8 @@ export class Node {
         blockData.validatorAddress = blockData.Txs[1].inputs[0].split(':')[0];
         return blockData;
     }
-    async getAddressTransactionsReferences(address) {
-        return await this.blockchain.getTxsRefencesFromDiskByAddress(address);
-    }
     async getAddressExhaustiveData(address) {
-        const addressTxsReferences = await this.getAddressTransactionsReferences(address);
+        const addressTxsReferences = await this.blockchain.getTxsRefencesFromDiskByAddress(address);
         const addressUTXOs = await this.getAddressUtxos(address);
         return { addressUTXOs, addressTxsReferences };
     }
@@ -620,30 +617,34 @@ export class Node {
     async getTransactionByReference(txReference, address = undefined) {
         try {
             if (address) { utils.addressUtils.conformityCheck(address); }
-            const result = { transaction: undefined, balanceChange: undefined };
+            const result = { transaction: undefined, balanceChange: 0, inAmount: 0, outAmount: 0, fee: 0 };
             const transaction = await this.blockchain.getTransactionByReference(txReference);
             result.transaction = transaction;
             if (address === undefined) { return result; }
 
-            const addressTsReferences = await this.blockchain.getTxsRefencesFromDiskByAddress(address);
-            if (!addressTsReferences.includes(txReference)) { return result; }
+            const addressTxsReferences = await this.blockchain.getTxsRefencesFromDiskByAddress(address);
+            if (!addressTxsReferences.includes(txReference)) { return result; }
 
-            result.balanceChange = 0; // init
             for (const output of transaction.outputs) {
+                result.outAmount += output.amount;
                 if (output.address === address) { result.balanceChange += output.amount; }
             }
             
             for (const anchor of transaction.inputs) {
+                if (!utils.types.anchor.isConform(anchor)) { continue; }
                 const txRef = `${anchor.split(":")[0]}:${anchor.split(":")[1]}`;
-                if (!addressTsReferences.includes(txRef)) { continue; }
-
                 const utxoRelatedTx = await this.blockchain.getTransactionByReference(txRef);
                 const outputIndex = parseInt(anchor.split(":")[2]);
                 const output = utxoRelatedTx.outputs[outputIndex];
+                result.inAmount += output.amount;
+                
+                //if (!addressTxsReferences.includes(txRef)) { continue; }
                 if (output.address !== address) { continue; }
 
                 result.balanceChange -= output.amount;
             }
+
+            result.fee = result.inAmount === 0 ? 0 : result.inAmount - result.outAmount;
 
             return result;
         } catch (error) {

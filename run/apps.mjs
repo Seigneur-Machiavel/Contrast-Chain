@@ -418,15 +418,17 @@ export class ObserverWsApp {
                     break;
                 case 'address_utxos':
                     ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs: await this.node.getAddressUtxos(data) } }));
-                case 'get_transaction_by_reference':
+                case 'get_transaction_by_reference': // DEPRECATED
+                    break;
                     const resTx = await this.node.getTransactionByReference(data);
                     if (!res) { console.error(`[OBSERVER] Transaction not found: ${data}`); return; }
                     ws.send(JSON.stringify({ type: 'transaction_requested', data: res.transaction }));
                     break;
                 case 'get_transaction_with_balanceChange_by_reference':
-                    const { transaction, balanceChange } = await this.node.getTransactionByReference(data.txReference, data.address);
+                    //const result = { transaction, balanceChange, inAmount, outAmount, fee };
+                    const { transaction, balanceChange, inAmount, outAmount, fee } = await this.node.getTransactionByReference(data.txReference, data.address);
                     if (!transaction) { console.error(`[OBSERVER] Transaction not found: ${data.txReference}`); return; }
-                    ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, txReference: data.txReference } }));
+                    ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, inAmount, outAmount, fee, txReference: data.txReference } }));
                 case 'subscribe_balance_update':
                     this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, [ws]);
                     ws.send(JSON.stringify({ type: 'subscribed_balance_update', data }));

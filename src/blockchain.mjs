@@ -27,14 +27,12 @@ export class Blockchain {
      * Creates a new Blockchain instance.
      * @param {string} dbPath - The path to the LevelDB database.
      * @param {Object} [options] - Configuration options for the blockchain.
-     * @param {number} [options.maxInMemoryBlocks=1000] - Maximum number of blocks to keep in memory.
      * @param {string} [options.logLevel='info'] - The logging level for Pino.
      * @param {number} [options.snapshotInterval=100] - Interval at which to take full snapshots.
      */
     constructor(nodeId, options = {}) {
         this.nodeId = nodeId;
         const {
-            maxInMemoryBlocks = 1000,
             logLevel = 'silent', // 'silent',
             snapshotInterval = 100,
         } = options;
@@ -42,14 +40,15 @@ export class Blockchain {
         // ensure folder exists
         if (!fs.existsSync(this.dbPath)) { fs.mkdirSync(this.dbPath, { recursive: true }); }
         this.db = LevelUp(LevelDown(this.dbPath));
-        /** @type {Map<string, BlockData>} */
-        this.inMemoryBlocks = new Map();
-        /** @type {Map<number, string>} */
-        this.blocksByHeight = new Map();
-        /** @type {Map<string, number>} */
-        this.blockHeightByHash = new Map();
-        /** @type {number} */
-        this.maxInMemoryBlocks = maxInMemoryBlocks;
+
+        this.cache = {
+            /** @type {Map<string, BlockData>} */
+            inMemoryBlocks: new Map(),
+            /** @type {Map<number, string>} */
+            blocksByHeight: new Map(),
+            /** @type {Map<string, number>} */
+            blockHeightByHash: new Map(),
+        };
         /** @type {number} */
         this.currentHeight = -1;
         /** @type {BlockData|null} */
@@ -67,9 +66,23 @@ export class Blockchain {
             }
         });
 
-        this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, maxInMemoryBlocks, snapshotInterval }, 'Blockchain instance created');
+        this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, snapshotInterval }, 'Blockchain instance created');
     }
+    async loadBlocksFromStorageToCache(indexStart) {
+        let blockIndex = indexStart;
+        while (true) {
+            const block = await this.getBlockFromDiskByHeight(blockIndex);
+            if (!block) { break; }
 
+            this.setBlockInCache(block);
+            blockIndex++;
+        }
+    }
+    setBlockInCache(block) {
+        this.cache.inMemoryBlocks.set(block.hash, block);
+        this.cache.blocksByHeight.set(block.index, block.hash);
+        this.cache.blockHeightByHash.set(block.hash, block.index);
+    }
     /**
      * Adds a new confirmed block to the blockchain.
      * @param {UtxoCache} utxoCache - The UTXO cache to use for the block.
@@ -83,8 +96,7 @@ export class Blockchain {
         for (const block of blocks) {
             this.logger.info({ blockHeight: block.index, blockHash: block.hash }, 'Adding new block');
             try {
-                this.updateIndices(block);
-                this.inMemoryBlocks.set(block.hash, block);
+                this.setBlockInCache(block);
 
                 this.lastBlock = block;
                 this.currentHeight = block.index;
@@ -169,15 +181,16 @@ export class Blockchain {
     }
     /** @param {BlockInfo} blockInfo */
     async persistBlockInfoToDisk(blockInfo) {
-        this.logger.debug({ blockHash: blockInfo.header.hash }, 'Persisting block info to disk');
+        const blockHash = blockInfo.header.hash;
+        this.logger.debug({ blockHash }, 'Persisting block info to disk');
         try {
             const serializedBlockInfo = utils.serializer.rawData.toBinary_v1(blockInfo);
             const buffer = Buffer.from(serializedBlockInfo);
-            await this.db.put(`info-${blockInfo.header.hash}`, buffer);
+            await this.db.put(`info-${blockHash}`, buffer);
 
-            this.logger.debug({ blockHash: blockInfo.header.hash }, 'Block info persisted to disk');
+            this.logger.debug({ blockHash }, 'Block info persisted to disk');
         } catch (error) {
-            this.logger.error({ error, blockHash: blockInfo.header.hash }, 'Failed to persist block info to disk');
+            this.logger.error({ error, blockHash }, 'Failed to persist block info to disk');
             throw error;
         }
     }
@@ -185,18 +198,22 @@ export class Blockchain {
     async persistAddressesTransactionsToDisk(finalizedBlock, blockPubKeysAddresses) {
         const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(finalizedBlock, blockPubKeysAddresses);
 
-        Object.entries(transactionsReferencesSortedByAddress).forEach(async ([address, newTxReference]) => {
-            const addressTransactions = await this.getTxsRefencesFromDiskByAddress(address);
-            //TODO: can be optimized by serializing the array of txsIds and the txsIds themselves
-            const actualizedAddressTransactions = addressTransactions.concat(newTxReference);
-            await this.db.put(`${address}-txs`, actualizedAddressTransactions.join(','));
-        });
+        /** @type {Object<string, Promise<string[]>} */
+        const addressesTransactionsPromises = {};
+        for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
+            addressesTransactionsPromises[address] = this.getTxsRefencesFromDiskByAddress(address);
+        }
+
+        const batch = this.db.batch();
+        for (const [address, newTxReference] of Object.entries(transactionsReferencesSortedByAddress)) {
+            const addressTxsRefs = await addressesTransactionsPromises[address];
+            const actualizedAddressaddressTxsRefs = addressTxsRefs.concat(newTxReference);
+            batch.put(`${address}-txs`, Buffer.from(utils.serializerFast.serialize.txsReferencesArray(actualizedAddressaddressTxsRefs)));
+        }
+
+        await batch.write();
 
         this.logger.debug({ blockHash: finalizedBlock.hash }, 'Addresses transactions persisted to disk');
-    }
-    updateIndices(block) {
-        this.blocksByHeight.set(block.index, block.hash);
-        this.blockHeightByHash.set(block.hash, block.index);
     }
 
     async getRangeOfBlocksFromDiskByHeight(fromHeight, toHeight = 999_999_999, deserialize = true) {
@@ -269,8 +286,8 @@ export class Blockchain {
     /** @param {string} address */
     async getTxsRefencesFromDiskByAddress(address) {
         try {
-            const txsIdsUint8Array = await this.db.get(`${address}-txs`);
-            const txsRefs = new TextDecoder().decode(txsIdsUint8Array).split(',');
+            const txsRefsSerialized = await this.db.get(`${address}-txs`);
+            const txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
             return txsRefs;
         } catch (error) {
             return [];
@@ -286,11 +303,11 @@ export class Blockchain {
     async getBlockByHash(hash, deserialize = true) {
         this.logger.debug({ blockHash: hash }, 'Retrieving block');
 
-        if (this.inMemoryBlocks.has(hash)) {
-            return this.inMemoryBlocks.get(hash);
+        if (this.cache.inMemoryBlocks.has(hash)) {
+            return this.cache.inMemoryBlocks.get(hash);
         }
 
-        const height = this.blockHeightByHash.get(hash);
+        const height = this.cache.blockHeightByHash.get(hash);
         if (height !== undefined) {
             return this.getBlockFromDiskByHeight(height, deserialize);
         }
