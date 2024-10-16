@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Node Dashboard v1.0</title>
+    <title>Contrast Node Dashboard</title>
     <script crossorigin src="https://unpkg.com/@msgpack/msgpack"></script>
     <script src="../externalLibs/anime.min.js"></script>
     <script src="./front/nodeDashboardScript.mjs" type="module"></script>
@@ -28,8 +28,8 @@
             font-style: normal;
         }
         :root {
-            --color1: rgb(22, 26, 30);
-            --color2: #3b3b3b;
+            --color1: #2c2c2c;
+            --color2: #383838;
             --color3: #4f4f4f;
         }
         input::-webkit-outer-spin-button,
@@ -182,9 +182,10 @@
         }
 
         #privateKeyInputWrap {
-        display: flex;
-        align-items: center;
+            display: flex;
+            align-items: center;
         }
+
         #togglePrivateKey {
             margin-right: 10px;
             background-color: var(--color3);
@@ -212,7 +213,7 @@
         }
 
         .global-info {
-            width: 100%;
+            width: 80% !important;
             margin: 20px auto;
             background-color: var(--color2);
             padding: 20px;
@@ -271,16 +272,36 @@
             font-size: large;
             font-weight: 600;
         }
+        .network-list {
+            list-style-type: none;
+            padding: 0;
+            margin: 10px 0;
+            max-height: 200px;
+            overflow-y: auto;
+            background-color: var(--color3);
+            border-radius: 10px;
+        }
+
+        .network-list li {
+            padding: 8px 12px;
+            border-bottom: 1px solid #555;
+        }
+
+        .network-list li:last-child {
+            border-bottom: none;
+        }
     </style>
 </head>
 
 <body>
     <div id="topBar">
         <h3>Node Dashboard v1.0</h3>
-        <h3>roles: <span id="roles"></span></h3>
+        
         <div class="adminPanelContainer">
             <div class="btnWrap hidden">
+                <h3>roles: <span id="roles"></span></h3>
                 <div>
+                    
                     <button id="forceRestart">Restart</button>
                     <button id="Revalidate">Revalidate</button>
                     <button id="resetInfo">Reset Info</button>
@@ -362,29 +383,50 @@
         <!-- Global Information Container -->
         <div class="container global-info">
             <div class="spacedText">
-                <h1>Global Information</h1>
+                <h1>Node Information</h1>
+            </div>
+
+            <div class="spacedText">
+                <h3>Client Version</h3>
+                <h3 id="clientVersion">v0.1</h3> 
+            </div>
+            
+            <div class="spacedText">
+                <h3>Last Block Info:</h3>
+                <h3 id="lastBlockInfo">N/A</h3>
+            </div>
+            
+            <div class="spacedText">
+                <h3>Tx in Mempool:</h3>
+                <h3 id="txInMempool">0</h3>
+            </div>
+            
+            <div class="spacedText">
+                <h3>Average Block Time:</h3>
+                <h3 id="averageBlockTime">0 seconds</h3>
+            </div>
+            <!-- New Network Section -->
+            <div class="spacedText">
+                <h1>Network</h1>
+            </div>
+            
+            <div class="spacedText">
+                <h3>Peer ID:</h3>
+                <h3 id="peerId">N/A</h3>
             </div>
 
             <div class="spacedText">
                 <h3>Peers Connected:</h3>
-                <h3 id="peersConnected">0</h3> <!-- New ID for Peers Connected -->
+                <h3 id="peersConnected">0</h3>
             </div>
-
+            
             <div class="spacedText">
-                <h3>Last Block Info:</h3>
-                <h3 id="lastBlockInfo">N/A</h3> <!-- New ID for Last Block Info -->
+                <h3>Connected Peers:</h3>
+                <ul id="peersConnectedList" class="network-list">
+                    <!-- Connected Peer IDs will be dynamically inserted here -->
+                </ul>
             </div>
-
-            <div class="spacedText">
-                <h3>Tx in Mempool:</h3>
-                <h3 id="txInMempool">0</h3> <!-- New ID for Transactions in Mempool -->
             </div>
-
-            <div class="spacedText">
-                <h3>Average Block Time:</h3>
-                <h3 id="averageBlockTime">0 seconds</h3> <!-- Keep existing Average Block Time ID -->
-            </div>
-        </div>
 
     </div>
     

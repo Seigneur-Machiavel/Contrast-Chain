@@ -167,6 +167,8 @@ const eHTML = {
     toggleAdminPanelBtn : document.getElementById('toggleAdminPanel'),
 
     resetInfoBtn: document.getElementById('resetInfo'),
+    peerId: document.getElementById('peerId'),
+    peersConnectedList: document.getElementById('peersConnectedList'),
 
 }
 
@@ -199,8 +201,31 @@ function displayNodeInfo(data) {
     eHTML.lastBlockInfo.textContent = data.lastBlockInfo ? data.lastBlockInfo : 'No Block Info';
     eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
+    eHTML.peerId.textContent = data.peerId ? data.peerId : 'No Peer ID';
+    if (Array.isArray(data.peerIds)) {
+        renderPeers(data.peerIds);
+    } else {
+        console.warn('peerIds is not an array:', data.peerIds);
+        eHTML.peerList.innerHTML = '<li>No peers available.</li>';
+    }
 }
 
+function renderPeers(peers) {
+    eHTML.peersConnectedList.innerHTML = ''; // Clear existing list
+
+    if (peers.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No peers connected.';
+        eHTML.peersConnected.appendChild(li);
+        return;
+    }
+
+    peers.forEach(peerId => {
+        const li = document.createElement('li');
+        li.textContent = peerId;
+        eHTML.peersConnectedList.appendChild(li);
+    });
+}
 //#region - EVENT LISTENERS
 // not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
 eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
