@@ -64,8 +64,15 @@ class TimeSynchronizer {
                     console.error(`Failed to sync time with NTP server: ${err}`);
                     return reject(err);
                 }
+                
                 const systemTime = Date.now();
-                this.offset = date.getTime() - systemTime;
+                const offset = date.getTime() - systemTime;
+                if (Math.abs(offset) > 600_000) {
+                    console.warn(`Large time offset detected: ${offset} ms`);
+                    return reject('Large time offset');
+                }
+
+                this.offset = offset;
                 this.lastSyncedTime = date;
                 console.log(`Time synchronized. Offset: ${this.offset} ms`);
                 resolve(this.offset);
