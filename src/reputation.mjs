@@ -6,6 +6,7 @@ import { EventEmitter } from 'events';
  * @typedef {Object} PeerInfo
  * @property {string} peerId - The unique identifier of the peer.
  * @property {string} ip - The IP address of the peer.
+ * @property {string} address - The crypto wallet address of the peer.
  */
 
 class ReputationManager extends EventEmitter {
@@ -33,6 +34,9 @@ class ReputationManager extends EventEmitter {
 
         /** @type {Set<string>} */
         this.bannedIPs = new Set(); // Set of banned IP addresses
+
+        /** @type {Set<string>} */
+        this.bannedAddresses = new Set(); // Set of banned crypto wallet addresses
 
         /** @type {Map<string, number>} */
         this.tempBans = new Map(); // Temporary bans with expiry timestamps, keyed by peerId
@@ -99,6 +103,7 @@ class ReputationManager extends EventEmitter {
             this.scores = new Map(data.scores);
             this.permanentBans = new Set(data.permanentBans);
             this.bannedIPs = new Set(data.bannedIPs);
+            this.bannedAddresses = new Set(data.bannedAddresses);
             this.tempBans = new Map(data.tempBans);
             this.peerInfoMap = new Map(data.peerInfoMap || []);
         }
@@ -112,6 +117,7 @@ class ReputationManager extends EventEmitter {
             scores: Array.from(this.scores.entries()),
             permanentBans: Array.from(this.permanentBans),
             bannedIPs: Array.from(this.bannedIPs),
+            bannedAddresses: Array.from(this.bannedAddresses),
             tempBans: Array.from(this.tempBans.entries()),
             peerInfoMap: Array.from(this.peerInfoMap.entries()), // Save peerInfoMap
         };
@@ -166,41 +172,62 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
+     * Ban a peer by address.
+     * @param {string} address 
+     */
+    banPeerByAddress(address) {
+        if (!this.bannedAddresses.has(address)) {
+            this.bannedAddresses.add(address);
+            this.emit('addressBanned', { address });
+            console.log(`Peer with address ${address} has been banned.`);
+        }
+    }
+
+    /**
      * Apply an offense to a peer.
      * Based on offense type, score is decremented and temporary/permanent ban may apply.
-     * @param {PeerInfo} peer - An object that can contain either peerId, ip (IP), or both.
+     * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
      * @param {string} offenseType 
      */
     applyOffense(peer, offenseType) {
-        const peerId = peer.peerId || this.getPeerIdByIP(peer.ip);
-        const ip = peer.ip || this.getIPByPeerId(peer.peerId);
-    
-        if (!peerId && !ip) {
-            throw new Error(`Either peerId or ip must be provided.`);
+        const peerId = peer.peerId || this.getPeerIdByIP(peer.ip) || this.getPeerIdByAddress(peer.address);
+        const ip = peer.ip || (peerId && this.getIPByPeerId(peerId));
+        const address = peer.address || (peerId && this.getAddressByPeerId(peerId));
+
+        if (!peerId && !ip && !address) {
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
         }
-    
+
         if (!this.offenseScoreMap[offenseType]) {
             throw new Error(`Unknown offense type: ${offenseType}`);
         }
-    
+
         const scoreDecrement = this.offenseScoreMap[offenseType];
-    
+
         if (peerId) {
             this.decrementScore(peerId, scoreDecrement);
             this.checkForPermanentOffense(peerId, offenseType);
         }
-    
+
         if (ip && !peerId) {
             this.banPeerByIP(ip);  // If no peerId but IP exists, ban by IP
             this.emit('peerBanned', { ip });  // Emit an event for IP ban
             console.log(`Peer with IP ${ip} has been banned.`);
         }
-        // Associate the peerId with IP in peerInfoMap if both are provided
-        if (peerId && ip) {
-            this.peerInfoMap.set(peerId, { peerId, ip });
+
+        if (address && !peerId) {
+            this.banPeerByAddress(address); // If no peerId but address exists, ban by address
+            this.emit('peerBanned', { address });
+            console.log(`Peer with address ${address} has been banned.`);
+        }
+
+        // Associate the peerId with IP and address in peerInfoMap if provided
+        if (peerId) {
+            const existingPeerInfo = this.peerInfoMap.get(peerId) || {};
+            const newPeerInfo = { ...existingPeerInfo, peerId, ip, address };
+            this.peerInfoMap.set(peerId, newPeerInfo);
         }
     }
-    
 
     /**
      * Helper method to check and apply permanent ban based on offense type.
@@ -217,6 +244,10 @@ class ReputationManager extends EventEmitter {
 
         if (permanentOffenses.includes(offenseType)) {
             this.permanentlyBanPeer(peerId);
+            const address = this.getAddressByPeerId(peerId);
+            if (address) {
+                this.banPeerByAddress(address);
+            }
         }
     }
 
@@ -231,6 +262,16 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
+     * Get the address associated with a peerId.
+     * @param {string} peerId - The peerId.
+     * @returns {string | undefined} - The address if found, or undefined.
+     */
+    getAddressByPeerId(peerId) {
+        const peer = this.peerInfoMap.get(peerId);
+        return peer ? peer.address : undefined;
+    }
+
+    /**
      * Get peer info by peerId.
      * @param {string} peerId - The peerId.
      * @returns {PeerInfo | null}
@@ -240,32 +281,10 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
-     * Example placeholder method for matching peerId to an IP address.
-     * @param {string} peerId 
-     * @param {string} ip 
-     * @returns {boolean}
+     * Get the peerId associated with an IP address.
+     * @param {string} ip - The IP address of the peer.
+     * @returns {string | undefined} - The peerId if found, or undefined.
      */
-    isPeerAddressMatch(peerId, ip) {
-        const peer = this.getPeerById(peerId);
-        return peer && peer.ip === ip;
-    }
-
-    /**
-     * Example placeholder for fetching peer data.
-     * Customize this to your system's actual implementation.
-     * @param {string} peerId
-     * @returns {PeerInfo | null}
-     */
-    getPeerById(peerId) {
-        // Implement fetching of peer data based on peerId
-        return null;
-    }
-
-    /**
-    * Helper method to get peerId by IP address.
-    * @param {string} ip - The IP address of the peer.
-    * @returns {string | undefined} - The peerId if found, or undefined.
-    */
     getPeerIdByIP(ip) {
         for (const [peerId, peerInfo] of this.peerInfoMap.entries()) {
             if (peerInfo.ip === ip) {
@@ -273,6 +292,31 @@ class ReputationManager extends EventEmitter {
             }
         }
         return undefined;
+    }
+
+    /**
+     * Get the peerId associated with a crypto address.
+     * @param {string} address - The crypto wallet address.
+     * @returns {string | undefined} - The peerId if found, or undefined.
+     */
+    getPeerIdByAddress(address) {
+        for (const [peerId, peerInfo] of this.peerInfoMap.entries()) {
+            if (peerInfo.address === address) {
+                return peerId;
+            }
+        }
+        return undefined;
+    }
+
+    /**
+     * Check if the given peerId is associated with the given address.
+     * @param {string} peerId 
+     * @param {string} address 
+     * @returns {boolean}
+     */
+    isPeerAddressMatch(peerId, address) {
+        const peer = this.getPeerById(peerId);
+        return peer && peer.address === address;
     }
 
     /**
@@ -284,6 +328,10 @@ class ReputationManager extends EventEmitter {
 
         if (score <= this.options.banPermanentScore) {
             this.permanentlyBanPeer(peerId);
+            const address = this.getAddressByPeerId(peerId);
+            if (address) {
+                this.banPeerByAddress(address);
+            }
         } else if (score <= this.options.banThreshold) {
             this.temporarilyBanPeer(peerId);
         }
@@ -323,6 +371,17 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
+     * Unban an address.
+     * @param {string} address 
+     */
+    unbanAddress(address) {
+        if (this.bannedAddresses.delete(address)) {
+            this.emit('addressUnbanned', { address });
+            console.log(`Address ${address} has been unbanned.`);
+        }
+    }
+
+    /**
      * Check if a peer is permanently banned by their peerId.
      * @param {string} peerId 
      * @returns {boolean}
@@ -332,12 +391,12 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
-     * Check if a peer is banned by their peerId or IP address.
+     * Check if a peer is banned by their peerId, IP address, or address.
      * @param {PeerInfo} peer 
      * @returns {boolean}
      */
     isPeerOrIPBanned(peer) {
-        return this.isPeerBanned(peer.peerId) || this.isIPBanned(peer.ip);
+        return this.isPeerBanned(peer.peerId) || this.isIPBanned(peer.ip) || this.isAddressBanned(peer.address);
     }
 
     /**
@@ -375,6 +434,15 @@ class ReputationManager extends EventEmitter {
     }
 
     /**
+     * Check if an address is banned.
+     * @param {string} address 
+     * @returns {boolean}
+     */
+    isAddressBanned(address) {
+        return this.bannedAddresses.has(address);
+    }
+
+    /**
      * Get the score of a peer.
      * @param {string} peerId 
      * @returns {number}
@@ -405,17 +473,10 @@ class ReputationManager extends EventEmitter {
                 console.log(`Peer ${peerId} has been unbanned.`);
             }
         }
-    
+        
         // Add IP unbanning logic if necessary
-        for (const ip of this.bannedIPs) {
-            // Assuming IP bans are also temporary, add an expiration mechanism here
-            // Example logic: if IP ban is based on a time threshold
-            this.bannedIPs.delete(ip);
-            this.emit('ipUnbanned', { ip });
-            console.log(`IP ${ip} has been unbanned.`);
-        }
+        // For IPs and addresses, we currently consider bans as permanent
     }
-    
 }
 
 export default ReputationManager;
