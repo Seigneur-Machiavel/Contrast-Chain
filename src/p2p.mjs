@@ -12,9 +12,9 @@ import { mdns } from '@libp2p/mdns';
 import { bootstrap } from '@libp2p/bootstrap';
 import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
-import { yamux } from '@chainsafe/libp2p-yamux';
 import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
+import { mplex } from '@libp2p/mplex';
 
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
@@ -137,7 +137,7 @@ class P2PNetwork extends EventEmitter {
                 inboundSocketInactivityTimeout: 300000000,
                 outboundSocketInactivityTimeout: 300000000,
             })],
-            streamMuxers: [yamux()],
+            streamMuxers: [mplex],
             connectionEncryption: [noise()],
             services: {
                 identify: identify(),
