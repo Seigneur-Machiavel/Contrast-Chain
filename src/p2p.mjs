@@ -137,7 +137,7 @@ class P2PNetwork extends EventEmitter {
                 inboundSocketInactivityTimeout: 300000000,
                 outboundSocketInactivityTimeout: 300000000,
             })],
-            streamMuxers: [mplex],
+            streamMuxers: [mplex()],
             connectionEncryption: [noise()],
             services: {
                 identify: identify(),
