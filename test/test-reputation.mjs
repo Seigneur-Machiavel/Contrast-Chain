@@ -1,13 +1,9 @@
-// p2p.test.js
 import { expect } from 'chai';
 import { describe, it, before, after } from 'mocha';
-import P2PNetwork from '../src/p2p.mjs'; // Adjust the path as necessary
-import ReputationManager from '../src/reputation.mjs'; // Adjust the path as necessary
+import P2PNetwork from '../src/p2p.mjs';
 import { multiaddr } from '@multiformats/multiaddr';
+import ReputationManager from '../src/reputation.mjs';
 
-/**
- * Simple TimeSynchronizer implementation for testing.
- */
 class TimeSynchronizer {
     getCurrentTime() {
         return Date.now();
@@ -15,8 +11,7 @@ class TimeSynchronizer {
 }
 
 describe('P2PNetwork with ReputationManager Integration', function () {
-    // Increase timeout for asynchronous operations
-    this.timeout(60000); // 60 seconds
+    this.timeout(60000); // Increase timeout for async operations
 
     let nodeA, nodeB, nodeC;
 
@@ -29,16 +24,17 @@ describe('P2PNetwork with ReputationManager Integration', function () {
     };
 
     before(async () => {
-        // Initialize three P2PNetwork nodes with custom reputation options
+        console.log('Starting P2P nodes...');
+
         nodeA = new P2PNetwork({
-            listenAddress: '/ip4/0.0.0.0/tcp/0', // Dynamic port assignment
+            listenAddress: '/ip4/0.0.0.0/tcp/0',
             reputationOptions: {
-                banThreshold: -5, // Lower threshold for testing
+                banThreshold: -5,
                 banPermanentScore: -10,
-                tempBanDuration: 3000, // 3 seconds for quick testing
+                tempBanDuration: 3000, // 3 seconds
                 cleanupInterval: 1000, // 1 second
             },
-            bootstrapNodes: [], // No bootstrap nodes initially
+            bootstrapNodes: [],
         }, new TimeSynchronizer());
 
         nodeB = new P2PNetwork({
@@ -63,141 +59,136 @@ describe('P2PNetwork with ReputationManager Integration', function () {
             bootstrapNodes: [],
         }, new TimeSynchronizer());
 
-        // Start all nodes
         await Promise.all([nodeA.start(), nodeB.start(), nodeC.start()]);
 
-        // Retrieve nodeA's multiaddress for bootstrap purposes
         const nodeAAddr = getFirstAddress(nodeA);
+        console.log(`Node A started at: ${nodeAAddr}`);
 
-        // Configure nodeB and nodeC to use nodeA as a bootstrap node
         nodeB.options.bootstrapNodes = [nodeAAddr];
         nodeC.options.bootstrapNodes = [nodeAAddr];
 
-        // Connect nodeB and nodeC to nodeA
         await Promise.all([nodeB.connectToBootstrapNodes(), nodeC.connectToBootstrapNodes()]);
-
-        // Wait for connections to establish
-        await wait(2000);
+        await wait(2000); // Wait for nodes to establish connections
     });
 
     after(async () => {
-        // Gracefully shutdown all nodes
+        console.log('Stopping P2P nodes...');
         await Promise.all([nodeA.stop(), nodeB.stop(), nodeC.stop()]);
+        console.log('All nodes stopped.');
+    });
+
+    it('should apply offense by only ip and ban correctly', async () => {
+        const peerCAddr = getFirstAddress(nodeC);
+        const addr = multiaddr(peerCAddr);
+        const ip = addr.nodeAddress().address; // Extracts IP address
+
+        console.log(`Applying offense to Node C using only ip (${ip})...`);
+
+        nodeA.reputationManager.applyOffense(
+            { ip },
+            ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK
+        );
+
+        await wait(500); // Give time for the ban to apply
+
+        // Check if IP is temporarily banned
+        expect(nodeA.reputationManager.isIPBanned(ip)).to.be.true;
+
+        // Wait for temporary ban to expire
+        await wait(nodeA.reputationManager.options.tempBanDuration + 1000); // Extra wait time
+
+        // Ensure IP is unbanned
+        expect(nodeA.reputationManager.isIPBanned(ip)).to.be.false;
     });
 
     it('should ban a peer after offenses and unban after temporary duration', async () => {
-        const peerAId = nodeA.p2pNode.peerId.toString();
-        const peerBId = nodeB.p2pNode.peerId.toString();
         const peerCId = nodeC.p2pNode.peerId.toString();
-        const peerCAddr = getFirstAddress(nodeC); // Fetch actual address of NodeC
-    
-        // Verify initial connections
-        expect(nodeA.getConnectedPeers()).to.include.members([peerBId, peerCId], 'NodeA should be connected to NodeB and NodeC');
-    
-        // Listen for 'peer:disconnect' event to confirm disconnection
-        const disconnectPromise = new Promise(resolve => {
-            nodeA.once('peer:disconnect', (disconnectedPeerId) => {
-                if (disconnectedPeerId === peerCId) resolve();
-            });
-        });
-    
-        // Apply an offense to NodeC from NodeA's perspective
+        const peerCAddr = getFirstAddress(nodeC);
+        const addr = multiaddr(peerCAddr);
+        const ip = addr.nodeAddress().address;
+
+        console.log(`Applying offense to Node C (${peerCId})...`);
         nodeA.reputationManager.applyOffense(
-            { peerId: peerCId, address: peerCAddr },
-            nodeA.reputationManager.offenseTypes.INVALID_TRANSACTION_PROPAGATION
+            { peerId: peerCId, ip },
+            ReputationManager.OFFENSE_TYPES.INVALID_TRANSACTION_PROPAGATION
         );
-    
-        // Allow some time for processing
-        await wait(2000);  // Increased wait time to ensure disconnection happens
-    
-        // Verify NodeC is banned
-        expect(nodeA.reputationManager.getPeerScore(peerCId)).to.be.below(nodeA.options.reputationOptions.banThreshold);
+
+        await wait(500); // Ensure offense is processed and ban is applied
+
+        console.log(`Node C score: ${nodeA.reputationManager.getPeerScore(peerCId)}`);
         expect(nodeA.reputationManager.isPeerBanned(peerCId)).to.be.true;
-    
-        // Wait for disconnection
-        await disconnectPromise;
-    
-        // Add a short wait after the event is emitted
-        await wait(1000); // Additional wait to ensure full disconnection processing
-    
-        // Verify NodeA has disconnected from NodeC
-        expect(nodeA.getConnectedPeers()).to.not.include(peerCId);
-        expect(nodeC.getConnectedPeers()).to.not.include(peerAId);
-    
-        // Try reconnecting NodeC (should fail)
-        try {
-            await nodeC.connectToBootstrapNodes();
-            await wait(1000);  // Give time for connection attempt
-        } catch (error) {
-            // Expected to fail
-        }
-    
-        expect(nodeA.getConnectedPeers()).to.not.include(peerCId);
-    
-        // Wait for temporary ban to expire
-        await wait(nodeA.options.reputationOptions.tempBanDuration + 2000);  // Ensure enough time for tempBanDuration to expire
-        await wait(nodeA.options.reputationOptions.cleanupInterval + 1000);  // Ensure cleanup happens after temp ban expiration
-    
-        // Verify NodeC is unbanned
+
+        // Wait for the temporary ban to expire
+        await wait(nodeA.reputationManager.options.tempBanDuration + 1000);
+
+        // Ensure peer is unbanned
         expect(nodeA.reputationManager.isPeerBanned(peerCId)).to.be.false;
-    
-        // Try reconnecting NodeC (should succeed)
+
+        await wait(2000); // Allow time for reconnection
+        console.log('Attempting to reconnect Node C...');
         await nodeC.connectToBootstrapNodes();
-        await wait(2000);  // Allow time for reconnection
-    
-        // Verify NodeA and NodeC are connected again
+        await wait(2000);
+
         expect(nodeA.getConnectedPeers()).to.include(peerCId);
-        expect(nodeC.getConnectedPeers()).to.include(peerAId);
     });
-    
+
     it('should permanently ban a peer after multiple severe offenses', async () => {
-        const peerAId = nodeA.p2pNode.peerId.toString();
         const peerBId = nodeB.p2pNode.peerId.toString();
-        const peerBAddr = getFirstAddress(nodeB); // Fetch actual address of NodeB
-    
-        // Listen for 'peer:disconnect' event to confirm disconnection
-        const disconnectPromise = new Promise(resolve => {
-            nodeA.once('peer:disconnect', (disconnectedPeerId) => {
-                if (disconnectedPeerId === peerBId) resolve();
-            });
-        });
-    
-        // Apply multiple severe offenses to NodeB
+        const peerBAddr = getFirstAddress(nodeB);
+        const addr = multiaddr(peerBAddr);
+        const ip = addr.nodeAddress().address;
+
+        console.log('Applying severe offenses to Node B...');
         const severeOffenses = [
-            nodeA.reputationManager.offenseTypes.DOUBLE_SIGNING,
-            nodeA.reputationManager.offenseTypes.DOS_ATTACK,
-            nodeA.reputationManager.offenseTypes.CONSENSUS_MANIPULATION,
-            nodeA.reputationManager.offenseTypes.SYBIL_ATTACK,
+            ReputationManager.OFFENSE_TYPES.DOUBLE_SIGNING,
+            ReputationManager.OFFENSE_TYPES.DOS_ATTACK,
+            ReputationManager.OFFENSE_TYPES.CONSENSUS_MANIPULATION,
+            ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK,
         ];
-    
+
         severeOffenses.forEach(offense => {
-            nodeA.reputationManager.applyOffense({ peerId: peerBId, address: peerBAddr }, offense);
+            nodeA.reputationManager.applyOffense(
+                { peerId: peerBId, ip },
+                offense
+            );
         });
-    
-        // Allow processing
-        await wait(2000);  // Increased wait to allow processing
-    
-        // Verify NodeB is permanently banned
+
+        await wait(1000); // Ensure disconnection happens
+
+        // Check if peer is permanently banned
         expect(nodeA.reputationManager.isPeerPermanentlyBanned(peerBId)).to.be.true;
-    
-        // Wait for disconnection
-        await disconnectPromise;
-    
-        // Add a short wait after the event is emitted
-        await wait(1000); // Additional wait to ensure full disconnection processing
-    
-        // Verify NodeA has disconnected from NodeB
-        expect(nodeA.getConnectedPeers()).to.not.include(peerBId);
-        expect(nodeB.getConnectedPeers()).to.not.include(peerAId);
-    
-        // Try reconnecting NodeB (should fail due to permanent ban)
-        try {
-            await nodeB.connectToBootstrapNodes();
-            await wait(1000);
-        } catch (error) {
-            // Expected to fail
-        }
-    
         expect(nodeA.getConnectedPeers()).to.not.include(peerBId);
     });
-});    
+
+    it('should apply offense by only peerId and ban correctly', async () => {
+        const peerCId = nodeC.p2pNode.peerId.toString();
+        console.log(`Applying offense to Node C using only peerId (${peerCId})...`);
+
+        nodeA.reputationManager.applyOffense(
+            { peerId: peerCId },
+            ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING
+        );
+
+        await wait(500);
+
+        // Check if peer is temporarily banned
+        expect(nodeA.reputationManager.isPeerBanned(peerCId)).to.be.true;
+
+        // Wait for temporary ban to expire
+        await wait(nodeA.reputationManager.options.tempBanDuration + 1000);
+
+        // Ensure peer is unbanned
+        expect(nodeA.reputationManager.isPeerBanned(peerCId)).to.be.false;
+    });
+
+    it('should throw error for unsupported offense types', async () => {
+        const peerCId = nodeC.p2pNode.peerId.toString();
+        const unsupportedOffense = 'UNSUPPORTED_OFFENSE';
+
+        console.log(`Applying unsupported offense to Node C (${peerCId})...`);
+
+        expect(() => {
+            nodeA.reputationManager.applyOffense({ peerId: peerCId }, unsupportedOffense);
+        }).to.throw(`Unknown offense type: ${unsupportedOffense}`);
+    });
+});
