@@ -62,20 +62,20 @@ class TimeSynchronizer {
             ntpClient.getNetworkTime(this.getCurrentNtpServer(), this.ntpPort, (err, date) => {
                 if (err) {
                     console.error(`Failed to sync time with NTP server: ${err}`);
-                    reject(err);
+                    return reject(err);
                 }
                 
                 const systemTime = Date.now();
                 const offset = date.getTime() - systemTime;
                 if (Math.abs(offset) > 600_000) {
                     console.warn(`Large time offset detected: ${offset} ms`);
-                    reject('Large time offset');
+                    return reject('Large time offset');
                 }
 
                 this.offset = offset;
                 this.lastSyncedTime = date;
                 console.log(`Time synchronized. Offset: ${this.offset} ms`);
-                resolve(this.offset);
+                return resolve(this.offset);
             });
         });
     }
