@@ -49,61 +49,47 @@ class P2PNetwork extends EventEmitter {
 
         this.reputationManager = new ReputationManager(this.options.reputationOptions);
 
-        // Event listener for when a peer is banned
-        this.reputationManager.on('peerBanned', ({ peerId, ip, permanent }) => {
+        // Event listener for when an identifier is banned
+        this.reputationManager.on('identifierBanned', ({ identifier, permanent }) => {
             this.logger.warn(
-                { peerId, ip, permanent },
-                `Peer ${peerId} (${ip || 'unknown ip'}) has been ${permanent ? 'permanently' : 'temporarily'} banned`
+                { identifier, permanent },
+                `Identifier ${identifier} has been ${permanent ? 'permanently' : 'temporarily'} banned`
             );
 
             if (this.p2pNode) {
-                // Close connections to the banned peer
-                this.p2pNode.components.connectionManager.closeConnections(peerId);
-            }
-        });
+                // Attempt to find peerId associated with the identifier
+                let peerId = null;
 
-        // Event listener for when a peer is unbanned
-        this.reputationManager.on('peerUnbanned', ({ peerId, ip }) => {
-            this.logger.info(
-                { peerId, ip },
-                `Peer ${peerId} (${ip || 'unknown ip'}) has been unbanned`
-            );
-        });
-
-        // Event listener for when an IP is banned
-        this.reputationManager.on('ipBanned', ({ ip, permanent }) => {
-            this.logger.warn(
-                { ip, permanent },
-                `IP ${ip} has been ${permanent ? 'permanently' : 'temporarily'} banned`
-            );
-
-            if (this.p2pNode) {
-                let peerId = this.reputationManager.getPeerIdByIP(ip);
-            
-                if (!peerId) {
-                    // try to find in peers a corresponding address
+                if (this.peers.has(identifier)) {
+                    // Identifier is a peerId
+                    peerId = identifier;
+                } else {
+                    // Try to find peerId associated with the identifier
                     for (let [id, peer] of this.peers) {
-                        if (peer.address.includes(ip)) {
+                        if (peer.address && peer.address.includes(identifier)) {
                             peerId = id;
-                            this.logger.warn({ ip, peerId }, 'Found peerId by ip');
+                            break;
+                        } else if (peer.address.includes(identifier)) {
+                            peerId = id;
                             break;
                         }
                     }
                 }
-                if (!peerId) { return; }
-                this.logger.info({ ip, peerId }, 'Closing connections to banned IP');
-                this.p2pNode.components.connectionManager.closeConnections(peerId);
+
+                if (peerId) {
+                    this.logger.info({ identifier, peerId }, 'Closing connections to banned identifier');
+                    this.p2pNode.components.connectionManager.closeConnections(peerId);
+                }
             }
         });
 
-        // Event listener for when an IP is unbanned
-        this.reputationManager.on('ipUnbanned', ({ ip }) => {
+        // Event listener for when an identifier is unbanned
+        this.reputationManager.on('identifierUnbanned', ({ identifier }) => {
             this.logger.info(
-                { ip },
-                `IP ${ip} has been unbanned`
+                { identifier },
+                `Identifier ${identifier} has been unbanned`
             );
         });
-
     }
 
     /** @type {string} */
@@ -186,12 +172,6 @@ class P2PNetwork extends EventEmitter {
  
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
-                // check if banned before dialing
-                if (this.reputationManager.isIPBanned(addr)) {
-                    this.logger.warn({ component: 'P2PNetwork', bootstrapNode : addr }, 'Node is banned. Skipping connection...');
-                    return;
-                }
-
                 const ma = multiaddr(addr);
                 await this.dial(ma);
                 await this.p2pNode.components.connectionManager.openConnection(ma);
@@ -226,13 +206,6 @@ class P2PNetwork extends EventEmitter {
             peerInfo.address = multiaddr.toString();
         }
 
-        // Check if the peer or its IP is banned
-        if (this.reputationManager.isPeerOrIPBanned(peerInfo)) {
-            this.logger.warn({ peerId, address: peerInfo.address }, 'Connected peer is banned. Disconnecting...');
-            this.p2pNode.components.connectionManager.closeConnections(peerId);
-            this.peers.delete(peerId);
-            return;
-        }
 
         this.updatePeer(peerId, { status: 'connected', address: peerInfo.address });
         this.emit('peer:connect', peerId);

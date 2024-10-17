@@ -4,9 +4,9 @@ import { EventEmitter } from 'events';
 
 /**
  * @typedef {Object} PeerInfo
- * @property {string} peerId - The unique identifier of the peer.
- * @property {string} ip - The IP address of the peer.
- * @property {string} address - The crypto wallet address of the peer.
+ * @property {string} [peerId] - The unique identifier of the peer.
+ * @property {string} [ip] - The IP address of the peer.
+ * @property {string} [address] - The crypto wallet address of the peer.
  */
 
 class ReputationManager extends EventEmitter {
@@ -23,26 +23,14 @@ class ReputationManager extends EventEmitter {
         };
         this.options = { ...defaultOptions, ...options };
 
-        // log the options
-        console.log(this.options);
-
         /** @type {Map<string, number>} */
-        this.scores = new Map(); // Map of peerId -> score
+        this.identifierScores = new Map(); // Map of identifier (peerId, ip, address) -> score
 
-        /** @type {Set<string>} */
-        this.permanentBans = new Set(); // Set of permanently banned peerIds
+        /** @type {Map<string, { permanent: boolean, expiresAt?: number }>} */
+        this.identifierBans = new Map(); // Map of identifier -> ban info
 
-        /** @type {Set<string>} */
-        this.bannedIPs = new Set(); // Set of banned IP addresses
-
-        /** @type {Set<string>} */
-        this.bannedAddresses = new Set(); // Set of banned crypto wallet addresses
-
-        /** @type {Map<string, number>} */
-        this.tempBans = new Map(); // Temporary bans with expiry timestamps, keyed by peerId
-        
-        /** @type {Map<string, PeerInfo>} */
-        this.peerInfoMap = new Map(); // Map of peerId -> PeerInfo.
+        /** @type {Map<string, Set<string>>} */
+        this.identifierAssociations = new Map(); // Map of identifier -> Set of associated identifiers
 
         // Define score decrements for each offense
         this.offenseScoreMap = {
@@ -100,87 +88,30 @@ class ReputationManager extends EventEmitter {
     loadScoresFromDisk() {
         if (fs.existsSync(this.options.scoreFilePath)) {
             const data = JSON.parse(fs.readFileSync(this.options.scoreFilePath, 'utf8'));
-            this.scores = new Map(data.scores);
-            this.permanentBans = new Set(data.permanentBans);
-            this.bannedIPs = new Set(data.bannedIPs);
-            this.bannedAddresses = new Set(data.bannedAddresses);
-            this.tempBans = new Map(data.tempBans);
-            this.peerInfoMap = new Map(data.peerInfoMap || []);
+            this.identifierScores = new Map(data.identifierScores);
+            this.identifierBans = new Map(data.identifierBans);
+            this.identifierAssociations = new Map();
+            const associations = data.identifierAssociations || [];
+            for (const [key, value] of associations) {
+                this.identifierAssociations.set(key, new Set(value));
+            }
+        } else {
+            // Initialize empty maps if the file doesn't exist
+            this.identifierScores = new Map();
+            this.identifierBans = new Map();
+            this.identifierAssociations = new Map();
         }
     }
-
     /**
      * Save scores and bans to disk on shutdown.
      */
     saveScoresToDisk() {
         const data = {
-            scores: Array.from(this.scores.entries()),
-            permanentBans: Array.from(this.permanentBans),
-            bannedIPs: Array.from(this.bannedIPs),
-            bannedAddresses: Array.from(this.bannedAddresses),
-            tempBans: Array.from(this.tempBans.entries()),
-            peerInfoMap: Array.from(this.peerInfoMap.entries()), // Save peerInfoMap
+            identifierScores: Array.from(this.identifierScores.entries()),
+            identifierBans: Array.from(this.identifierBans.entries()),
+            identifierAssociations: Array.from(this.identifierAssociations.entries()).map(([key, set]) => [key, Array.from(set)]),
         };
         fs.writeFileSync(this.options.scoreFilePath, JSON.stringify(data, null, 2));
-    }
-
-    /**
-     * Increment the score of a peer (positive actions).
-     * @param {string} peerId 
-     * @param {number} increment 
-     */
-    incrementScore(peerId, increment = 1) {
-        if (this.isPeerPermanentlyBanned(peerId)) return;
-        const newScore = (this.scores.get(peerId) || this.options.defaultScore) + increment;
-        this.scores.set(peerId, newScore);
-        this.checkPeerScore(peerId);
-    }
-
-    /**
-     * Decrement the score of a peer (negative actions).
-     * @param {string} peerId 
-     * @param {number} decrement 
-     */
-    decrementScore(peerId, decrement = 1) {
-        if (this.isPeerPermanentlyBanned(peerId)) return;
-        const newScore = (this.scores.get(peerId) || this.options.defaultScore) - decrement;
-        this.scores.set(peerId, newScore);
-        this.checkPeerScore(peerId);
-    }
-
-    /**
-     * Permanently ban a peer based on their peerId.
-     * @param {string} peerId 
-     */
-    permanentlyBanPeer(peerId) {
-        if (!this.permanentBans.has(peerId)) {
-            this.permanentBans.add(peerId);
-            this.scores.delete(peerId); // No need to track the score anymore
-            this.emit('peerBanned', { peerId, permanent: true });
-        }
-    }
-
-    /**
-     * Ban a peer by IP address.
-     * @param {string} ip 
-     */
-    banPeerByIP(ip) {
-        if (!this.bannedIPs.has(ip)) {
-            this.bannedIPs.add(ip);
-            this.emit('ipBanned', { ip });
-        }
-    }
-
-    /**
-     * Ban a peer by address.
-     * @param {string} address 
-     */
-    banPeerByAddress(address) {
-        if (!this.bannedAddresses.has(address)) {
-            this.bannedAddresses.add(address);
-            this.emit('addressBanned', { address });
-            console.log(`Peer with address ${address} has been banned.`);
-        }
     }
 
     /**
@@ -190,11 +121,11 @@ class ReputationManager extends EventEmitter {
      * @param {string} offenseType 
      */
     applyOffense(peer, offenseType) {
-        const peerId = peer.peerId || this.getPeerIdByIP(peer.ip) || this.getPeerIdByAddress(peer.address);
-        const ip = peer.ip || (peerId && this.getIPByPeerId(peerId));
-        const address = peer.address || (peerId && this.getAddressByPeerId(peerId));
+        const identifiers = this.getAssociatedIdentifiers(peer);
 
-        if (!peerId && !ip && !address) {
+        // log current score
+        //console.log(`Current score: ${this.identifierScores.get(identifiers) || this.options.defaultScore}`);
+        if (identifiers.size === 0) {
             throw new Error(`At least one of peerId, ip, or address must be provided.`);
         }
 
@@ -204,37 +135,39 @@ class ReputationManager extends EventEmitter {
 
         const scoreDecrement = this.offenseScoreMap[offenseType];
 
-        if (peerId) {
-            this.decrementScore(peerId, scoreDecrement);
-            this.checkForPermanentOffense(peerId, offenseType);
+        // Decrement scores and check for bans
+        for (const identifier of identifiers) {
+            this.decrementScore(identifier, scoreDecrement);
+            this.checkIdentifierScore(identifier, offenseType);
         }
-
-        if (ip && !peerId) {
-            this.banPeerByIP(ip);  // If no peerId but IP exists, ban by IP
-            this.emit('peerBanned', { ip });  // Emit an event for IP ban
-            console.log(`Peer with IP ${ip} has been banned.`);
-        }
-
-        if (address && !peerId) {
-            this.banPeerByAddress(address); // If no peerId but address exists, ban by address
-            this.emit('peerBanned', { address });
-            console.log(`Peer with address ${address} has been banned.`);
-        }
-
-        // Associate the peerId with IP and address in peerInfoMap if provided
-        if (peerId) {
-            const existingPeerInfo = this.peerInfoMap.get(peerId) || {};
-            const newPeerInfo = { ...existingPeerInfo, peerId, ip, address };
-            this.peerInfoMap.set(peerId, newPeerInfo);
-        }
+        // log new score
+        //console.log(`New score: ${this.identifierScores.get(identifiers) || this.options.defaultScore}`);
+        // Update associations
+        this.updateAssociations(peer);
     }
 
     /**
-     * Helper method to check and apply permanent ban based on offense type.
-     * @param {string} peerId 
-     * @param {string} offenseType 
+     * Decrement the score of an identifier (negative actions).
+     * @param {string} identifier 
+     * @param {number} decrement 
      */
-    checkForPermanentOffense(peerId, offenseType) {
+    decrementScore(identifier, decrement = 1) {
+        //console.log(`Decrementing score for identifier ${identifier} by ${decrement}`);
+        //console.log(`Current score: ${this.identifierScores.get(identifier) || this.options.defaultScore}`);
+        const newScore = (this.identifierScores.get(identifier) || this.options.defaultScore) - decrement;
+        //console.log(`New score: ${newScore}`);
+        this.identifierScores.set(identifier, newScore);
+    }
+
+    /**
+     * Check the score of an identifier and ban if below the threshold.
+     * @param {string} identifier 
+     * @param {string} offenseType
+     */
+    checkIdentifierScore(identifier, offenseType) {
+        const score = this.identifierScores.get(identifier);
+
+        // Check for permanent offenses
         const permanentOffenses = [
             ReputationManager.OFFENSE_TYPES.DOUBLE_SIGNING,
             ReputationManager.OFFENSE_TYPES.DOS_ATTACK,
@@ -242,213 +175,162 @@ class ReputationManager extends EventEmitter {
             ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK,
         ];
 
-        if (permanentOffenses.includes(offenseType)) {
-            this.permanentlyBanPeer(peerId);
-            const address = this.getAddressByPeerId(peerId);
-            if (address) {
-                this.banPeerByAddress(address);
-            }
-        }
-    }
-
-    /**
-     * Get the IP address associated with a peerId.
-     * @param {string} peerId - The peerId.
-     * @returns {string | undefined} - The IP address if found, or undefined.
-     */
-    getIPByPeerId(peerId) {
-        const peer = this.peerInfoMap.get(peerId);
-        return peer ? peer.ip : undefined;
-    }
-
-    /**
-     * Get the address associated with a peerId.
-     * @param {string} peerId - The peerId.
-     * @returns {string | undefined} - The address if found, or undefined.
-     */
-    getAddressByPeerId(peerId) {
-        const peer = this.peerInfoMap.get(peerId);
-        return peer ? peer.address : undefined;
-    }
-
-    /**
-     * Get peer info by peerId.
-     * @param {string} peerId - The peerId.
-     * @returns {PeerInfo | null}
-     */
-    getPeerById(peerId) {
-        return this.peerInfoMap.get(peerId) || null;
-    }
-
-    /**
-     * Get the peerId associated with an IP address.
-     * @param {string} ip - The IP address of the peer.
-     * @returns {string | undefined} - The peerId if found, or undefined.
-     */
-    getPeerIdByIP(ip) {
-        for (const [peerId, peerInfo] of this.peerInfoMap.entries()) {
-            if (peerInfo.ip === ip) {
-                return peerId;
-            }
-        }
-        return undefined;
-    }
-
-    /**
-     * Get the peerId associated with a crypto address.
-     * @param {string} address - The crypto wallet address.
-     * @returns {string | undefined} - The peerId if found, or undefined.
-     */
-    getPeerIdByAddress(address) {
-        for (const [peerId, peerInfo] of this.peerInfoMap.entries()) {
-            if (peerInfo.address === address) {
-                return peerId;
-            }
-        }
-        return undefined;
-    }
-
-    /**
-     * Check if the given peerId is associated with the given address.
-     * @param {string} peerId 
-     * @param {string} address 
-     * @returns {boolean}
-     */
-    isPeerAddressMatch(peerId, address) {
-        const peer = this.getPeerById(peerId);
-        return peer && peer.address === address;
-    }
-
-    /**
-     * Check the score of a peer and ban if below the threshold.
-     * @param {string} peerId 
-     */
-    checkPeerScore(peerId) {
-        const score = this.scores.get(peerId);
-
-        if (score <= this.options.banPermanentScore) {
-            this.permanentlyBanPeer(peerId);
-            const address = this.getAddressByPeerId(peerId);
-            if (address) {
-                this.banPeerByAddress(address);
-            }
+        if (permanentOffenses.includes(offenseType) || score <= this.options.banPermanentScore) {
+            this.banIdentifier(identifier, true);
         } else if (score <= this.options.banThreshold) {
-            this.temporarilyBanPeer(peerId);
+            this.banIdentifier(identifier, false);
         }
     }
 
     /**
-     * Temporarily ban a peer based on their peerId.
-     * Bans last for `tempBanDuration` milliseconds.
-     * @param {string} peerId 
+     * Ban an identifier (peerId, ip, or address).
+     * @param {string} identifier 
+     * @param {boolean} permanent 
      */
-    temporarilyBanPeer(peerId) {
-        if (!this.tempBans.has(peerId)) {
-            const expirationTime = Date.now() + this.options.tempBanDuration;
-            this.tempBans.set(peerId, expirationTime);
-            this.emit('peerBanned', { peerId, permanent: false });
-        }
-    }
-
-    /**
-     * Unban a peer, resetting their score.
-     * @param {string} peerId 
-     */
-    unbanPeer(peerId) {
-        let unbanned = false;
-        if (this.permanentBans.has(peerId)) {
-            this.permanentBans.delete(peerId);
-            unbanned = true;
-        }
-        if (this.tempBans.has(peerId)) {
-            this.tempBans.delete(peerId);
-            unbanned = true;
-        }
-        if (unbanned) {
-            this.scores.set(peerId, this.options.defaultScore);
-            this.emit('peerUnbanned', { peerId });
-        }
-    }
-
-    /**
-     * Unban an address.
-     * @param {string} address 
-     */
-    unbanAddress(address) {
-        if (this.bannedAddresses.delete(address)) {
-            this.emit('addressUnbanned', { address });
-            console.log(`Address ${address} has been unbanned.`);
-        }
-    }
-
-    /**
-     * Check if a peer is permanently banned by their peerId.
-     * @param {string} peerId 
-     * @returns {boolean}
-     */
-    isPeerPermanentlyBanned(peerId) {
-        return this.permanentBans.has(peerId);
-    }
-
-    /**
-     * Check if a peer is banned by their peerId, IP address, or address.
-     * @param {PeerInfo} peer 
-     * @returns {boolean}
-     */
-    isPeerOrIPBanned(peer) {
-        return this.isPeerBanned(peer.peerId) || this.isIPBanned(peer.ip) || this.isAddressBanned(peer.address);
-    }
-
-    /**
-     * Check if a peer is banned by their peerId (temporary or permanent).
-     * If temporarily banned, check if the ban has expired.
-     * @param {string} peerId 
-     * @returns {boolean}
-     */
-    isPeerBanned(peerId) {
-        if (this.isPeerPermanentlyBanned(peerId)) {
-            return true;
-        }
-
-        if (this.tempBans.has(peerId)) {
-            const expirationTime = this.tempBans.get(peerId);
-            if (Date.now() > expirationTime) {
-                this.tempBans.delete(peerId);
-                this.scores.set(peerId, this.options.defaultScore);
-                this.emit('peerUnbanned', { peerId });
-                return false;
+    banIdentifier(identifier, permanent = false) {
+        //console.log(`Banning identifier ${identifier} ${permanent ? 'permanently' : 'temporarily'}`);
+        //log score 
+        //console.log(`Score: ${this.identifierScores.get(identifier)}`);
+        const existingBan = this.identifierBans.get(identifier);
+        if (!existingBan || (!existingBan.permanent && permanent)) {
+            if (permanent) {
+                this.identifierBans.set(identifier, { permanent: true });
+            } else {
+                const expiresAt = Date.now() + this.options.tempBanDuration;
+                this.identifierBans.set(identifier, { permanent: false, expiresAt });
             }
-            return true;
+            this.emit('identifierBanned', { identifier, permanent });
+        }
+    }
+
+    /**
+     * Get all identifiers associated with a peer.
+     * @param {PeerInfo} peer 
+     * @returns {Set<string>}
+     */
+    getAssociatedIdentifiers(peer) {
+        const identifiers = new Set();
+
+        if (peer.peerId) identifiers.add(peer.peerId);
+        if (peer.ip) identifiers.add(peer.ip);
+        if (peer.address) identifiers.add(peer.address);
+
+        const queue = Array.from(identifiers);
+        const visited = new Set(identifiers);
+
+        while (queue.length > 0) {
+            const id = queue.shift();
+            const associated = this.identifierAssociations.get(id);
+            if (associated) {
+                for (const assocId of associated) {
+                    if (!visited.has(assocId)) {
+                        visited.add(assocId);
+                        queue.push(assocId);
+                    }
+                }
+            }
         }
 
+        return visited;
+    }
+
+    /**
+     * Update identifier associations based on a new or existing peer.
+     * @param {PeerInfo} peer 
+     */
+    updateAssociations(peer) {
+        const identifiers = [];
+
+        if (peer.peerId) identifiers.push(peer.peerId);
+        if (peer.ip) identifiers.push(peer.ip);
+        if (peer.address) identifiers.push(peer.address);
+
+        for (const id of identifiers) {
+            let associated = this.identifierAssociations.get(id);
+            if (!associated) {
+                associated = new Set();
+                this.identifierAssociations.set(id, associated);
+            }
+            for (const otherId of identifiers) {
+                if (otherId !== id) {
+                    associated.add(otherId);
+                }
+            }
+        }
+    }
+
+    /**
+     * Check if an identifier is banned.
+     * @param {string} identifier 
+     * @returns {boolean}
+     */
+    isIdentifierBanned(identifier) {
+        const banInfo = this.identifierBans.get(identifier);
+        if (banInfo) {
+            if (banInfo.permanent) {
+                return true;
+            } else if (Date.now() > banInfo.expiresAt) {
+                this.identifierBans.delete(identifier);
+                this.identifierScores.set(identifier, this.options.defaultScore);
+                this.emit('identifierUnbanned', { identifier });
+                return false;
+            } else {
+                return true;
+            }
+        }
         return false;
     }
 
     /**
-     * Check if a peer is banned by their IP address.
-     * @param {string} ip 
+     * Check if a peer is banned based on their identifiers.
+     * @param {PeerInfo} peer 
      * @returns {boolean}
      */
-    isIPBanned(ip) {
-        return this.bannedIPs.has(ip);
+    isPeerBanned(peer) {
+        const identifiers = this.getAssociatedIdentifiers(peer);
+
+        for (const identifier of identifiers) {
+            if (this.isIdentifierBanned(identifier)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
-     * Check if an address is banned.
-     * @param {string} address 
-     * @returns {boolean}
+     * Unban an identifier, resetting its score.
+     * @param {string} identifier 
      */
-    isAddressBanned(address) {
-        return this.bannedAddresses.has(address);
+    unbanIdentifier(identifier) {
+        //console.log(`Unbanning identifier ${identifier}`);
+        if (this.identifierBans.delete(identifier)) {
+            this.identifierScores.set(identifier, this.options.defaultScore);
+            this.emit('identifierUnbanned', { identifier });
+        }
     }
 
     /**
-     * Get the score of a peer.
-     * @param {string} peerId 
+     * Get the score of an identifier.
+     * @param {string} identifier 
      * @returns {number}
      */
-    getPeerScore(peerId) {
-        return this.scores.get(peerId) || this.options.defaultScore;
+    getIdentifierScore(identifier) {
+        return this.identifierScores.get(identifier) || this.options.defaultScore;
+    }
+
+    /**
+     * Periodically clean up expired temporary bans.
+     */
+    cleanupExpiredBans() {
+        const now = Date.now();
+        for (const [identifier, banInfo] of this.identifierBans.entries()) {
+            if (!banInfo.permanent && banInfo.expiresAt <= now) {
+                this.identifierBans.delete(identifier);
+                this.identifierScores.set(identifier, this.options.defaultScore);
+                this.emit('identifierUnbanned', { identifier });
+                //console.log(`Identifier ${identifier} has been unbanned.`);
+            }
+        }
     }
 
     /**
@@ -458,24 +340,6 @@ class ReputationManager extends EventEmitter {
         clearInterval(this.banCleanupInterval);
         this.saveScoresToDisk();
         this.emit('shutdown');
-    }
-
-    /**
-     * Periodically clean up expired temporary bans.
-     */
-    cleanupExpiredBans() {
-        const now = Date.now();
-        for (const [peerId, expirationTime] of this.tempBans.entries()) {
-            if (now > expirationTime) {
-                this.tempBans.delete(peerId);
-                this.scores.set(peerId, this.options.defaultScore); // Reset peer score on unban
-                this.emit('peerUnbanned', { peerId });
-                console.log(`Peer ${peerId} has been unbanned.`);
-            }
-        }
-        
-        // Add IP unbanning logic if necessary
-        // For IPs and addresses, we currently consider bans as permanent
     }
 }
 
