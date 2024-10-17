@@ -120,7 +120,7 @@ class P2PNetwork extends EventEmitter {
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
                 const ma = multiaddr(addr);
-                await this.dial(ma);
+                await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
                 await this.p2pNode.components.connectionManager.openConnection(ma);
                 this.logger.info({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
             } catch (err) {
