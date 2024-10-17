@@ -3,7 +3,6 @@ import { EventEmitter } from 'events';
 import pino from 'pino';
 import { createLibp2p } from 'libp2p';
 import { tcp } from '@libp2p/tcp';
-import * as filters from '@libp2p/websockets/filters';
 import { noise } from '@chainsafe/libp2p-noise';
 import { gossipsub } from '@chainsafe/libp2p-gossipsub';
 import { identify } from '@libp2p/identify';
@@ -131,13 +130,8 @@ class P2PNetwork extends EventEmitter {
 
         return createLibp2p({
             addresses: { listen: [this.options.listenAddress] },
-            transports: [tcp({
-                // connect to all sockets, even insecure ones
-                filter: filters.all,
-                inboundSocketInactivityTimeout: 300000000,
-                outboundSocketInactivityTimeout: 300000000,
-            })],
-            streamMuxers: [mplex],
+            transports: [tcp()],
+            streamMuxers: [mplex()],
             connectionEncryption: [noise()],
             services: {
                 identify: identify(),
@@ -168,7 +162,8 @@ class P2PNetwork extends EventEmitter {
                 }
 
                 const ma = multiaddr(addr);
-                await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
+                await this.dial(ma);
+                await this.p2pNode.components.connectionManager.openConnection(ma);
                 this.logger.info({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
             } catch (err) {
                 this.logger.error({ component: 'P2PNetwork', bootstrapNode: addr, error: err.message }, 'Failed to connect to bootstrap node');
