@@ -8,3 +8,4 @@ storage/nodeSettings.json
 nodePrivateKeys.json
 nodes-data
 config/config.json
+peer-reputation.json
