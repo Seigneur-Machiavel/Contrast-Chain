@@ -97,7 +97,7 @@ class P2PNetwork extends EventEmitter {
         return createLibp2p({
             addresses: { listen: [this.options.listenAddress] },
             transports: [tcp()],
-            streamMuxer: [mplex],
+            streamMuxers: [mplex],
             connectionEncryption: [noise()],
             services: {
                 identify: identify(),
