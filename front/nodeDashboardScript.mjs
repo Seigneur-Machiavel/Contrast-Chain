@@ -17,7 +17,7 @@ const WS_SETTINGS = {
     RECONNECT_INTERVAL: 5000,
     GET_NODE_INFO_INTERVAL: 2000,
 }
-let pingInterval;
+
 let nodeId;
 /** @type {UTXO[]} */
 let validatorUTXOs = [];
@@ -29,8 +29,6 @@ function connectWS() {
   
     ws.onopen = function() {
         console.log('Connection opened');
-        if (pingInterval) clearInterval(pingInterval);
-        pingInterval = setInterval(() => { ws.send(JSON.stringify({ type: 'get_node_info', data: Date.now() })); }, WS_SETTINGS.GET_NODE_INFO_INTERVAL);
         ws.send(JSON.stringify({ type: 'get_node_info', data: Date.now() })); // do it once at the beginning
     };
     ws.onclose = function() {
@@ -88,6 +86,13 @@ function connectWS() {
         }
     };
 }
+async function getGetNodeInfoLoop() {
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, WS_SETTINGS.GET_NODE_INFO_INTERVAL); });
+        if (!ws || ws.readyState !== 1) { continue; }
+        try { ws.send(JSON.stringify({ type: 'get_node_info', data: Date.now() })) } catch (error) {};
+    }
+}; getGetNodeInfoLoop();
 connectWS();
 
 const eHTML = {

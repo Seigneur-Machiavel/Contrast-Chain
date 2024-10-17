@@ -81,7 +81,7 @@ export class Node {
 
         /** @type {ValidationWorker_v2[]} */
         this.workers = [];
-        this.nbOfWorkers = 16;
+        this.nbOfWorkers = 4;
         this.configManager = new ConfigManager("config/config.json");
 
         this.blockchainStats = {};
@@ -89,7 +89,6 @@ export class Node {
 
     async start(startFromScratch = false) {
         await this.configManager.init();
-        //await this.initializeTimeSync(); // DEPRECATED
         this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
         
@@ -109,7 +108,7 @@ export class Node {
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
         //if (this.roles.includes('miner')) { this.miner.start_v2(); }
-        if (!await this.#waitSomePeers()) { console.warn('fatal error: P2P network failed to initialize within the expected time'); return; }
+        await this.#waitSomePeers();
 
         console.log('P2P network is ready - we are connected baby!');
 
@@ -122,18 +121,6 @@ export class Node {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
 
-    async initializeTimeSync() { // DEPRECATED
-        try {
-            await this.timeSynchronizer.syncTimeWithRetry();
-            this.isSyncedWithNTP = true;
-            this.timeSynchronizer.startSyncLoop();
-            console.log("Time synchronized successfully");
-        } catch (error) {
-            console.error("Failed to synchronize time:", error);
-            // Decide how to handle failed time sync (e.g., retry, use local time, etc.)
-        }
-    }
-
     getCurrentTime() {
         if (!this.isSyncedWithNTP) {
             console.warn("Time not yet synchronized with NTP");
@@ -143,6 +130,7 @@ export class Node {
     }
 
     async #loadBlockchain() {
+        // OPENNING BLOCKCHAIN DATABASE
         try {
             while (this.blockchain.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
         } catch (error) {
@@ -154,19 +142,52 @@ export class Node {
         this.snapshotSystemDoc.eraseSnapshotsHigherThan(lastSavedBlockHeight);
 
         const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
-        const lastSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
-        const startLoadingHeight = isNaN(lastSnapshotHeight) ? 0 : lastSnapshotHeight + 1;
+        const olderSnapshotHeight = snapshotsHeights[0] ? snapshotsHeights[0] : 0;
+        const youngerSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
+        const startHeight = isNaN(youngerSnapshotHeight) ? -1 : youngerSnapshotHeight;
+        
+        // Cache the blocks from the last snapshot +1 to the last block
+        // cacheStart : 0, 11, 21, etc...
+        const cacheStart = olderSnapshotHeight > 10 ? olderSnapshotHeight - 9 : 0;
+        await this.blockchain.loadBlocksFromStorageToCache(cacheStart, startHeight);
+        this.blockchain.currentHeight = startHeight;
+        this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(startHeight);
 
-        this.blockchain.currentHeight = startLoadingHeight - 1;
-        this.blockchain.lastBlock = await this.blockchain.getBlockFromDiskByHeight(startLoadingHeight - 1);
-
-        if (!isNaN(lastSnapshotHeight)) {
-            console.warn(`Last known snapshot index: ${lastSnapshotHeight}`);
-            await this.snapshotSystemDoc.rollBackTo(lastSnapshotHeight, this.utxoCache, this.vss, this.memPool);
-            this.snapshotSystemDoc.eraseSnapshotsHigherThan(lastSnapshotHeight - 1);
+        // cache + db cleanup
+        await this.blockchain.eraseBlocksHigherThan(startHeight);
+        if (startHeight === -1) { // no snapshot to load
+            await this.blockchain.eraseEntireDatabase();
+            return true;
         }
 
+        await this.#loadSnapshot(startHeight);
+
         return true;
+    }
+    async #loadSnapshot(snapshotIndex = 0) {
+        console.warn(`Last known snapshot index: ${snapshotIndex}`);
+        await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
+
+        // place snapshot to trash folder, we can restaure it if needed
+        this.snapshotSystemDoc.eraseSnapshotsHigherThan(snapshotIndex - 1);
+    }
+    /** @param {BlockData} finalizedBlock */
+    async #saveSnapshot(finalizedBlock) {
+        if (finalizedBlock.index === 0) { return; }
+        if (finalizedBlock.index % 10 !== 0) { return; }
+
+        // erase the outdated blocks cache and persist the addresses transactions references to disk
+        const cacheErasable = this.blockchain.erasableCacheLowerThan(finalizedBlock.index - 99);
+        if (cacheErasable !== null && cacheErasable.from < cacheErasable.to) {
+            await this.blockchain.persistAddressesTransactionsReferencesToDisk(this.memPool, cacheErasable.from, cacheErasable.to);
+            this.blockchain.eraseCacheFromTo(cacheErasable.from, cacheErasable.to);
+        }
+        
+        await this.snapshotSystemDoc.newSnapshot(this.utxoCache, this.vss, this.memPool);
+        this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - 100);
+        // avoid gap between the loaded snapshot and the new one
+        // at this stage we know that the loaded snapshot is consistent with the blockchain
+        this.snapshotSystemDoc.restoreLoadedSnapshot();
     }
     getTopicsToSubscribeRelatedToRoles() {
         const rolesTopics = {
@@ -179,10 +200,14 @@ export class Node {
         return [...new Set(topicsToSubscribe)];
     }
 
-    async #waitSomePeers(nbOfPeers = 1, maxAttempts = 600, interval = 1000) {
+    async #waitSomePeers(nbOfPeers = 1, maxAttempts = 60, timeOut = 30000) {
+        let abort = false;
+        setTimeout(() => { abort = true; }, timeOut);
+
         let alreadyLog = false;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, interval));
+            if (abort) { break; }
+            await new Promise(resolve => setTimeout(resolve, 1000));
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${this.p2pNetwork.getConnectedPeers().length} peer${this.p2pNetwork.getConnectedPeers().length > 1 ? 's' : ''}`);
             
             const peersIds = this.p2pNetwork.getConnectedPeers();
@@ -205,7 +230,7 @@ export class Node {
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
         }
 
-        console.warn('P2P network failed to initialize within the expected time');
+        console.warn(`P2P network failed to find peers within the expected time (${(timeOut/1000).toFixed(2)} seconds)`);
         return false;
     }
     async createBlockCandidateAndBroadcast() {
@@ -349,7 +374,7 @@ export class Node {
 
         performance.mark('add-confirmed-block');
         if (!skipValidation && (!hashConfInfo || !hashConfInfo.conform)) { throw new Error('Failed to validate block'); }
-        const blockInfo = await this.blockchain.addConfirmedBlocks(this.utxoCache, [finalizedBlock], persistToDisk, this.wsCallbacks.onBlockConfirmed, validationResult.allDiscoveredPubKeysAddresses, totalFees);
+        const blockInfo = await this.blockchain.addConfirmedBlocks(this.utxoCache, [finalizedBlock], persistToDisk, this.wsCallbacks.onBlockConfirmed, totalFees);
 
         performance.mark('apply-blocks');
         await this.blockchain.applyBlocks(this.utxoCache, this.vss, [finalizedBlock], this.roles.includes('observer'));
@@ -399,14 +424,11 @@ export class Node {
         //#endregion
 
         // SNAPSHOT
-        if (!isLoading && finalizedBlock.index !== 0 && finalizedBlock.index % 10 === 0) {
-            await this.snapshotSystemDoc.newSnapshot(this.utxoCache, this.vss, this.memPool);
-            this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - 100);
-        }
+        if (!isLoading) { await this.#saveSnapshot(finalizedBlock); }
 
         if (!broadcastNewCandidate) { return true; }
         
-        await nbOfPeers;
+        if (await nbOfPeers < 1) { throw new Error('!sync! No peer to broadcast the new block candidate'); }
         this.blockCandidate = await this.#createBlockCandidate();
         try {
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
@@ -433,7 +455,7 @@ export class Node {
             const myLegitimacy = this.vss.getAddressLegitimacy(this.account.address);
             if (myLegitimacy === undefined) { throw new Error(`No legitimacy for ${this.account.address}, can't create a candidate`); }
 
-            const olderBlock = await this.blockchain.getBlockFromDiskByHeight(this.blockchain.lastBlock.index - utils.MINING_PARAMS.blocksBeforeAdjustment);
+            const olderBlock = await this.blockchain.getBlockByHeight(this.blockchain.lastBlock.index - utils.MINING_PARAMS.blocksBeforeAdjustment);
             const averageBlockTimeMS = utils.mining.calculateAverageBlockTime(this.blockchain.lastBlock, olderBlock);
             this.blockchainStats.averageBlockTime = averageBlockTimeMS;
             const newDifficulty = utils.mining.difficultyAdjustment(this.blockchain.lastBlock, averageBlockTimeMS);
@@ -568,7 +590,7 @@ export class Node {
             /** @type {BlockData[]} */
             const blocksData = [];
             for (let i = fromHeight; i <= toHeight; i++) {
-                const blockData = await this.blockchain.getBlockFromDiskByHeight(i);
+                const blockData = await this.blockchain.getBlockByHeight(i);
                 const blockInfo = await this.blockchain.getBlockInfoFromDiskByHeight(i);
 
                 blocksData.push(this.#exhaustiveBlockFromBlockDataAndInfo(blockData, blockInfo));
@@ -606,7 +628,7 @@ export class Node {
         return blockData;
     }
     async getAddressExhaustiveData(address) {
-        const addressTxsReferences = await this.blockchain.getTxsRefencesFromDiskByAddress(address);
+        const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address);
         const addressUTXOs = await this.getAddressUtxos(address);
         return { addressUTXOs, addressTxsReferences };
     }
@@ -622,7 +644,7 @@ export class Node {
             result.transaction = transaction;
             if (address === undefined) { return result; }
 
-            const addressTxsReferences = await this.blockchain.getTxsRefencesFromDiskByAddress(address);
+            const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address);
             if (!addressTxsReferences.includes(txReference)) { return result; }
 
             for (const output of transaction.outputs) {

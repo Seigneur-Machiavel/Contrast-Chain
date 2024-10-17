@@ -15,7 +15,7 @@ class TimeSynchronizer {
         this.roundInterval = options.roundInterval || 60_000; // 1 minute
         this.retryAttempts = options.retryAttempts || 5;
         this.retryDelay = options.retryDelay || 5000; // 5 seconds delay between retries
-        this.autoStart = options.autoStart !== undefined ? options.autoStart : true; // Add this line
+        this.autoStart = options.autoStart === undefined ? true : options.autoStart; // Add this line
 
         this.lastSyncedTime = null;
         this.offset = 0; // Time offset between system time and NTP time
@@ -62,14 +62,14 @@ class TimeSynchronizer {
             ntpClient.getNetworkTime(this.getCurrentNtpServer(), this.ntpPort, (err, date) => {
                 if (err) {
                     console.error(`Failed to sync time with NTP server: ${err}`);
-                    return reject(err);
+                    reject(err);
                 }
                 
                 const systemTime = Date.now();
                 const offset = date.getTime() - systemTime;
                 if (Math.abs(offset) > 600_000) {
                     console.warn(`Large time offset detected: ${offset} ms`);
-                    return reject('Large time offset');
+                    reject('Large time offset');
                 }
 
                 this.offset = offset;

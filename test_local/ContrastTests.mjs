@@ -160,23 +160,6 @@ async function refreshAllBalances(node, accounts) {
     }
 }
 
-async function waitForP2PNetworkReady(nodes, maxAttempts = 30, interval = 1000) {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const allNodesConnected = nodes.every(node => {
-            const peerCount = node.p2pNetwork.getConnectedPeers().length;
-            return peerCount >= 1; // We only need one connection in this test
-        });
-
-        if (allNodesConnected) {
-            console.log('P2P network is ready');
-            return;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, interval));
-    }
-
-    throw new Error('P2P network failed to initialize within the expected time');
-}
 /**
  * @param {NodeFactory} factory
  * @param {Account} account
@@ -245,8 +228,6 @@ async function nodeSpecificTest(accounts) {
     }
 
     const nodes = await Promise.all(nodesPromises);
-
-    await waitForP2PNetworkReady(nodes);
 
     // use second validator as observer to avoid intensive task one the first validator
     const observerIndex = (testParams.nbOfMultiNodes + testParams.nbOfValidators) > 1 ? 1 : 0;

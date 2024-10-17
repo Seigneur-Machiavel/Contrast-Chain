@@ -21,7 +21,6 @@ const SETTINGS = {
 
 /** @type {WebSocket} */
 let ws;
-let currentHeightInterval;
 function connectWS() {
     //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
@@ -102,17 +101,14 @@ function connectWS() {
     }
 
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
-
-    if (currentHeightInterval) { clearInterval(currentHeightInterval); }
-    currentHeightInterval = setInterval(() => {
-        if (ws.readyState !== 1) {
-            console.info('WebSocket not ready!, stopping interval...');
-            clearInterval(currentHeightInterval);
-            return;
-        }
-        try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
-    }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL);
 } connectWS();
+async function getHeightsLoop() {
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL); });
+        if (!ws || ws.readyState !== 1) { continue; }
+        try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
+    }
+}; getHeightsLoop();
 async function readyWS() {
     return new Promise((resolve, reject) => {
         if (ws.readyState === 1) { resolve(); return; }

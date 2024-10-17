@@ -102,7 +102,7 @@ export class SyncHandler {
         switch (msg.type) {
             case 'getBlocks':
                 this.logger.debug(msg, 'Received getBlocks request');
-                const blocks = await this.node.blockchain.getRangeOfBlocksFromDiskByHeight(msg.startIndex, msg.endIndex, false);
+                const blocks = await this.node.blockchain.getRangeOfBlocksByHeight(msg.startIndex, msg.endIndex, false);
                 this.logger.debug({ count: blocks.length }, 'Sending blocks in response');
                 return { status: 'success', blocks };
             case 'getStatus':

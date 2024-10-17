@@ -48,7 +48,7 @@ const startime = new Date().getTime();
 //const chainPart = await multiNode.getBlocksInfo(0, multiNode.blockchain.currentHeight -1);
 const chainPart = [];
 for (let i = 0; i < multiNode.blockchain.currentHeight; i++) {
-    const block = await multiNode.blockchain.getBlockFromDiskByHeight(i);
+    const block = await multiNode.blockchain.getBlockByHeight(i);
     chainPart.push(block);
 }
 const blocksInfo = extractBlocksMiningInfo(chainPart);
