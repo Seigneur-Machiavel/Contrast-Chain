@@ -16,6 +16,7 @@ class TimeSynchronizer {
         this.retryAttempts = options.retryAttempts || 5;
         this.retryDelay = options.retryDelay || 5000; // 5 seconds delay between retries
         this.autoStart = options.autoStart === undefined ? true : options.autoStart; // Add this line
+        this.stop = false;
 
         this.lastSyncedTime = null;
         this.offset = 0; // Time offset between system time and NTP time
@@ -39,7 +40,8 @@ class TimeSynchronizer {
         for (let i = 0; i < attempts; i++) {
             try {
                 await this.syncTimeWithNTP();
-                console.log(`Time synchronized after ${i + 1} attempts`);
+                const readableTime = new Date(this.getCurrentTime()).toLocaleString();
+                console.log(`Time synchronized after ${i + 1} attempts, current time: ${readableTime}`);
                 return true;
             } catch (err) {
                 this.rotateNtpServer();
@@ -52,6 +54,7 @@ class TimeSynchronizer {
     async #startSyncLoop() {
         while (true) {
             await new Promise(resolve => setTimeout(resolve, this.syncInterval));
+            if (this.stop) { return; }
             await this.syncTimeWithRetry(); // Re-sync every syncInterval with retry
         }
     }

@@ -24,6 +24,8 @@ export class OpStack {
         return newCallStack;
     }
     terminate() {
+        clearTimeout(this.lastConfirmedBlockTimeout);
+        this.lastConfirmedBlockTimeout = null;
         this.terminated = true;
     }
     /** @param {number} delayMS */
@@ -90,18 +92,15 @@ export class OpStack {
                     }, this.delayWithoutConfirmationBeforeSync);
                     break;
                 case 'syncWithKnownPeers':
-                    console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    console.warn(`[NODE-${this.node.id.slice(0, 6)} - OPSTACK] SyncWithKnownPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     const syncSuccessful = await this.node.syncHandler.syncWithKnownPeers();
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        this.tasks.push({ type: 'syncWithKnownPeers', data: null });
+                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                        this.syncRequested = false;
+                        this.pushFirst( 'syncWithKnownPeers', null );
                         break;
                     }
-
-                    /*while (!syncSuccessful) {
-                        await new Promise(resolve => setTimeout(resolve, 1000));
-                        syncSuccessful = await this.node.syncHandler.syncWithKnownPeers();
-                    }*/
 
                     console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
