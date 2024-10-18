@@ -13,7 +13,7 @@ import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
 import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
-import { mplex } from '@libp2p/mplex';
+import { yamux } from '@chainsafe/libp2p-yamux';
 
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
@@ -131,8 +131,8 @@ class P2PNetwork extends EventEmitter {
         return createLibp2p({
             addresses: { listen: [this.options.listenAddress] },
             transports: [tcp()],
-            streamMuxers: [mplex()],
-            connectionEncryption: [noise()],
+            streamMuxers: [yamux()],
+            connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
                 pubsub: gossipsub({
@@ -145,9 +145,7 @@ class P2PNetwork extends EventEmitter {
                 dht: kadDHT(),
             },
             peerDiscovery,
-            connectionManager: {
-                autoDial: false,
-            },
+            connectionManager: {},
         });
     }
 
@@ -177,6 +175,7 @@ class P2PNetwork extends EventEmitter {
         this.p2pNode.addEventListener('peer:disconnect', this.#handlePeerDisconnect);
         this.p2pNode.addEventListener('peer:discovery', (event) => {
             const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
+            this.p2pNode.components.connectionManager.openConnection(event.detail.multiaddrs[0]);
             this.logger.info({ peerId }, 'Peer discovered');
         });
         this.p2pNode.services.pubsub.addEventListener('message', this.#handlePubsubMessage);
