@@ -406,13 +406,10 @@ class P2PNetwork extends EventEmitter {
             this.logger.info({ component: 'P2PNetwork', length: message.length }, 'Message written to stream');
 
             const res = await lp.read();
-            if (!res) {
-                throw new Error('No response received (unexpected end of input)');
-            }
+            if (!res) { throw new Error('No response received (unexpected end of input)'); }
             this.logger.info({ component: 'P2PNetwork', response_bytes: res.length }, 'Response read from stream');
 
             const response = utils.serializer.rawData.fromBinary_v1(res.subarray());
-
             if (response.status !== 'error') {
                 return response;
             }

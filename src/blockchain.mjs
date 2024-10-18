@@ -380,7 +380,7 @@ export class Blockchain {
     async getBlockByHeight(height, deserialize = true) {
         this.logger.debug({ blockHeight: height }, 'Retrieving block');
 
-        if (this.cache.blocksHashByHeight.has(height)) {
+        if (deserialize && this.cache.blocksHashByHeight.has(height)) {
             return this.cache.blocksByHash.get(this.cache.blocksHashByHeight.get(height));
         }
 
