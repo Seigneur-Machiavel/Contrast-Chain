@@ -33,15 +33,15 @@ const testParams = {
 }
 const args = process.argv.slice(2);
 if (args.includes('-pk')) {
-    const privKey = args.indexOf('-pk') + 1;
+    const privKey = args[args.indexOf('-pk') + 1];
     testParams.privKey = privKey;
 }
 if (args.includes('-at')) {
-    const addressType = args.indexOf('-at') + 1;
+    const addressType = args[args.indexOf('-at') + 1];
     testParams.addressType = addressType;
 }
 if (args.includes('-nba')) {
-    const nbOfAccounts = args.indexOf('-nba') + 1;
+    const nbOfAccounts = args[args.indexOf('-nba') + 1];
     testParams.nbOfAccounts = parseInt(nbOfAccounts);
 }
 /** Simple user to user transaction

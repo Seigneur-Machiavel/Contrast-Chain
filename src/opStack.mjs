@@ -97,8 +97,9 @@ export class OpStack {
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                        this.syncRequested = false;
-                        this.pushFirst( 'syncWithKnownPeers', null );
+                        //this.syncRequested = false;
+                        //this.pushFirst( 'syncWithKnownPeers', null );
+                        this.tasks.unshift(task);
                         break;
                     }
 
