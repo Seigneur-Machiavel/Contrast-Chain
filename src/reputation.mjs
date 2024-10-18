@@ -20,7 +20,9 @@ class ReputationManager extends EventEmitter {
             tempBanDuration: 24 * 60 * 60 * 1000, // 24 hours
             cleanupInterval: 60 * 60 * 1000, // 1 hour
             offenseScoreMap: {},
+            maxScore: 100,
         };
+
         this.options = { ...defaultOptions, ...options };
 
         /** @type {Map<string, number>} */
@@ -31,6 +33,8 @@ class ReputationManager extends EventEmitter {
 
         /** @type {Map<string, Set<string>>} */
         this.identifierAssociations = new Map(); // Map of identifier -> Set of associated identifiers
+
+        this.identifierLastSeen = new Map(); // Map to track the last seen timestamp of identifiers
 
         // Define score decrements for each offense
         this.offenseScoreMap = {
@@ -52,6 +56,16 @@ class ReputationManager extends EventEmitter {
             [ReputationManager.OFFENSE_TYPES.TRANSIENT_CONNECTIVITY_ISSUES]: 2,
         };
 
+        // Define score increments for each positive action
+        this.positiveScoreMap = {
+            // Positive Actions
+            [ReputationManager.POSITIVE_ACTIONS.VALID_BLOCK_SUBMISSION]: 10,
+            [ReputationManager.POSITIVE_ACTIONS.ACTIVE_PARTICIPATION]: 5,
+            [ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE]: 7,
+            [ReputationManager.POSITIVE_ACTIONS.COMMUNITY_SUPPORT]: 3,
+            [ReputationManager.POSITIVE_ACTIONS.NO_OFFENSES]: 2,
+        };
+
         // Allow overriding offense scores via options
         if (this.options.offenseScoreMap) {
             this.offenseScoreMap = { ...this.offenseScoreMap, ...this.options.offenseScoreMap };
@@ -59,6 +73,10 @@ class ReputationManager extends EventEmitter {
 
         this.loadScoresFromDisk();
 
+        this.associationCleanupInterval = setInterval(
+            () => this.cleanupOldAssociations(),
+            this.options.cleanupInterval
+        );
         // Periodically clean up expired temporary bans
         this.banCleanupInterval = setInterval(() => this.cleanupExpiredBans(), this.options.cleanupInterval);
     }
@@ -82,6 +100,13 @@ class ReputationManager extends EventEmitter {
         TRANSIENT_CONNECTIVITY_ISSUES: 'Transient Connectivity Issues',
     };
 
+    static POSITIVE_ACTIONS = {
+        VALID_BLOCK_SUBMISSION: 'Valid Block Submission',
+        ACTIVE_PARTICIPATION: 'Active Participation',
+        RELIABLE_NODE: 'Reliable Node',
+        COMMUNITY_SUPPORT: 'Community Support',
+        NO_OFFENSES: 'No Offenses',
+    };
     /**
      * Load scores and bans from disk when the node starts.
      */
@@ -121,6 +146,9 @@ class ReputationManager extends EventEmitter {
      * @param {string} offenseType 
      */
     applyOffense(peer, offenseType) {
+        // Update associations
+        this.updateAssociations(peer);
+
         const identifiers = this.getAssociatedIdentifiers(peer);
 
         // log current score
@@ -142,23 +170,72 @@ class ReputationManager extends EventEmitter {
         }
         // log new score
         //console.log(`New score: ${this.identifierScores.get(identifiers) || this.options.defaultScore}`);
-        // Update associations
-        this.updateAssociations(peer);
+        this.emit('offenseApplied', { peer, offenseType, scoreDecrement });
     }
 
+    /**
+     * Apply a positive action to a peer.
+     * Based on positive action type, score is incremented.
+     * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
+     * @param {string} positiveActionType 
+     */
+    applyPositive(peer, positiveActionType) {
+        
+        // Update associations
+        this.updateAssociations(peer);
+
+        const identifiers = this.getAssociatedIdentifiers(peer);
+
+        if (identifiers.size === 0) {
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
+        }
+
+        if (!this.positiveScoreMap[positiveActionType]) {
+            throw new Error(`Unknown positive action type: ${positiveActionType}`);
+        }
+
+        const scoreIncrement = this.positiveScoreMap[positiveActionType];
+
+        // Increment scores
+        for (const identifier of identifiers) {
+            this.incrementScore(identifier, scoreIncrement);
+            // Optionally, emit an event for positive actions
+            this.emit('positiveActionApplied', { identifier, positiveActionType, scoreIncrement });
+        }
+
+    }
     /**
      * Decrement the score of an identifier (negative actions).
      * @param {string} identifier 
      * @param {number} decrement 
      */
     decrementScore(identifier, decrement = 1) {
-        //console.log(`Decrementing score for identifier ${identifier} by ${decrement}`);
-        //console.log(`Current score: ${this.identifierScores.get(identifier) || this.options.defaultScore}`);
-        const newScore = (this.identifierScores.get(identifier) || this.options.defaultScore) - decrement;
-        //console.log(`New score: ${newScore}`);
+        const currentScore = this.identifierScores.has(identifier)
+            ? this.identifierScores.get(identifier)
+            : this.options.defaultScore;
+        const newScore = currentScore - decrement;
+        this.identifierScores.set(identifier, newScore);
+    }
+    
+
+    /**
+     * Increment the score of an identifier (positive actions).
+     * @param {string} identifier 
+     * @param {number} increment 
+     */
+    incrementScore(identifier, increment = 1) {
+        if (!this.identifierScores.has(identifier)) {
+            this.identifierScores.set(identifier, this.options.defaultScore);
+        }
+        const currentScore = this.identifierScores.get(identifier);
+        let newScore = currentScore + increment;
+        if (newScore > this.options.maxScore) {
+            newScore = this.options.maxScore;
+        }
         this.identifierScores.set(identifier, newScore);
     }
 
+    
     /**
      * Check the score of an identifier and ban if below the threshold.
      * @param {string} identifier 
@@ -245,7 +322,10 @@ class ReputationManager extends EventEmitter {
         if (peer.ip) identifiers.push(peer.ip);
         if (peer.address) identifiers.push(peer.address);
 
+        const now = Date.now();
+
         for (const id of identifiers) {
+            this.identifierLastSeen.set(id, now);
             let associated = this.identifierAssociations.get(id);
             if (!associated) {
                 associated = new Set();
@@ -315,9 +395,10 @@ class ReputationManager extends EventEmitter {
      * @returns {number}
      */
     getIdentifierScore(identifier) {
-        return this.identifierScores.get(identifier) || this.options.defaultScore;
+        return this.identifierScores.has(identifier)
+            ? this.identifierScores.get(identifier)
+            : this.options.defaultScore;
     }
-
     /**
      * Periodically clean up expired temporary bans.
      */
@@ -332,15 +413,26 @@ class ReputationManager extends EventEmitter {
             }
         }
     }
-
+    cleanupOldAssociations() {
+        const now = Date.now();
+        const maxInactivity = 30 * 24 * 60 * 60 * 1000; // 30 days
+        for (const [identifier, lastSeen] of this.identifierLastSeen.entries()) {
+            if (now - lastSeen > maxInactivity) {
+                this.identifierAssociations.delete(identifier);
+                this.identifierLastSeen.delete(identifier);
+            }
+        }
+    }
     /**
      * Gracefully shutdown - save the scores to disk and clear intervals.
      */
     async shutdown() {
         clearInterval(this.banCleanupInterval);
+        clearInterval(this.associationCleanupInterval);
         this.saveScoresToDisk();
         this.emit('shutdown');
     }
+
 }
 
 export default ReputationManager;
