@@ -314,34 +314,32 @@ export class Blockchain {
     }
     /** @param {MemPool} memPool @param {string} address @param {number} indexEnd */
     async getTxsRefencesOfAddress(memPool, address, indexEnd) {
+        let txsRefs = [];
         try {
             // get from disk (db)
             const txsRefsSerialized = await this.db.get(`${address}-txs`);
-            const txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
+            txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
+        } catch (error) {}; //console.error(error);
 
-            // complete with the cache
-            const startIndex = this.cache.oldestBlockHeight();
-            if (indexEnd !== undefined && startIndex > indexEnd) {
-                return txsRefs; }
-            let index = startIndex;
-            while (indexEnd === undefined || index <= indexEnd) {
-                const blockHash = this.cache.blocksHashByHeight.get(index);
-                if (!blockHash) { break; }
-                index++;
+        // complete with the cache
+        const startIndex = this.cache.oldestBlockHeight();
+        if (indexEnd !== undefined && startIndex > indexEnd) {
+            return txsRefs; }
+        let index = startIndex;
+        while (indexEnd === undefined || index <= indexEnd) {
+            const blockHash = this.cache.blocksHashByHeight.get(index);
+            if (!blockHash) { break; }
+            index++;
 
-                const block = this.cache.blocksByHash.get(blockHash);
-                const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(block, memPool);
-                if (!transactionsReferencesSortedByAddress[address]) { continue; }
+            const block = this.cache.blocksByHash.get(blockHash);
+            const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(block, memPool);
+            if (!transactionsReferencesSortedByAddress[address]) { continue; }
 
-                const newTxsReferences = transactionsReferencesSortedByAddress[address];
-                txsRefs.concat(newTxsReferences);
-            }
-
-            return txsRefs;
-        } catch (error) {
-            //console.error(error);
-            return [];
+            const newTxsReferences = transactionsReferencesSortedByAddress[address];
+            txsRefs = txsRefs.concat(newTxsReferences);
         }
+
+        return txsRefs;
     }
     /** Retrieves a range of blocks from disk by height.
      * @param {number} fromHeight - The starting height of the range.

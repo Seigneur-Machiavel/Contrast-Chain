@@ -805,6 +805,12 @@ class BlockExplorerWidget {
 
             outputDiv.innerHTML = `${utils.convert.number.formatNumberAsCurrency(amount)} >>> ${addressSpanAsText} (${rule})`;
         }
+        if (tx.fee) {
+            const feeDiv = createHtmlElement('div', undefined, ['cbe-TxFee'], outputsWrap);
+            feeDiv.textContent = `Fee: ${utils.convert.number.formatNumberAsCurrency(tx.fee)}`;
+        } else {
+            console.error('tx fee not found');
+        }
 
         if (isMinerTx) { return txDetails; }
 
