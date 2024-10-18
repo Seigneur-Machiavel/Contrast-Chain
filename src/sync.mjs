@@ -151,8 +151,6 @@ export class SyncHandler {
 
         // Attempt to sync with peers in order
         for (const peerInfo of peerStatuses) {
-            const banIP = '83.195.242.92'
-            if (peerInfo.address.includes(banIP)) { continue; }
             const { peerId, address, currentHeight } = peerInfo;
             const ma = multiaddr(address);
             this.logger.info({ peerId, currentHeight }, 'Attempting to sync with peer');
