@@ -60,7 +60,7 @@ export class Miner {
     /** @param {BlockData} blockCandidate */
     pushCandidate(blockCandidate) {
         const validatorAddress = blockCandidate.Txs[0].inputs[0].split(':')[0];
-        if (this.highestBlockIndex !== -1 || blockCandidate.index > this.highestBlockIndex + 1) {
+        if (this.highestBlockIndex !== -1 && blockCandidate.index > this.highestBlockIndex + 1) {
             console.info(`[MINER] Invalid block candidate pushed (Height: ${blockCandidate.index}) | blockCandidate.index > lastBlockIndex + 1`);
             return;
         }
