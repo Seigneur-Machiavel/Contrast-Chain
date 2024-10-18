@@ -31,6 +31,19 @@ const testParams = {
         userSendToNextUser: { active: true, start: 20, end: 100000, interval: 2 }
     },
 }
+const args = process.argv.slice(2);
+if (args.includes('-pk')) {
+    const privKey = args.indexOf('-pk') + 1;
+    testParams.privKey = privKey;
+}
+if (args.includes('-at')) {
+    const addressType = args.indexOf('-at') + 1;
+    testParams.addressType = addressType;
+}
+if (args.includes('-nba')) {
+    const nbOfAccounts = args.indexOf('-nba') + 1;
+    testParams.nbOfAccounts = parseInt(nbOfAccounts);
+}
 /** Simple user to user transaction
  * @param {Node} node
  * @param {Account[]} accounts
