@@ -173,8 +173,10 @@ class P2PNetwork extends EventEmitter {
     #setupEventListeners() {
         this.p2pNode.addEventListener('peer:connect', this.#handlePeerConnect);
         this.p2pNode.addEventListener('peer:disconnect', this.#handlePeerDisconnect);
-        this.p2pNode.addEventListener('peer:discovery', (event) => {
+        this.p2pNode.addEventListener('peer:discovery', async (event) => {
             const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
+            const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
+            await this.p2pNode.components.connectionManager.openConnection(peerInfo.multiaddrs);
             this.logger.info({ peerId }, 'Peer discovered');
         });
         this.p2pNode.services.pubsub.addEventListener('message', this.#handlePubsubMessage);
