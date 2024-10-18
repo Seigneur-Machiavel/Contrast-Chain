@@ -409,7 +409,7 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs } }));
                     break;
                 case 'get_address_transactions_references':
-                    const addTxsRefs = await this.node.blockchain.getTxsRefencesFromDiskByAddress(data);
+                    const addTxsRefs = await this.node.blockchain.getTxsRefencesOfAddress(this.node.memPool, data);
                     ws.send(JSON.stringify({ type: 'address_transactionsRefs_requested', data: addTxsRefs }));
                     break;
                 case 'get_address_exhaustive_data':

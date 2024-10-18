@@ -32,7 +32,6 @@ export class SyncHandler {
             },
         });
         this.isSyncing = false;
-
     }
     /** @type {Node} */
     get node() {
@@ -41,10 +40,8 @@ export class SyncHandler {
     get myPeerId() {
         return this.node.p2pNetwork.p2pNode.peerId.toString();
     }
-    /**
-     * Starts the sync handler.
-     * @param {P2PNetwork} p2pNetwork - The P2P network instance.
-     */
+    /** Starts the sync handler.
+     * @param {P2PNetwork} p2pNetwork - The P2P network instance */
     async start(p2pNetwork) {
         try {
             p2pNetwork.p2pNode.handle(P2PNetwork.SYNC_PROTOCOL, this.handleIncomingStream.bind(this));
@@ -55,11 +52,9 @@ export class SyncHandler {
         }
     }
 
-    /**
-     * Handles incoming streams from peers.
+    /** Handles incoming streams from peers.
      * @param {Object} param0 - The stream object.
-     * @param {import('libp2p').Stream} param0.stream - The libp2p stream.
-     */
+     * @param {import('libp2p').Stream} param0.stream - The libp2p stream. */
     async handleIncomingStream({ stream }) {
         try {
             // Decode the stream using lp.decode()
@@ -93,16 +88,14 @@ export class SyncHandler {
         }
     }
 
-    /**
-     * Handles incoming messages based on their type.
+    /** Handles incoming messages based on their type.
      * @param {Object} message - The incoming message.
-     * @returns {Promise<Object>} The response to the message.
-     */
+     * @returns {Promise<Object>} The response to the message. */
     async #handleMessage(msg) {
         switch (msg.type) {
             case 'getBlocks':
                 this.logger.debug(msg, 'Received getBlocks request');
-                const blocks = await this.node.blockchain.getRangeOfBlocksFromDiskByHeight(msg.startIndex, msg.endIndex, false);
+                const blocks = await this.node.blockchain.getRangeOfBlocksByHeight(msg.startIndex, msg.endIndex, false);
                 this.logger.debug({ count: blocks.length }, 'Sending blocks in response');
                 return { status: 'success', blocks };
             case 'getStatus':
@@ -154,6 +147,8 @@ export class SyncHandler {
             return true;
         }
 
+        console.info(`[SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
+
         // Attempt to sync with peers in order
         for (const peerInfo of peerStatuses) {
             const { peerId, address, currentHeight } = peerInfo;
@@ -168,6 +163,8 @@ export class SyncHandler {
                     continue; }
                 break; // Sync successful, break out of loop
             } catch (error) {
+                //continue;
+
                 await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
                 if (error instanceof SyncRestartError) {
                     this.logger.error({ error: error.message }, 'Sync restart error occurred');
@@ -284,20 +281,13 @@ export class SyncHandler {
             return false;
         }
     }
-    /**
-     * @param {P2PNetwork} p2pNetwork - The P2P network instance.
-     * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
-    async #updatedPeerHeight_OLD(p2pNetwork, peerMultiaddr) { // DEPRECATED
-        const peerStatus = await this.#getPeerStatus(p2pNetwork, peerMultiaddr);
-        if (!peerStatus || !peerStatus.currentHeight) { console.log(`[SYNC] Failed to get peer height`); }
-        return peerStatus.currentHeight;
-    }
     /** Synchronizes missing blocks from a peer efficiently.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
     async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight) {
         let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr);
         if (!peerHeight) { console.log(`[SYNC] (#getMissingBlocks) Failed to get peer height`); }
+        
         let desiredBlock = this.node.blockchain.currentHeight + 1;
         while(desiredBlock <= peerHeight) {
             const endIndex = Math.min( desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight );
@@ -305,12 +295,11 @@ export class SyncHandler {
 
             // Process blocks
             for (const serializedBlock of serializedBlocks) {
-                const block = this.node.blockchain.blockDataFromSerializedHeaderAndTxs(
-                    serializedBlock.header,
-                    serializedBlock.txs
-                );
-
                 try {
+                    const block = this.node.blockchain.blockDataFromSerializedHeaderAndTxs(
+                        serializedBlock.header,
+                        serializedBlock.txs
+                    );
                     await this.node.digestFinalizedBlock(block, {skipValidation: false, broadcastNewCandidate: false, isSync: true, persistToDisk: true});
                     desiredBlock++;
                 } catch (blockError) {
@@ -338,14 +327,12 @@ export class SyncHandler {
         return false;
     }
 
-    /**
-     * Requests blocks from a peer.
+    /** Requests blocks from a peer.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer.
      * @param {number} startIndex - The starting block index.
      * @param {number} endIndex - The ending block index.
-     * @returns {Promise<Array>} An array of blocks.
-     */
+     * @returns {Promise<Array>} An array of blocks. */
      async #requestBlocksFromPeer(p2pNetwork, peerMultiaddr, startIndex, endIndex) {
         const message = { type: 'getBlocks', startIndex, endIndex };
         this.logger.debug({ startIndex, endIndex }, 'Requesting blocks from peer');

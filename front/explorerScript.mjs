@@ -19,7 +19,6 @@ import { TxValidation } from '../src/validation.mjs';
 
 /** @type {BlockExplorerWidget} */
 let blockExplorerWidget;
-let currentHeightInterval;
 let pageFocused = true;
 document.addEventListener("visibilitychange", function() { pageFocused = document.visibilityState === 'visible'; });
 /** @type {WebSocket} */
@@ -133,12 +132,14 @@ function connectWS() {
                 break;
         }
     };
-
-    
-    currentHeightInterval = setInterval(() => {
-        try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
-    }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL);
 }
+async function getHeightsLoop() {
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL); });
+        if (!ws || ws.readyState !== 1) { continue; }
+        try { ws.send(JSON.stringify({ type: 'get_height', data: Date.now() })) } catch (error) {};
+    }
+}; getHeightsLoop();
 
 const eHTML = {
     contrastBlocksWidget: document.getElementById('cbe-contrastBlocksWidget'),
@@ -803,6 +804,12 @@ class BlockExplorerWidget {
             const addressSpanAsText = `<span class="cbe-addressSpan">${address}</span>`;
 
             outputDiv.innerHTML = `${utils.convert.number.formatNumberAsCurrency(amount)} >>> ${addressSpanAsText} (${rule})`;
+        }
+        if (tx.fee) {
+            const feeDiv = createHtmlElement('div', undefined, ['cbe-TxFee'], outputsWrap);
+            feeDiv.textContent = `Fee: ${utils.convert.number.formatNumberAsCurrency(tx.fee)}`;
+        } else {
+            console.error('tx fee not found');
         }
 
         if (isMinerTx) { return txDetails; }

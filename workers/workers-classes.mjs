@@ -68,7 +68,7 @@ export class ValidationWorker_v2 {
             });
             this.worker.on('message', (message) => {
                 if (message.id !== this.id) { return; }
-                if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
+                if (message.error) { return reject({ isValid: message.isValid, error: message.error }); }
                     //reject(message.error); }
 
                 const result = {
@@ -87,7 +87,7 @@ export class ValidationWorker_v2 {
         return new Promise((resolve, reject) => {
             this.worker.on('message', (message) => {
                 if (message.id !== this.id) { return; }
-                if (message.error) { reject(message.error); }
+                if (message.error) { return reject(message.error); }
                 resolve();
             });
             this.worker.on('exit', (code) => {
@@ -124,7 +124,7 @@ export class AccountDerivationWorker {
                 this.worker.on('close', () => { console.log('DerivationWorker ${this.id} closed'); });
                 this.worker.on('message', (message) => {
                     if (message.id !== this.id) { return; }
-                    if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
+                    if (message.error) { return reject({ isValid: message.isValid, error: message.error }); }
 
                     //response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', error: false };
                     const result = {
@@ -143,7 +143,7 @@ export class AccountDerivationWorker {
                 this.state = 'working';
                 this.worker.onmessage = (e) => {
                     const message = e.data;
-                    if (message.error) { reject({ isValid: message.isValid, error: message.error }); }
+                    if (message.error) { return reject({ isValid: message.isValid, error: message.error }); }
 
                     //response = { id, isValid: false, seedModifierHex: '', pubKeyHex: '', privKeyHex: '', addressBase58: '', error: false };
                     const result = {
@@ -184,7 +184,7 @@ export class AccountDerivationWorker {
         return new Promise((resolve, reject) => {
             this.worker.on('message', (message) => {
                 if (message.id !== this.id) { return; }
-                if (message.error) { reject(message.error); }
+                if (message.error) { return reject(message.error); }
                 resolve();
             });
             this.worker.on('exit', (code) => {

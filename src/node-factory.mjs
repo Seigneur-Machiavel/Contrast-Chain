@@ -81,6 +81,7 @@ export class NodeFactory {
         };
         
         targetNode.opStack.terminate();
+        targetNode.timeSynchronizer.stop = true;
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         targetNode.miner.terminate();

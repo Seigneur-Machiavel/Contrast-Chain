@@ -15,6 +15,7 @@ const url = await import('url');
 * @typedef {import("../src/block.mjs").BlockData} BlockData
 * @typedef {import("../src/vss.mjs").Vss} Vss
 * @typedef {import("../src/utxoCache.mjs").UtxoCache} UtxoCache
+* @typedef {import("../src/memPool.mjs").MemPool} MemPool
 */
 
 /**
@@ -43,11 +44,15 @@ export class Blockchain {
 
         this.cache = {
             /** @type {Map<string, BlockData>} */
-            inMemoryBlocks: new Map(),
+            blocksByHash: new Map(),
             /** @type {Map<number, string>} */
-            blocksByHeight: new Map(),
+            blocksHashByHeight: new Map(),
             /** @type {Map<string, number>} */
             blockHeightByHash: new Map(),
+            oldestBlockHeight: () => {
+                if (this.cache.blocksHashByHeight.size === 0) { return -1; }
+                return Math.min(...this.cache.blocksHashByHeight.keys());
+            }
         };
         /** @type {number} */
         this.currentHeight = -1;
@@ -68,35 +73,39 @@ export class Blockchain {
 
         this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, snapshotInterval }, 'Blockchain instance created');
     }
-    async loadBlocksFromStorageToCache(indexStart) {
-        let blockIndex = indexStart;
-        while (true) {
-            const block = await this.getBlockFromDiskByHeight(blockIndex);
-            if (!block) { break; }
+    async loadBlocksFromStorageToCache(indexStart, indexEnd) {
+        if (indexStart > indexEnd) { return; }
 
-            this.setBlockInCache(block);
-            blockIndex++;
+        const blocksPromises = [];
+        for (let i = indexStart; i <= indexEnd; i++) {
+            blocksPromises.push(this.#getBlockFromDiskByHeight(i));
         }
+
+        for (const blockPromise of blocksPromises) {
+            const block = await blockPromise;
+            if (!block) { break; }
+            this.#setBlockInCache(block);
+        }
+
+        console.log(`[DB -> CACHE] Blocks loaded from ${indexStart} to ${indexEnd}`);
     }
-    setBlockInCache(block) {
-        this.cache.inMemoryBlocks.set(block.hash, block);
-        this.cache.blocksByHeight.set(block.index, block.hash);
+    #setBlockInCache(block) {
+        this.cache.blocksByHash.set(block.hash, block);
+        this.cache.blocksHashByHeight.set(block.index, block.hash);
         this.cache.blockHeightByHash.set(block.hash, block.index);
     }
-    /**
-     * Adds a new confirmed block to the blockchain.
+    /** Adds a new confirmed block to the blockchain.
      * @param {UtxoCache} utxoCache - The UTXO cache to use for the block.
      * @param {BlockData[]} blocks - The blocks to add. ordered by height
      * @param {boolean} [persistToDisk=true] - Whether to persist the block to disk.
      * @param {boolean} [saveBlockInfo=true] - Whether to save the block info.
      * @param {Object<string, string>} [blockPubKeysAddresses] - The block public keys and addresses.
-     * @throws {Error} If the block is invalid or cannot be added.
-     */
-    async addConfirmedBlocks(utxoCache, blocks, persistToDisk = true, saveBlockInfo = true, blockPubKeysAddresses, totalFees) {
+     * @throws {Error} If the block is invalid or cannot be added. */
+    async addConfirmedBlocks(utxoCache, blocks, persistToDisk = true, saveBlockInfo = true, totalFees) {
         for (const block of blocks) {
             this.logger.info({ blockHeight: block.index, blockHash: block.hash }, 'Adding new block');
             try {
-                this.setBlockInCache(block);
+                this.#setBlockInCache(block);
 
                 this.lastBlock = block;
                 this.currentHeight = block.index;
@@ -105,13 +114,13 @@ export class Blockchain {
 
                 /** @type {BlockInfo} */
                 if (persistToDisk) {
-                    promises.push(this.persistBlockToDisk(block));
+                    promises.push(this.#persistBlockToDisk(block));
                     promises.push(this.db.put('currentHeight', this.currentHeight.toString()));
-                    if (blockPubKeysAddresses) { promises.push(this.persistAddressesTransactionsToDisk(block, blockPubKeysAddresses)) }
+                    //if (blockPubKeysAddresses) { promises.push(this.persistAddressesTransactionsToDisk(block, blockPubKeysAddresses)) }
                 }
 
                 const blockInfo = saveBlockInfo ? await BlockUtils.getFinalizedBlockInfo(utxoCache, block, totalFees) : undefined;
-                if (saveBlockInfo) { promises.push(this.persistBlockInfoToDisk(blockInfo)) }
+                if (saveBlockInfo) { promises.push(this.#persistBlockInfoToDisk(blockInfo)) }
 
                 this.logger.info({ blockHeight: block.index, blockHash: block.hash }, 'Block successfully added');
                 return blockInfo;
@@ -121,13 +130,82 @@ export class Blockchain {
             }
         }
     }
-    /**
-    * Applies the changes from added blocks to the UTXO cache and VSS.
+    /** returns the height of erasable blocks without erasing them. @param {number} height */
+    erasableCacheLowerThan(height) {
+        let erasableUntil = null;
+        const oldestHeight = this.cache.oldestBlockHeight();
+        if (oldestHeight >= height) { return null; }
+
+        for (let i = oldestHeight; i < height; i++) {
+            const blockHash = this.cache.blocksHashByHeight.get(i);
+            if (!blockHash) { continue; }
+            erasableUntil = i;
+        }
+
+        console.log(`Cache erasable from ${oldestHeight} to ${erasableUntil}`);
+        return { from: oldestHeight, to: erasableUntil };
+    }
+    /** Erases the cache from the oldest block to the specified height(included). @param {number} height */
+    eraseCacheFromTo(fromHeight, toHeight) {
+        if (fromHeight > toHeight) { return; }
+
+        let erasedUntil = null;
+        for (let i = fromHeight; i <= toHeight; i++) {
+            const blockHash = this.cache.blocksHashByHeight.get(i);
+            if (!blockHash) { continue; }
+
+            this.cache.blocksHashByHeight.delete(i);
+            this.cache.blockHeightByHash.delete(blockHash);
+            this.cache.blocksByHash.delete(blockHash);
+            erasedUntil = i;
+        }
+
+        console.log(`Cache erased from ${fromHeight} to ${erasedUntil}`);
+        return { from: fromHeight, to: erasedUntil };
+    }
+    async eraseEntireDatabase() {
+        const batch = this.db.batch();
+        const stream = this.db.createKeyStream();
+        for await (const key of stream) {
+            batch.del(key);
+        }
+        await batch.write();
+        console.info('[DB] Database erased');
+    }
+    async eraseBlocksHigherThan(height) {
+        let erasedUntil = null;
+        const batch = this.db.batch();
+        let i = height + 1;
+        while (true) {
+            const block = await this.getBlockByHeight(i);
+            if (!block) { break; }
+            
+            const blockHash = block.hash;
+            batch.del(blockHash);
+            batch.del(`height-${i}`);
+            batch.del(`height-${i}-txIds`);
+
+            for (const tx of block.Txs) {
+                batch.del(`${i}:${tx.id}`);
+            }
+
+            this.cache.blocksHashByHeight.delete(i);
+            this.cache.blockHeightByHash.delete(blockHash);
+            this.cache.blocksByHash.delete(blockHash);
+
+            erasedUntil = i;
+            i++;
+        }
+        await batch.write();
+
+        if (erasedUntil === null) { return; }
+        console.info(`[DB] Blocks erased from ${height} to ${erasedUntil}`);
+    }
+    /** Applies the changes from added blocks to the UTXO cache and VSS.
     * @param {UtxoCache} utxoCache - The UTXO cache to update.
     * @param {Vss} vss - The VSS to update.
     * @param {BlockData[]} blocksData - The blocks to apply.
-    * @param {boolean} [storeAddAddressAnchors=false] - Whether to store added address anchors.
-    */
+    * @param {boolean} [storeAddAddressAnchors=false] - Whether to store added address anchors. */
     async applyBlocks(utxoCache, vss, blocksData, storeAddAddressAnchors = false) {
         for (const block of blocksData) {
             const blockDataCloneToDigest = BlockUtils.cloneBlockData(block); // clone to avoid modification
@@ -142,13 +220,10 @@ export class Blockchain {
         }
     }
 
-    /**
-     * Persists a block to disk.
+    /** Persists a block to disk.
      * @param {BlockData} finalizedBlock - The block to persist.
-     * @returns {Promise<void>}
-     * @private
-     */
-    async persistBlockToDisk(finalizedBlock) { // now using serializer v3
+     * @returns {Promise<void>} */
+    async #persistBlockToDisk(finalizedBlock) { // now using serializer v3
         this.logger.debug({ blockHash: finalizedBlock.hash }, 'Persisting block to disk');
         try {
             // TRYING THE BEST PRACTICE: full batch write
@@ -180,7 +255,7 @@ export class Blockchain {
         }
     }
     /** @param {BlockInfo} blockInfo */
-    async persistBlockInfoToDisk(blockInfo) {
+    async #persistBlockInfoToDisk(blockInfo) {
         const blockHash = blockInfo.header.hash;
         this.logger.debug({ blockHash }, 'Persisting block info to disk');
         try {
@@ -194,43 +269,148 @@ export class Blockchain {
             throw error;
         }
     }
-    /** @param {BlockData} finalizedBlock @param {Object<string, string>} blockPubKeysAddresses */
-    async persistAddressesTransactionsToDisk(finalizedBlock, blockPubKeysAddresses) {
-        const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(finalizedBlock, blockPubKeysAddresses);
+    /** @param {MemPool} memPool @param {number} indexStart @param {number} indexEnd */
+    async persistAddressesTransactionsReferencesToDisk(memPool, indexStart, indexEnd) {
+        indexStart = Math.max(0, indexStart);
+        if (indexStart > indexEnd) { return; }
 
-        /** @type {Object<string, Promise<string[]>} */
-        const addressesTransactionsPromises = {};
-        for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
-            addressesTransactionsPromises[address] = this.getTxsRefencesFromDiskByAddress(address);
+        const addressesTxsRefsSnapHeightSerialized = await this.db.get('addressesTxsRefsSnapHeight').catch(() => null);
+        const addressesTxsRefsSnapHeight = addressesTxsRefsSnapHeightSerialized ? utils.fastConverter.uint86BytesToNumber(addressesTxsRefsSnapHeightSerialized) : -1;
+        if (addressesTxsRefsSnapHeight >= indexEnd) { console.info(`[DB] Addresses transactions already persisted to disk: snapHeight=${addressesTxsRefsSnapHeight} / indexEnd=${indexEnd}`); return; }
+
+        /** @type {Object<string, string[]>} */
+        const actualizedAddressesTxsRefs = {};
+        for (let i = indexStart; i <= indexEnd; i++) {
+            const finalizedBlock = await this.getBlockByHeight(i);
+            if (!finalizedBlock) { console.error('Block not found'); continue; }
+            const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(finalizedBlock, memPool.knownPubKeysAddresses);
+
+            /** @type {Object<string, Promise<string[]>} */
+            const addressesTransactionsPromises = {};
+            for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
+                if (actualizedAddressesTxsRefs[address]) { continue; } // already loaded
+                addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, indexEnd);
+            }
+
+            for (const [address, newTxReference] of Object.entries(transactionsReferencesSortedByAddress)) {
+                if (!actualizedAddressesTxsRefs[address]) {
+                    actualizedAddressesTxsRefs[address] = await addressesTransactionsPromises[address];
+                }
+                const concatenated = actualizedAddressesTxsRefs[address].concat(newTxReference);
+                actualizedAddressesTxsRefs[address] = concatenated;
+            }
         }
 
         const batch = this.db.batch();
-        for (const [address, newTxReference] of Object.entries(transactionsReferencesSortedByAddress)) {
-            const addressTxsRefs = await addressesTransactionsPromises[address];
-            const actualizedAddressaddressTxsRefs = addressTxsRefs.concat(newTxReference);
-            batch.put(`${address}-txs`, Buffer.from(utils.serializerFast.serialize.txsReferencesArray(actualizedAddressaddressTxsRefs)));
+        for (const address of Object.keys(actualizedAddressesTxsRefs)) {
+            const actualizedAddressTxsRefs = actualizedAddressesTxsRefs[address];
+            const serialized = utils.serializerFast.serialize.txsReferencesArray(actualizedAddressTxsRefs);
+            batch.put(`${address}-txs`, Buffer.from(serialized));
+            batch.put('addressesTxsRefsSnapHeight', Buffer.from(utils.fastConverter.numberTo6BytesUint8Array(indexEnd)));
+        }
+        await batch.write();
+            
+        console.info(`[DB] Addresses transactions persisted to disk from ${indexStart} to ${indexEnd} (included)`);
+    }
+    /** @param {MemPool} memPool @param {string} address @param {number} indexEnd */
+    async getTxsRefencesOfAddress(memPool, address, indexEnd) {
+        let txsRefs = [];
+        try {
+            // get from disk (db)
+            const txsRefsSerialized = await this.db.get(`${address}-txs`);
+            txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
+        } catch (error) {}; //console.error(error);
+
+        // complete with the cache
+        const startIndex = this.cache.oldestBlockHeight();
+        if (indexEnd !== undefined && startIndex > indexEnd) {
+            return txsRefs; }
+        let index = startIndex;
+        while (indexEnd === undefined || index <= indexEnd) {
+            const blockHash = this.cache.blocksHashByHeight.get(index);
+            if (!blockHash) { break; }
+            index++;
+
+            const block = this.cache.blocksByHash.get(blockHash);
+            const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(block, memPool);
+            if (!transactionsReferencesSortedByAddress[address]) { continue; }
+
+            const newTxsReferences = transactionsReferencesSortedByAddress[address];
+            txsRefs = txsRefs.concat(newTxsReferences);
         }
 
-        await batch.write();
-
-        this.logger.debug({ blockHash: finalizedBlock.hash }, 'Addresses transactions persisted to disk');
+        return txsRefs;
     }
-
-    async getRangeOfBlocksFromDiskByHeight(fromHeight, toHeight = 999_999_999, deserialize = true) {
+    /** Retrieves a range of blocks from disk by height.
+     * @param {number} fromHeight - The starting height of the range.
+     * @param {number} [toHeight=999_999_999] - The ending height of the range.
+     * @param {boolean} [deserialize=true] - Whether to deserialize the blocks. */
+    async getRangeOfBlocksByHeight(fromHeight, toHeight = 999_999_999, deserialize = true) {
         if (typeof fromHeight !== 'number' || typeof toHeight !== 'number') { throw new Error('Invalid block range: not numbers'); }
         if (fromHeight > toHeight) { throw new Error(`Invalid range: ${fromHeight} > ${toHeight}`); }
 
         const blocksData = [];
         for (let i = fromHeight; i <= toHeight; i++) {
-            const blockData = await this.getBlockFromDiskByHeight(i, deserialize);
+            const blockData = await this.getBlockByHeight(i, deserialize);
             if (!blockData) { break; }
             blocksData.push(blockData);
         }
         return blocksData;
     }
-    /** Retrieves a block from disk by its height.
-     * @param {number} height - The height of the block to retrieve. */
-    async getBlockFromDiskByHeight(height, deserialize = true) {
+    /** Retrieves a block by its hash.
+     * @param {string} hash - The hash of the block to retrieve.
+     * @returns {Promise<BlockData>} The retrieved block.
+     * @throws {Error} If the block is not found. */
+    async getBlockByHash(hash, deserialize = true) {
+        this.logger.debug({ blockHash: hash }, 'Retrieving block');
+
+        if (this.cache.blocksByHash.has(hash)) {
+            return this.cache.blocksByHash.get(hash);
+        }
+
+        const block = await this.#getBlockFromDiskByHash(hash, deserialize);
+        if (block) { return block; }
+
+        this.logger.error({ blockHash: hash }, 'Block not found');
+        throw new Error(`Block not found: ${hash}`);
+    }
+    /** Retrieves a block by its height. @param {number} height - The height of the block to retrieve. */
+    async getBlockByHeight(height, deserialize = true) {
+        this.logger.debug({ blockHeight: height }, 'Retrieving block');
+
+        if (deserialize && this.cache.blocksHashByHeight.has(height)) {
+            return this.cache.blocksByHash.get(this.cache.blocksHashByHeight.get(height));
+        }
+
+        const block = await this.#getBlockFromDiskByHeight(height, deserialize);
+        if (block) { return block; }
+
+        this.logger.error({ blockHeight: height }, 'Block not found');
+        return null;
+    }
+    /** Gets the hash of the latest block. @returns {string} The hash of the latest block. */
+    getLatestBlockHash() {
+        return this.lastBlock ? this.lastBlock.hash : "0000000000000000000000000000000000000000000000000000000000000000";
+    }
+    /** Retrieves a block from disk by its hash. @param {string} hash - The hash of the block to retrieve. */
+    async #getBlockFromDiskByHash(hash, deserialize = true) {
+        try {
+            const serializedHeader = this.db.get(hash);
+            const serializedTxsIds = this.db.get(`height-${height}-txIds`);
+
+            const txsIds = utils.serializer.array_of_tx_ids.fromBinary_v3(serializedTxsIds);
+            const txsPromises = txsIds.map(txId => this.db.get(`${height}:${txId}`));
+
+            if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
+
+            return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
+        } catch (error) {
+            if (error.type === 'NotFoundError') { return null; }
+            throw error;
+        }
+    }
+    /** Retrieves a block from disk by its height. @param {number} height - The height of the block to retrieve. */
+    async #getBlockFromDiskByHeight(height, deserialize = true) {
         try {
             const serializedHash = await this.db.get(`height-${height}`);
             if (!serializedHash) { return null; }
@@ -245,7 +425,6 @@ export class Blockchain {
             if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
 
             return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
-            //return utils.serializer.block_finalized.toBinary_v4(await serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
@@ -283,50 +462,9 @@ export class Blockchain {
             throw error;
         }
     }
-    /** @param {string} address */
-    async getTxsRefencesFromDiskByAddress(address) {
-        try {
-            const txsRefsSerialized = await this.db.get(`${address}-txs`);
-            const txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
-            return txsRefs;
-        } catch (error) {
-            return [];
-        }
-    }
-
-    /**
-     * Retrieves a block by its hash.
-     * @param {string} hash - The hash of the block to retrieve.
-     * @returns {Promise<BlockData>} The retrieved block.
-     * @throws {Error} If the block is not found.
-     */
-    async getBlockByHash(hash, deserialize = true) {
-        this.logger.debug({ blockHash: hash }, 'Retrieving block');
-
-        if (this.cache.inMemoryBlocks.has(hash)) {
-            return this.cache.inMemoryBlocks.get(hash);
-        }
-
-        const height = this.cache.blockHeightByHash.get(hash);
-        if (height !== undefined) {
-            return this.getBlockFromDiskByHeight(height, deserialize);
-        }
-
-        this.logger.error({ blockHash: hash }, 'Block not found');
-        throw new Error(`Block not found: ${hash}`);
-    }
-    /**
-     * Gets the hash of the latest block.
-     * @returns {string} The hash of the latest block.
-     */
-    getLatestBlockHash() {
-        return this.lastBlock ? this.lastBlock.hash : "0000000000000000000000000000000000000000000000000000000000000000";
-    }
-    /** 
-     * Retrieves a transaction by its reference (height:txId format).
+    /** Retrieves a transaction by its reference (height:txId format).
      * @param {string} txReference - The transaction reference in the format "height:txId".
-     * @returns {Promise<Object|null>} - The deserialized transaction or null if not found.
-     */
+     * @returns {Promise<Object|null>} - The deserialized transaction or null if not found. */
     async getTransactionByReference(txReference) {
         const [height, txId] = txReference.split(':');
 
@@ -342,12 +480,9 @@ export class Blockchain {
             return null;
         }
     }
-
-    /**
-     * Deserializes a transaction using the available strategies.
+    /** Deserializes a transaction using the available strategies.
      * @param {Uint8Array} serializedTx - The serialized transaction data.
-     * @returns {Object|null} - The deserialized transaction or null if deserialization fails.
-     */
+     * @returns {Object|null} - The deserialized transaction or null if deserialization fails. */
     deserializeTransaction(serializedTx) {
         // Try fast deserialization first.
         try {

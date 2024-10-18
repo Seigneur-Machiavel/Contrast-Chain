@@ -11,12 +11,12 @@ let txsTaskDoneThisBlock = {};
 const network = 'mainnet'; // 'local' | 'testnet' | 'mainnet'
 const port = 27260; //? 27260
 const testParams = {
-    privKey: "10ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff00",
+    privKey: "ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27",
     unsafeSpamMode: false,
     initListenAddress: network === 'local' ? '/ip4/0.0.0.0/tcp/0' : `/ip4/0.0.0.0/tcp/${port}`,
     useDevArgon2: false, // true => 100txs processProposal: ~7sec | false => 100txs processProposal: ~5.8sec
-    nbOfAccounts: 100, // minimum 25
-    addressType: 'W',
+    nbOfAccounts: 25, // minimum 25
+    addressType: 'C',
 
     nbOfMiners: 0,
     nbOfValidators: 0,
@@ -30,6 +30,19 @@ const testParams = {
         simpleUserToUser: { active: false, start: 2, end: 100000, interval: 2 },
         userSendToNextUser: { active: true, start: 20, end: 100000, interval: 2 }
     },
+}
+const args = process.argv.slice(2);
+if (args.includes('-pk')) {
+    const privKey = args[args.indexOf('-pk') + 1];
+    testParams.privKey = privKey;
+}
+if (args.includes('-at')) {
+    const addressType = args[args.indexOf('-at') + 1];
+    testParams.addressType = addressType;
+}
+if (args.includes('-nba')) {
+    const nbOfAccounts = args[args.indexOf('-nba') + 1];
+    testParams.nbOfAccounts = parseInt(nbOfAccounts);
 }
 /** Simple user to user transaction
  * @param {Node} node
@@ -160,23 +173,6 @@ async function refreshAllBalances(node, accounts) {
     }
 }
 
-async function waitForP2PNetworkReady(nodes, maxAttempts = 30, interval = 1000) {
-    for (let attempt = 0; attempt < maxAttempts; attempt++) {
-        const allNodesConnected = nodes.every(node => {
-            const peerCount = node.p2pNetwork.getConnectedPeers().length;
-            return peerCount >= 1; // We only need one connection in this test
-        });
-
-        if (allNodesConnected) {
-            console.log('P2P network is ready');
-            return;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, interval));
-    }
-
-    throw new Error('P2P network failed to initialize within the expected time');
-}
 /**
  * @param {NodeFactory} factory
  * @param {Account} account
@@ -245,8 +241,6 @@ async function nodeSpecificTest(accounts) {
     }
 
     const nodes = await Promise.all(nodesPromises);
-
-    await waitForP2PNetworkReady(nodes);
 
     // use second validator as observer to avoid intensive task one the first validator
     const observerIndex = (testParams.nbOfMultiNodes + testParams.nbOfValidators) > 1 ? 1 : 0;

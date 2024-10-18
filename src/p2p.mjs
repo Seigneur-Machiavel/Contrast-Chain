@@ -3,7 +3,6 @@ import { EventEmitter } from 'events';
 import pino from 'pino';
 import { createLibp2p } from 'libp2p';
 import { tcp } from '@libp2p/tcp';
-import * as filters from '@libp2p/websockets/filters';
 import { noise } from '@chainsafe/libp2p-noise';
 import { gossipsub } from '@chainsafe/libp2p-gossipsub';
 import { identify } from '@libp2p/identify';
@@ -12,10 +11,9 @@ import { mdns } from '@libp2p/mdns';
 import { bootstrap } from '@libp2p/bootstrap';
 import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
-import { yamux } from '@chainsafe/libp2p-yamux';
-import { mplex } from '@libp2p/mplex';
 import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
+import { yamux } from '@chainsafe/libp2p-yamux';
 
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
@@ -47,48 +45,33 @@ class P2PNetwork extends EventEmitter {
         }
         this.logger = P2PNetwork.logger;
 
+        // Initialize ReputationManager
         this.reputationManager = new ReputationManager(this.options.reputationOptions);
 
-        // Event listener for when an identifier is banned
-        this.reputationManager.on('identifierBanned', ({ identifier, permanent }) => {
-            this.logger.warn(
-                { identifier, permanent },
-                `Identifier ${identifier} has been ${permanent ? 'permanently' : 'temporarily'} banned`
-            );
-
+        // Listen to ReputationManager events
+        this.reputationManager.on('peerBanned', ({ peerId, permanent }) => {
+            this.logger.warn({ peerId, permanent }, `Peer ${peerId} has been ${permanent ? 'permanently' : 'temporarily'} banned`);
+            // Disconnect the peer if connected
             if (this.p2pNode) {
-                // Attempt to find peerId associated with the identifier
-                let peerId = null;
-
-                if (this.peers.has(identifier)) {
-                    // Identifier is a peerId
-                    peerId = identifier;
-                } else {
-                    // Try to find peerId associated with the identifier
-                    for (let [id, peer] of this.peers) {
-                        if (peer.address && peer.address.includes(identifier)) {
-                            peerId = id;
-                            break;
-                        } else if (peer.address.includes(identifier)) {
-                            peerId = id;
-                            break;
-                        }
-                    }
-                }
-
-                if (peerId) {
-                    this.logger.info({ identifier, peerId }, 'Closing connections to banned identifier');
-                    this.p2pNode.components.connectionManager.closeConnections(peerId);
-                }
+                this.p2pNode.components.connectionManager.closeConnections(peerId);
             }
         });
 
-        // Event listener for when an identifier is unbanned
-        this.reputationManager.on('identifierUnbanned', ({ identifier }) => {
-            this.logger.info(
-                { identifier },
-                `Identifier ${identifier} has been unbanned`
-            );
+        this.reputationManager.on('peerUnbanned', ({ peerId }) => {
+            this.logger.info({ peerId }, `Peer ${peerId} has been unbanned`);
+        });
+
+        this.reputationManager.on('ipBanned', ({ ip }) => {
+            this.logger.warn({ ip }, `IP ${ip} has been banned`);
+            // Optionally, implement logic to disconnect peers from this IP
+        });
+
+        this.reputationManager.on('peerUnbanned', ({ peerId }) => {
+            this.logger.info({ peerId }, `Peer ${peerId} has been unbanned`);
+        });
+
+        this.reputationManager.on('shutdown', () => {
+            this.logger.info('ReputationManager has been shut down');
         });
     }
 
@@ -139,7 +122,7 @@ class P2PNetwork extends EventEmitter {
 
     /** @returns {Promise<Libp2p>} */
     async #createLibp2pNode() {
-        const peerDiscovery = [];
+        const peerDiscovery = [mdns()];
 
         if (this.options.bootstrapNodes.length > 0) {
             peerDiscovery.push(bootstrap({ list: this.options.bootstrapNodes }));
@@ -148,8 +131,8 @@ class P2PNetwork extends EventEmitter {
         return createLibp2p({
             addresses: { listen: [this.options.listenAddress] },
             transports: [tcp()],
-            streamMuxer: [mplex],
-            connectionEncryption: [noise()],
+            streamMuxers: [yamux()],
+            connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
                 pubsub: gossipsub({
@@ -162,9 +145,7 @@ class P2PNetwork extends EventEmitter {
                 dht: kadDHT(),
             },
             peerDiscovery,
-            connectionManager: {
-                autoDial: false,
-            },
+            connectionManager: {},
         });
     }
 
@@ -172,9 +153,15 @@ class P2PNetwork extends EventEmitter {
  
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
+                // check if banned before dialing
+                if (this.reputationManager.isIPBanned(addr)) {
+                    this.logger.warn({ component: 'P2PNetwork', bootstrapNode : addr }, 'Node is banned. Skipping connection...');
+                    return;
+                }
+
                 const ma = multiaddr(addr);
-                await this.dial(ma);
-                await this.p2pNode.components.connectionManager.openConnection(ma);
+                await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
+                //await this.p2pNode.components.connectionManager.openConnection(ma);
                 this.logger.info({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
             } catch (err) {
                 this.logger.error({ component: 'P2PNetwork', bootstrapNode: addr, error: err.message }, 'Failed to connect to bootstrap node');
@@ -186,9 +173,11 @@ class P2PNetwork extends EventEmitter {
     #setupEventListeners() {
         this.p2pNode.addEventListener('peer:connect', this.#handlePeerConnect);
         this.p2pNode.addEventListener('peer:disconnect', this.#handlePeerDisconnect);
-        this.p2pNode.addEventListener('peer:discovery', (event) => {
+        this.p2pNode.addEventListener('peer:discovery', async (event) => {
             const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
-            this.logger.debug({ peerId }, 'Peer discovered');
+            const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
+           // await this.p2pNode.components.connectionManager.openConnection(peerInfo.multiaddrs);
+            this.logger.info({ peerId }, 'Peer discovered');
         });
         this.p2pNode.services.pubsub.addEventListener('message', this.#handlePubsubMessage);
     }
@@ -196,7 +185,7 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePeerConnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.info({ peerId }, 'Peer connecting');
+        this.logger.debug({ peerId }, 'Peer connected');
 
         // Retrieve multiaddrs of the connected peer
         const connections = this.p2pNode.getConnections(peerId);
@@ -206,14 +195,23 @@ class P2PNetwork extends EventEmitter {
             peerInfo.address = multiaddr.toString();
         }
 
+        // Check if the peer or its IP is banned
+        if (this.reputationManager.isPeerOrIPBanned(peerInfo)) {
+            this.logger.warn({ peerId, address: peerInfo.address }, 'Connected peer is banned. Disconnecting...');
+            this.p2pNode.components.connectionManager.closeConnections(peerId);
+            this.peers.delete(peerId);
+
+            return;
+        }
 
         this.updatePeer(peerId, { status: 'connected', address: peerInfo.address });
+        this.dial(event.detail);
         this.emit('peer:connect', peerId);
     };
     /** @param {CustomEvent} event */
     #handlePeerDisconnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.info({ peerId }, 'Peer disconnected');
+        this.logger.debug({ peerId }, 'Peer disconnected');
         this.peers.delete(peerId);
         this.emit('peer:disconnect', peerId);
     };
@@ -221,8 +219,9 @@ class P2PNetwork extends EventEmitter {
     async dial(peerId) {
         try {
             const con = await this.p2pNode.dial(peerId);
-            this.logger.info({ component: 'P2PNetwork', peerId, address: con.remoteAddr.toString() }, 'Dialed peer');
+            this.logger.debug({ component: 'P2PNetwork', peerId, address: con.remoteAddr.toString() }, 'Dialed peer');
             this.updatePeer(peerId.toString(), { status: 'dialed', address: con.remoteAddr.toString() });
+            //this.createStream(peerId, P2PNetwork.SYNC_PROTOCOL);
         } catch (error) {
             this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to dial peer');
             throw error;
@@ -407,13 +406,10 @@ class P2PNetwork extends EventEmitter {
             this.logger.info({ component: 'P2PNetwork', length: message.length }, 'Message written to stream');
 
             const res = await lp.read();
-            if (!res) {
-                throw new Error('No response received (unexpected end of input)');
-            }
+            if (!res) { throw new Error('No response received (unexpected end of input)'); }
             this.logger.info({ component: 'P2PNetwork', response_bytes: res.length }, 'Response read from stream');
 
             const response = utils.serializer.rawData.fromBinary_v1(res.subarray());
-
             if (response.status !== 'error') {
                 return response;
             }
