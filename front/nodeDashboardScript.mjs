@@ -23,6 +23,18 @@ let nodeId;
 let validatorUTXOs = [];
 let minerUTXOs = [];
 let modalOpen = false;
+let currentAction = null;
+
+const ACTIONS = {
+    ERASE_CHAIN_DATA: 'erase_chain_data',
+    HARD_RESET: 'hard_reset',
+    UPDATE_GIT: 'update_git',
+    FORCE_RESTART: 'force_restart',
+    REVALIDATE: 'revalidate',
+    RESET_WALLET: 'reset_wallet'
+};
+
+
 function connectWS() {
     ws = new WebSocket(`${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
     console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
@@ -167,12 +179,15 @@ const eHTML = {
     txInMempool: document.getElementById('txInMempool'),
     averageBlockTime: document.getElementById('averageBlockTime'),
     adminPanelButtons: document.querySelector('#topBar .btnWrap'),
-    resetInfoBtn: document.getElementById('resetInfo'),
     toggleAdminPanelBtn : document.getElementById('toggleAdminPanel'),
 
     resetInfoBtn: document.getElementById('resetInfo'),
     peerId: document.getElementById('peerId'),
     peersConnectedList: document.getElementById('peersConnectedList'),
+    eraseChainDataBtn: document.getElementById('eraseChainData'),
+    hardResetBtn: document.getElementById('hardReset'),
+    updateGitBtn: document.getElementById('updateGit'),
+
 
 }
 
@@ -230,10 +245,7 @@ function renderPeers(peers) {
         eHTML.peersConnectedList.appendChild(li);
     });
 }
-//#region - EVENT LISTENERS
-// not 'change' event because it's triggered by the browser when the input loses focus, not when the value changes
-eHTML.forceRestartBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart', data: nodeId })));
-eHTML.RevalidateBtn.addEventListener('click', () => ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId })));
+
 eHTML.modals.wrap.addEventListener('click', (event) => {
 	if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
 });
@@ -352,18 +364,78 @@ function toggleAdminPanel() {
 
 eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
 
-eHTML.resetInfoBtn.addEventListener('click', () => {
-    openModal('resetInfoModal');
-});
 
 eHTML.modals.resetInfoModal.confirmBtn.addEventListener('click', () => {
-    performResetInfo(); // Function to perform the reset action
+    switch (currentAction) {
+        case ACTIONS.ERASE_CHAIN_DATA:
+            ws.send(JSON.stringify({ type: 'erase_chain_data', data: nodeId }));
+            break;
+        case ACTIONS.HARD_RESET:
+            ws.send(JSON.stringify({ type: 'hard_reset', data: nodeId }));
+            break;
+        case ACTIONS.UPDATE_GIT:
+            ws.send(JSON.stringify({ type: 'update_git', data: nodeId }));
+            break;
+        case ACTIONS.FORCE_RESTART:
+            ws.send(JSON.stringify({ type: 'force_restart', data: nodeId }));
+            break;
+        case ACTIONS.REVALIDATE:
+            ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId }));
+            break;
+        case ACTIONS.RESET_WALLET:
+            ws.send(JSON.stringify({ type: 'reset_wallet', data: nodeId }));
+            break;
+        default:
+            console.error('Unknown action:', currentAction);
+    }
+    currentAction = null;
     closeModal();
 });
 
+
+
 eHTML.modals.resetInfoModal.cancelBtn.addEventListener('click', () => {
+    currentAction = null;
     closeModal();
 });
+
+eHTML.modals.wrap.addEventListener('click', (event) => {
+    if (event.target === eHTML.modals.modalsWrapBackground) { 
+        currentAction = null; 
+        closeModal(); 
+    }
+});
+
+eHTML.forceRestartBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.FORCE_RESTART;
+    openConfirmationModal('Are you sure you want to restart the node? This action may interrupt ongoing processes.');
+});
+
+eHTML.RevalidateBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.REVALIDATE;
+    openConfirmationModal('Are you sure you want to revalidate the blocks? This may take some time.');
+});
+
+eHTML.resetInfoBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.RESET_WALLET; 
+    openConfirmationModal('Are you sure you want to reset the wallet? This action cannot be undone.');
+});
+
+eHTML.eraseChainDataBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.ERASE_CHAIN_DATA;
+    openConfirmationModal('Are you sure you want to erase the chain data? This action cannot be undone.');
+});
+
+eHTML.hardResetBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.HARD_RESET;
+    openConfirmationModal('Are you sure you want to perform a hard reset? This will reset all data and resync the chain.');
+});
+
+eHTML.updateGitBtn.addEventListener('click', () => {
+    currentAction = ACTIONS.UPDATE_GIT;
+    openConfirmationModal('Do you want to update the client using Git?');
+});
+
 
 //#endregion
 
@@ -398,6 +470,53 @@ function openModal(modalName = 'setup') {
         complete: () => {
             if (modalName === 'setup') { eHTML.modals.setup.privateKeyInput.focus(); }
             if (modalName === 'resetInfo') { eHTML.modals.resetInfoModal.confirmBtn.focus(); }
+        }
+    });
+    anime({
+        targets: modalsWrap,
+        clipPath: 'circle(100% at 50% 50%)',
+        delay: 200,
+        duration: 800,
+        easing: 'easeOutQuad',
+    });
+}
+
+function openConfirmationModal(message) {
+    modalOpen = true;
+    const modals = eHTML.modals;
+    if (!modals.wrap.classList.contains('fold')) { return; }
+
+    // Set the confirmation message
+    const confirmationMessage = document.getElementById('confirmationMessage');
+    if (confirmationMessage) {
+        confirmationMessage.textContent = message;
+    }
+
+    // Show the modal
+    modals.wrap.classList.remove('hidden');
+    modals.wrap.classList.remove('fold');
+
+    for (let modalKey in modals) {
+        if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
+        const modalWrap = modals[modalKey].wrap;
+        modalWrap.classList.add('hidden');
+        if (modalKey === 'resetInfoModal') { modalWrap.classList.remove('hidden'); }
+    }
+
+    const modalsWrap = eHTML.modals.wrap;
+    modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
+    modalsWrap.style.opacity = 0;
+    modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
+
+    anime({
+        targets: modalsWrap,
+        scaleX: 1,
+        scaleY: 1,
+        opacity: 1,
+        duration: 600,
+        easing: 'easeOutQuad',
+        complete: () => {
+            document.getElementById('confirmResetBtn').focus();
         }
     });
     anime({

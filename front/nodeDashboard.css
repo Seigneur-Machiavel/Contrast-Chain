@@ -1,0 +1,308 @@
+@font-face {
+    font-family: "IBM Plex Mono";
+    src: url("front/fonts/IBM_Plex_Mono_Woff/IBMPlexMono-Regular.woff") format("woff");
+    font-weight: 400;
+    font-style: normal;
+}
+@font-face {
+    font-family: "IBM Plex Mono";
+    src: url("front/fonts/IBM_Plex_Mono_Woff/IBMPlexMono-Medium.woff") format("woff");
+    font-weight: 500;
+    font-style: normal;
+}
+@font-face {
+    font-family: "IBM Plex Mono";
+    src: url("front/fonts/IBM_Plex_Mono_Woff/IBMPlexMono-SemiBold.woff") format("woff");
+    font-weight: 600;
+    font-style: normal;
+}
+
+:root {
+    --background: #1e1e1e; /* Darker background for better contrast */
+    --foreground: #d4d4d4; /* Light text color */
+    --accent: #569cd6;      /* Accent color for buttons and highlights */
+    --input-bg: #2d2d2d;    /* Input background */
+    --border: #3c3c3c;      /* Border color */
+}
+
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+body {
+    font-family: "IBM Plex Mono", monospace;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    background-color: var(--background);
+    color: var(--foreground);
+}
+
+.hidden {
+    display: none !important;
+}
+
+button {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    background: var(--accent);
+    color: var(--foreground);
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+}
+
+button:hover {
+    background: lighten(var(--accent), 10%);
+}
+
+.editButton {
+    cursor: pointer;
+    height: fit-content;
+    font-size: 22px;
+    margin-left: 10px;
+}
+
+.editButton:hover {
+    transform: scale(1.1);
+}
+
+input {
+    background: var(--input-bg);
+    color: var(--foreground);
+    text-align: center;
+    margin: 0 10px;
+    border: solid 1px var(--border);
+    font-size: large;
+}
+
+input[type="text"] {
+    text-align: right;
+    width: 194px;
+    padding: 2px 10px;
+    margin: 0;
+}
+
+#topBar {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border-bottom: solid 1px var(--border);
+}
+
+.adminPanelContainer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.btnWrap {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height 0.3s ease;
+}
+
+.btnWrap.visible {
+    max-height: 200px; 
+}
+
+.toggleAdminPanelButton {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 500;
+    background: var(--accent);
+    color: var(--foreground);
+    padding: 5px 10px;
+    cursor: pointer;
+    margin-top: 10px;
+    border: 1px solid var(--border);
+}
+
+#topBar h3 {
+    font-size: 20px;
+    width: auto;
+    opacity: 0.8;
+    margin: 5px 0;
+}
+
+#topBar h3:nth-child(2) {
+    flex-grow: 1;
+    text-align: center;
+    width: 100%;
+}
+
+#topBar .btnWrap div button {
+    cursor: pointer;
+    margin: 0 0 5px 0;
+}
+
+#topBar .btnWrap div {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-around;
+    width: auto;
+    overflow: hidden;
+}
+
+.modalsWrap {
+    position: fixed;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    top: 0;
+    transition: opacity 0.3s ease;
+}
+
+.modalsWrapBackground {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(2px);
+    transition: backdrop-filter 0.6s 0.4s;
+}
+
+.modalsWrap.hidden > .modalsWrapBackground {
+    backdrop-filter: blur(0px) !important;
+}
+
+.modalsWrap > .modalsWrapBackground {
+    backdrop-filter: blur(2px);
+}
+
+.modalWrap {
+    z-index: 1;
+    width: 72%;
+    max-width: 600px;
+    max-height: 72vh;
+    padding: 4vh;
+    box-shadow: 0 0 10px 0 rgba(0, 0, 0, 0.5);
+    background: var(--background);
+    border: 1px solid var(--border);
+}
+
+.modalWrap .spacedText {
+    align-items: center;
+}
+
+.modalWrap .spacedText input {
+    width: 260px;
+    text-align: center;
+    background: var(--input-bg);
+    color: var(--foreground);
+    border: solid 1px var(--border);
+}
+
+#privateKeyInputWrap {
+    display: flex;
+    align-items: center;
+}
+
+#togglePrivateKey {
+    margin-right: 10px;
+    background-color: var(--input-bg);
+    color: var(--foreground);
+    border: 1px solid var(--border);
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+.dashboard {
+    display: flex;
+    justify-content: space-between;
+    margin: 40px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background-color: var(--background);
+}
+
+.dashboard-inner {
+    display: flex;
+    justify-content: space-between;
+    margin: 40px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+    background-color: var(--background);
+}
+
+.global-info {
+    width: 80% !important;
+    margin: 20px auto;
+    background-color: var(--input-bg);
+    padding: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+}
+
+.container {
+    width: 44%;
+    background-color: var(--input-bg);
+    padding: 0 20px;
+    border: 1px solid var(--border);
+}
+
+.spacedText {
+    display: flex;
+    justify-content: space-between;
+}
+
+.spacedText:not(:last-child) {
+    border-bottom: solid 1px var(--border);
+}
+
+.heightText {
+    height: fit-content;
+    padding: 10px;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border);
+}
+
+.incrementalInput {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.incrementalInput input {
+    background: var(--input-bg);
+    color: var(--foreground);
+    text-align: center;
+    margin: 0 10px;
+    border: solid 1px var(--border);
+    font-size: large;
+}
+
+.incrementalInput button:first-child,
+.incrementalInput button:last-child {
+    color: var(--foreground);
+    background: var(--input-bg);
+    border: 1px solid var(--border);
+    font-size: large;
+    font-weight: 600;
+}
+
+.network-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 10px 0;
+    max-height: 200px;
+    overflow-y: auto;
+    background-color: var(--input-bg);
+    border: 1px solid var(--border);
+}
+
+.network-list li {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--foreground);
+}
+
+.network-list li:last-child {
+    border-bottom: none;
+}
