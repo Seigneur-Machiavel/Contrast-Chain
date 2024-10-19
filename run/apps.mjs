@@ -205,6 +205,20 @@ export class DashboardWsApp {
             node.miner.address = associatedMinerAddress;
         }
     }
+
+    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
+        const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        await this.factory.restartNode(nodeId, derivedAccounts[0], derivedAccounts[1].address);
+
+    }
+
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
         //console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
@@ -219,8 +233,11 @@ export class DashboardWsApp {
                 await this.init(data);
                 this.#nodesSettings[this.node.id].privateKey = data;
                 this.#saveNodeSettings();
-
                 break;
+
+            case 'reset_wallet':    
+
+            break;
             case 'set_validator_address':
                 if (!this.node) { console.error('No active node'); break; }
                 try {
@@ -297,11 +314,19 @@ export class DashboardWsApp {
     }
     #loadNodeSettings() {
         const nodeSettings = localStorage_v1.loadJSON('nodeSettings');
-        if (!nodeSettings) { console.log('No nodeSettings found'); return; }
+        if (!nodeSettings || Object.keys(nodeSettings).length === 0) {
+            console.log(`No nodes settings found`);
+            return;
+        }
         
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
     }
+    #resetNodeSettings() {
+        localStorage_v1.saveJSON('nodeSettings', {});
+        console.log(`Nodes settings reset`);
+    }
+
 }
 
 export class ObserverWsApp {
