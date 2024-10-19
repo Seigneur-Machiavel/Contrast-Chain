@@ -206,6 +206,9 @@ export class Transaction_Builder {
         this.checkMalformedAnchorsInUtxosArray(UTXOs);
         this.checkDuplicateAnchorsInUtxosArray(UTXOs);
 
+        const availableAmount = UTXOs.reduce((a, b) => a + b.amount, 0);
+        if (availableAmount < amount * 2) { throw new Error(`Not enough funds: ${availableAmount} < ${amount} * 2`); }
+
         const { outputs, totalSpent } = Transaction_Builder.buildOutputsFrom([{ recipientAddress: stakingAddress, amount }], 'sigOrSlash', 1);
         const { utxos, changeOutput } = Transaction_Builder.#estimateFeeToOptimizeUtxos(UTXOs, outputs, totalSpent, feePerByte, senderAddress, amount);
 

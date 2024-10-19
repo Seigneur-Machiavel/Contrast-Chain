@@ -46,23 +46,23 @@
             </form>
     
             <form id="passwordCreationForm" class="hidden">
-                <input type="password" placeholder="Password">
-                <input type="password" placeholder="Confirm password">
+                <input type="password" placeholder="Password" autocomplete="off">
+                <input type="password" placeholder="Confirm password" autocomplete="off">
                 <button type="submit">Set password</button>
             </form>
     
             <form id="loginForm" class="hidden">
-                <input type="password" placeholder="Password">
-                <button type="submit">Unlock</button>
-                <p class="bottomInfo"></p>
+                <input type="password" placeholder="Password" autocomplete="off">
+                <button type="submit" class="classy">Unlock</button>
+                <p class="textInfo"></p>
             </form>
 
             <form id="createWalletForm" class="hidden">
                 <h1>Wallet creation</h1>
-                <input id="privateKeyHexInput" placeholder="Private key">
+                <input id="privateKeyHexInput" placeholder="Private key" autocomplete="off">
                 <button id="randomizeBtn">Randomize</button>
                 <button id="confirmPrivateKeyBtn" class="disabled">Confirm</button>
-                <p class="bottomInfo"></p>
+                <p class="textInfo"></p>
             </form>
 
             <form id="mnemonicOverviewForm" class="hidden">
@@ -74,12 +74,14 @@
             <form id="walletForm" class="hidden">
                 <div id="spendMiniForm" class="miniFold">
                     <button class="foldBtn"></button>
+                    <p class="textInfo"></p>
                     <h2>sender: <span class="senderAddress"></span></h2>
                     <input class="amountInput" type="text" placeholder="Amount to send">
                     <input type="text" placeholder="Receiver address">
                     <button class="sendBtn">Send</button>
                 </div>
                 <div id="stakeMiniForm" class="miniFold">
+                    <p class="textInfo"></p>
                     <button class="foldBtn"></button>
                     <h2>sender: <span class="senderAddress"></span></h2>
                     <input class="amountInput" type="text" placeholder="Amount to stake">
@@ -113,9 +115,8 @@
                                 </div>
                             </div>
                         </div>-->
+                        <button id="newAddressBtn">+</button>
                     </div>
-                    <button id="newAddressBtn">+</button>
-                    <p class="bottomInfo"></p>
                 </div>
             </form>
     
@@ -129,6 +130,7 @@
             </form>
     
             <form id="settingsForm" class="hidden">
+                <p class="textInfo"></p>
                 <button id="changePasswordBtn">Change password</button>
                 <button id="deleteDataBtn">Delete data</button>
                 <div class="inlineCheckBox">
