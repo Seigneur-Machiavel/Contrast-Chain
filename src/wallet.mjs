@@ -67,7 +67,7 @@ export class Wallet {
         return true;
     }
     async deriveAccounts(nbOfAccounts = 1, addressPrefix = "C") {
-        this.accounts[addressPrefix] = [];
+        //this.accounts[addressPrefix] = [];  // no reseting accounts anymore
         const startTime = performance.now();
         //const nbOfExistingAccounts = this.accounts[addressPrefix].length;
         const nbOfExistingAccounts = this.accountsGenerated[addressPrefix].length;
@@ -78,6 +78,7 @@ export class Wallet {
 
         const accountToLoad = Math.min(nbOfExistingAccounts, nbOfAccounts);
         for (let i = 0; i < accountToLoad; i++) {
+            if (this.accounts[addressPrefix][i]) { continue; } // already derived account
             if (this.accountsGenerated[addressPrefix][i]) { // from saved account
                 const { address, seedModifierHex } = this.accountsGenerated[addressPrefix][i];
                 const keyPair = await this.#deriveKeyPair(seedModifierHex);
@@ -89,6 +90,7 @@ export class Wallet {
         }
 
         for (let i = nbOfExistingAccounts; i < nbOfAccounts; i++) {
+            if (this.accounts[addressPrefix][i]) { continue; } // already derived account (should not append here)
             let derivationResult;
             if (this.nbOfWorkers === 0) {
                 derivationResult = await this.tryDerivationUntilValidAccount(i, addressPrefix);

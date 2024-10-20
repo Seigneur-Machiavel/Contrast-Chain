@@ -1,23 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="../styles/popup-styles.css">
+    <link rel="stylesheet" href="../popup-styles.css">
     <script src="../scripts/argon2-bundled.min.js"></script>
     <script src="../scripts/modulesLoader.mjs" type="module"></script>
 
-    <script src="../scripts/contrast/externalLibs/msgpack.min.js"></script>
-    <!--<script crossorigin src="https://unpkg.com/@msgpack/msgpack"></script>-->
+    <script src="../contrast/externalLibs/msgpack.min.js"></script>
 
     <script src="../scripts/pattern-generator.js"></script>
     <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
-    <!--<script src="../scripts/cryptoLight.js"></script> imported as ES6 in modulesLoader.mjs -->
     <script src="../scripts/classes.js"></script>
     <script src="../scripts/htmlAnimations.js"></script>
     <script src="../scripts/popup.js" defer></script>
+    <link rel="stylesheet" href="../explorerWidget.css">
+    <script src="../contrast/front/explorerScript.mjs" type="module"></script>
     <title>Authentification</title>
 </head>
 <body>
+    <div id="popUpExplorer" class="hidden">
+        <div id="cbe-contrastBlocksWidget"></div>
+    </div>
     <div id="popUpContent">
         <div class="wrap">
             <div id="appTitle" class="appTitle">
@@ -142,6 +145,8 @@
             </form>
     
             <div id="bottomBar" class="bottomBar">
+                <!--<button id="explorerBtn"><img src="../images/explorer96.png" alt="Explorer"></button>-->
+                <button id="explorerBtn"><div class="icon"></div></button>
                 <button id="walletBtn"><img src="../images/wallet48.png" alt="Wallet"></button>
                 <button id="miningBtn"><img src="../images/pickaxe48.png" alt="Mining"></button>
                 <button id="settingsBtn"><img src="../images/settings48.png" alt="Settings"></button>

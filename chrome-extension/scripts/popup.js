@@ -4,19 +4,18 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
     const { htmlAnimations } = require("./htmlAnimations.js");
-    const { Wallet } = require("./contrast/src/wallet.mjs");
-    const utils = require("./contrast/src/utils.mjs").default;
-    const { Account } = require("./contrast/src/account.mjs");
+    const { Wallet } = require("../contrast/src/wallet.mjs");
+    const utils = require("../contrast/src/utils.mjs").default;
+    const { Account } = require("../contrast/src/account.mjs");
     const { Transaction, Transaction_Builder } = require("./contrast/src/transaction.mjs");
 }
 
 /**
-* @typedef {import("../../src/transaction.mjs").Transaction} Transaction
-* @typedef {import("../../src/transaction.mjs").UTXO} UTXO
+* @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
+* @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
 */
 
 const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
-
 class WalletInfo {
     constructor(walletInfo = {}) {
         this.name = walletInfo.name || 'wallet1';
@@ -36,7 +35,12 @@ const settings = {
     appVersion: chrome.runtime.getManifest().version,
     minVersionAcceptedWithoutReset: '1.2.0',
     hardcodedPassword: '123456',
-    serverUrl: "http://localhost:4340"
+    serverUrl: "http://localhost:4340",
+    popUpSizes: {
+        small: '302px',
+        medium: '322px',
+        large: '800px'
+    }
 };
 const UX_SETTINGS = {
     shapes: 4
@@ -101,9 +105,12 @@ const eHTML = {
     },
 
     bottomBar: document.getElementById('bottomBar'),
+    explorerBtn: document.getElementById('explorerBtn'),
     walletBtn: document.getElementById('walletBtn'),
     miningBtn: document.getElementById('miningBtn'),
-    settingsBtn: document.getElementById('settingsBtn')
+    settingsBtn: document.getElementById('settingsBtn'),
+
+    popUpExplorer: document.getElementById('popUpExplorer'),
 };
 
 /** @type {Wallet} */
@@ -114,7 +121,7 @@ let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
 let currentTextInfo = '';
 const busy = [];
 //#region - UX FUNCTIONS
-function resizePopUp(applyBLur = true, large = false, duration = 200) {
+function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
     const contentHeight = Math.max(contentDivHeight, contentWrapHeight);
@@ -124,7 +131,7 @@ function resizePopUp(applyBLur = true, large = false, duration = 200) {
     
     resizePopUpAnimations[0] = anime({
         targets: 'body',
-        width: large ? '322px' : '302px',
+        width: settings.popUpSizes[popUpSize],
         height: `${newHeight}px`,
         filter: applyBLur ? 'blur(2px)' : 'blur(0px)',
         duration,
@@ -147,13 +154,19 @@ async function setMiningIntensityFromLocalStorage() {
     document.getElementById('intensityValueStr').innerText = intensity;
 }
 function setVisibleForm(formId, applyBLur = true) {
+    //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
     eHTML.walletBtn.classList.add('active');
     eHTML.miningBtn.classList.add('active');
     eHTML.settingsBtn.classList.add('active');
-    let largePopUp = true;
+
+    eHTML.popUpExplorer.classList.add('hidden');
+    eHTML.explorerBtn.classList.remove('active');
+    eHTML.explorerBtn.classList.remove('explorerOpenned');
+    //if (explorerOpenned) { eHTML.explorerBtn.classList.add('active'); }
+    let popUpSize = 'medium';
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
     eHTML.centerScreenBtnContrainer.classList.add('hidden');
@@ -169,18 +182,20 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.bottomBar.classList.add('hidden');
         eHTML.appTitle.classList.remove('hidden');
         eHTML.popUpContent.classList.remove('large');
-        largePopUp = false;
+        popUpSize = 'small';
     }
 
     if (formId === "walletForm") {
+        eHTML.explorerBtn.classList.add('active');
         eHTML.walletBtn.classList.remove('active');
+        eHTML.explorerBtn.classList.add('active');
     }
     if (formId === "createWalletForm") {
         eHTML.miningBtn.classList.remove('active');
         eHTML.settingsBtn.classList.remove('active');
         eHTML.bottomBar.classList.add('hidden');
         eHTML.popUpContent.classList.remove('large');
-        largePopUp = false;
+        popUpSize = 'small';
     }
 
     if (formId === "miningForm") {
@@ -194,7 +209,59 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.settingsBtn.classList.remove('active');
     }
 
-    resizePopUp(applyBLur, largePopUp);
+    resizePopUp(applyBLur, popUpSize);
+}
+function toggleExplorer() {
+    const popUpContentWrapChildren = eHTML.popUpContentWrap.children;
+    const activeForm = Array.from(popUpContentWrapChildren).find(form => !form.classList.contains('hidden'));
+    console.log(`activeForm: ${activeForm.id}`);
+
+    let popUpSize = 'medium';
+    /*if (activeForm.id === "passwordCreationForm" || activeForm.id === "loginForm" || activeForm.id === "createWalletForm") {
+        popUpSize = 'small';
+    }*/ // probably not needed
+    
+    if (animations.popUpExplorer) { animations.popUpExplorer.pause(); }
+    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    if (explorerOpenned) {
+        eHTML.explorerBtn.classList.remove('explorerOpenned');
+
+        eHTML.popUpExplorer.style.opacity = '.6';
+        eHTML.popUpExplorer.style.zIndex = '-1';
+        animations.popUpExplorer = anime({
+            targets: eHTML.popUpExplorer,
+            opacity: 0,
+            width: settings.popUpSizes[popUpSize],
+            duration: 200,
+            easing: 'easeInOutQuad',
+            complete: () => { eHTML.popUpExplorer.classList.add('hidden'); }
+        });
+    }
+    if (!explorerOpenned) {
+        eHTML.popUpExplorer.classList.remove('hidden');
+        eHTML.explorerBtn.classList.add('explorerOpenned');
+        eHTML.explorerBtn.classList.add('active');
+        popUpSize = 'large';
+        
+        eHTML.popUpExplorer.style.opacity = '0';
+        eHTML.popUpExplorer.style.zIndex = '-1';
+        eHTML.popUpExplorer.style.width = settings.popUpSizes['medium'];
+        const popUpLargeSizeNumber = parseInt(settings.popUpSizes['large'].replace('px', ''));
+        const popUpMediumSizeNumber = parseInt(settings.popUpSizes['medium'].replace('px', ''));
+        animations.popUpExplorer = anime({
+            targets: eHTML.popUpExplorer,
+            opacity: 1,
+            //width: `calc(800px - ${settings.popUpSizes[popUpSize]})`,
+            width: `${popUpLargeSizeNumber - popUpMediumSizeNumber}px`,
+            duration: 200,
+            easing: 'easeInOutQuad',
+            complete: () => { eHTML.popUpExplorer.style.zIndex = '2'; }
+        });
+    }
+
+    if (activeForm.id === "walletForm") { eHTML.explorerBtn.classList.add('active'); }
+
+    resizePopUp(true, popUpSize);
 }
 function toggleMiniForm(miniFormElmnt) {
     updateMiniFormsInfoRelatedToActiveAccount();
@@ -458,21 +525,6 @@ function newAddressBtnLoadingToggle() {
     /** @type {AuthInfo} */
     const sanitizedAuthInfo = authInfoResult.authInfo ? sanitizer.sanitize(authInfoResult.authInfo) : {};
     showFormDependingOnStoredPassword(sanitizedAuthInfo);
-
-    /*if (!vaultState || !vaultState.vaultUnlocked) {
-        await initAuth();
-    } else {
-        const connectionResult = await pingServerAndSetMode();
-        if (!connectionResult) { return; }
-
-        setVisibleForm('miningForm');
-
-        miner.init();
-        centerScreenBtn.delayBeforeIdleAnimationIfLocked = 1;
-
-        const bottomBar = document.getElementById('bottomBar');
-        bottomBar.classList.remove('hidden');
-    }*/
 })();
 async function setNewPassword(password, passComplement = false) {
     const startTimestamp = Date.now();
@@ -1034,6 +1086,11 @@ document.addEventListener('click', async function(e) {
         case 'walletBtn':
             if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('walletForm', false);
+            break;
+        case 'explorerBtn':
+            if (!e.target.classList.contains('active')) { return; }
+            //setVisibleForm('explorerForm', true);
+            toggleExplorer();
             break;
         case 'newAddressBtn':
             if (e.target.innerHTML !== '+') { console.log('Already generating new address'); return; }

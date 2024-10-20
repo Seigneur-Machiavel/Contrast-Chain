@@ -1,10 +1,19 @@
-import utils from './contrast/src/utils.mjs';
+// EXPLORER SETTINGS INJECTIONS
+window.explorerDOMAIN = 'pinkparrot.observer';
+window.explorerPORT = false;
+window.explorerROLES = ['blockExplorer'];
+window.explorerMagnetImgPath = '../img/C_magnet.png';
+window.explorerNB_OF_CONFIRMED_BLOCKS = 2;
+console.log('EXPLORER SETTINGS INJECTED!');
+
+// MODULES LOADER
+import utils from '../contrast/src/utils.mjs';
 window.utils = utils;
 
-import { Wallet } from './contrast/src/wallet.mjs';
+import { Wallet } from '../contrast/src/wallet.mjs';
 window.Wallet = Wallet;
 
-import { Transaction, Transaction_Builder } from './contrast/src/transaction.mjs';
+import { Transaction, Transaction_Builder } from '../contrast/src/transaction.mjs';
 window.Transaction = Transaction;
 window.Transaction_Builder = Transaction_Builder;
 
@@ -17,7 +26,7 @@ async function loadScriptAsText(url) {
     return text;
 }
 
-const accountWorkerCode = await loadScriptAsText('../scripts/contrast/workers/account-worker-front.js');
+const accountWorkerCode = await loadScriptAsText('../contrast/workers/account-worker-front.js');
 window.accountWorkerCode = accountWorkerCode;
 
 /*console.log('Modules loaded!');

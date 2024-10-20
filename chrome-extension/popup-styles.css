@@ -1,13 +1,10 @@
 :root {
     --funky-background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, .7) 258%) padding-box, linear-gradient(165deg, #fb923c 0%, #fb7185 18%, #818cf8 100%) border-box;
-    /*--background-color1: #2c2c2c;*/
     --background-color1: #292a2a;
     --background-color2: rgba(127, 127, 127, .08);
 
     --text-color: white;
     --text-color2: #e0e0e0;
-    /*--text-color3: grey;*/
-    /*--text-color2: #e1e9ed;*/
     --text-color3: #afafaf;
 
     --neumo-color1: #2b2828;
@@ -20,6 +17,16 @@
     --invalid-color: indianred;
     --valid-color: cornflowerblue;
     --correct-color: green;
+
+    /* EXPLORER CSS */
+    --cbe-widget-margin: 2%; /* customizable */
+    --cbe-color1: #c5c8d0; /* customizable */
+    --cbe-color2: #787878; /* customizable */
+    --cbe-color3: #4f4f4f; /* customizable */
+    --cbe-color4: #e5e9f4; /* customizable */
+    --cbe-color5: #f1f3f8;; /* customizable */
+    --inner-height: 120px;   /* customizable */
+    --wrap-border-radius: 16px; /* customizable */
 }
 
 ::-webkit-scrollbar {
@@ -47,7 +54,37 @@ h1, h2 {
     color: var(--text-color2);
 }
 
+#popUpExplorer {
+    z-index: 2;
+    position: absolute;
+    /*background: var(--background-color1);*/
+    background: var(--cbe-color4);
+    color: var(--cbe-color3);
+    /*width: calc(800px - 322px);*/
+    height: 100%;
+    opacity: 1;
+    transition: opacity 0.12s ease-in-out;
+}
+#explorerBtn .icon {
+    pointer-events: none;
+    width: 32px;
+    height: 32px;
+    background-image: url(../images/explorer96.png);
+    background-size: 32px;
+    filter: brightness(0.4);
+    transition: transform 0.12s ease-in-out, filter 0.12s ease-in-out, background-image 0.12s ease-in-out;
+}
+#explorerBtn.explorerOpenned .icon {
+    background-image: url(../images/arrow-right96.png);
+}
+#explorerBtn.active:hover .icon {
+    transform: scale(1.02);
+    filter: brightness(1);
+    filter: brightness(1) drop-shadow(0px 0px 2px rgba(255, 255, 255, .2));
+}
+
 #popUpContent {
+    background: var(--background-color1);
     position: absolute;
     right: 0;
     top: 0;
@@ -670,6 +707,7 @@ button.classy.clicked:not(.disabled) {
     border-width: 1px;
     border-color: #ffffff17;
     /*padding: 6px 0;*/
+    margin: 0 4px;
     height: 50px;
 }
 #bottomBar button {
