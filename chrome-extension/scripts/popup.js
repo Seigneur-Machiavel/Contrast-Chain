@@ -13,7 +13,12 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 /**
 * @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
+* @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
+* @typedef {import("../contrast/front/explorerScript.mjs").AddressExhaustiveData} AddressExhaustiveData
 */
+
+/** @type {BlockExplorerWidget} */
+let blockExplorerWidget;
 
 const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
 class WalletInfo {
@@ -111,6 +116,9 @@ const eHTML = {
     settingsBtn: document.getElementById('settingsBtn'),
 
     popUpExplorer: document.getElementById('popUpExplorer'),
+    txHistoryAddress: document.getElementById('txHistoryAddress'),
+    txHistoryWrap: document.getElementById('txHistoryWrap'),
+    txHistoryTable: document.getElementById('txHistoryWrap').getElementsByTagName('table')[0],
 };
 
 /** @type {Wallet} */
@@ -217,9 +225,6 @@ function toggleExplorer() {
     console.log(`activeForm: ${activeForm.id}`);
 
     let popUpSize = 'medium';
-    /*if (activeForm.id === "passwordCreationForm" || activeForm.id === "loginForm" || activeForm.id === "createWalletForm") {
-        popUpSize = 'small';
-    }*/ // probably not needed
     
     if (animations.popUpExplorer) { animations.popUpExplorer.pause(); }
     const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
@@ -334,18 +339,6 @@ function initUI() {
     document.body.style.width = "0px";
     document.body.style.height = "0px";
 }
-/*<div class="accountLabel">
-    <img src="../images/qr-code32.png" alt="Account">
-    <div class="accountLabelInfoWrap">
-        <div class="accountLabelNameAndValueWrap">
-            <h2>Account 1</h2>
-            <h3>0.00c</h3>
-        </div>
-        <div class="accountLabelAddress">
-            <h3>WKDEJFIUHESVUOHEIUEF</h3>
-        </div>
-    </div>
-</div>*/
 function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');
     accountLabel.classList.add('accountLabel');
@@ -448,7 +441,7 @@ async function updateTotalBalances() {
     let walletTotalBalance = 0;
     let walletTotalSpendableBalance = 0;
     let walletTotalStakedBalance = 0;
-    // for each address type
+ 
     const addressTypes = Object.keys(activeWallet.accounts);
     for (let i = 0; i < addressTypes.length; i++) {
         const addressPrefix = addressTypes[i];
@@ -512,6 +505,47 @@ function newAddressBtnLoadingToggle() {
         });
     }
 }
+function updateTxHistory() {
+    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+    eHTML.txHistoryAddress.innerText = activeAddress;
+
+    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    if (!explorerOpenned) { return; }
+
+    const addressExhaustiveData = blockExplorerWidget.getAddressExhaustiveDataFromMemoryOrSendRequest(activeAddress);
+    if (addressExhaustiveData === "request sent") { return; }
+    
+    fillTxHistoryWithTxsReferencesElement(addressExhaustiveData);
+}
+/** @param {AddressExhaustiveData} addressExhaustiveData */
+function fillTxHistoryWithTxsReferencesElement(addressExhaustiveData) {
+    const txHistoryTable = eHTML.txHistoryTable;
+    const txHistoryRows = txHistoryTable.getElementsByTagName('tr');
+    for (let i = 0; i < txHistoryRows.length; i++) { txHistoryRows[i].remove(); }
+
+    // FILLING THE ADDRESS TXS HISTORY
+    const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
+    const txsReferences = addressExhaustiveData.addressTxsReferences;
+    for (const txReference of txsReferences) {
+        const transaction = blockExplorerWidget.transactionsByReference[txReference];
+        const row = createHtmlElement('tr', undefined, ['w-addressTxDate'], tbody);
+        const amountText = createHtmlElement('td', undefined, ['w-addressTxAmount'], row);
+        amountText.textContent = transaction ? utils.convert.number.formatNumberAsCurrencyChange(transaction.balanceChange) : '...';
+        const feeText = createHtmlElement('td', undefined, ['w-addressTxFee'], row);
+        feeText.textContent = transaction ? utils.convert.number.formatNumberAsCurrency(transaction.fee) : '...';
+        createHtmlElement('td', undefined, ['w-addressTxReference'], row).textContent = txReference;
+    }
+}
+function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
+    /** @type {HTMLElement} */
+    const element = document.createElement(tag);
+    if (id) { element.id = id; }
+
+    for (const cl of classes) { element.classList.add(cl); }
+
+    if (divToInject) { divToInject.appendChild(element); }
+    return element;
+}
 //#endregion
 
 //#region - FUNCTIONS
@@ -525,6 +559,13 @@ function newAddressBtnLoadingToggle() {
     /** @type {AuthInfo} */
     const sanitizedAuthInfo = authInfoResult.authInfo ? sanitizer.sanitize(authInfoResult.authInfo) : {};
     showFormDependingOnStoredPassword(sanitizedAuthInfo);
+
+    while(!window.blockExplorerWidget) {
+        console.log('Waiting for blockExplorerWidget...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    blockExplorerWidget = window.blockExplorerWidget;
+    console.log('blocksTimeInterval:', blockExplorerWidget.blocksTimeInterval);
 })();
 async function setNewPassword(password, passComplement = false) {
     const startTimestamp = Date.now();
@@ -659,6 +700,7 @@ async function loadWalletGeneratedAccounts(walletInfo) {
 
     updateAccountsLabels();
     updateActiveAccountLabel();
+    updateTxHistory();
     
     const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
@@ -1152,6 +1194,7 @@ document.addEventListener('click', async function(e) {
             activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
             updateActiveAccountLabel();
             updateMiniFormsInfoRelatedToActiveAccount();
+            updateTxHistory();
             break;
         case 'foldBtn':
             console.log('foldBtn');

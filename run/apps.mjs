@@ -413,7 +413,7 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'address_transactionsRefs_requested', data: addTxsRefs }));
                     break;
                 case 'get_address_exhaustive_data':
-                    const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(data);
+                    const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(data.address, data.untilHeight);
                     ws.send(JSON.stringify({ type: 'address_exhaustive_data_requested', data: { address: data, addressUTXOs, addressTxsReferences } }));
                     break;
                 case 'address_utxos':

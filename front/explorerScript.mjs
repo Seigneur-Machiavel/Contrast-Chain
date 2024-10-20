@@ -162,7 +162,7 @@ const HTML_ELEMENTS_ATTRIBUTES = {
     modalContent: { widthPerc: .9, heightPerc: .9 },
 }
 
-class BlockExplorerWidget {
+export class BlockExplorerWidget {
     constructor(divToInjectId = 'cbe-contrastBlocksWidget', blocksDataByHash = {}, blocksDataByIndex = {}, blocksInfo = []) {
         /** @type {Object<string, HTMLElement>} */
         this.cbeHTML = {
@@ -276,7 +276,7 @@ class BlockExplorerWidget {
                 console.log('address span clicked', address);
 
                 this.navigationTarget.address = address;
-                if (this.#getAddressExhaustiveDataFromMemoryOrSendRequest(address) === 'request sent') { return; }
+                if (this.getAddressExhaustiveDataFromMemoryOrSendRequest(address) === 'request sent') { return; }
 
                 // display address infos
                 this.navigateUntilTarget(true);
@@ -382,7 +382,7 @@ class BlockExplorerWidget {
                     console.log('address conform:', inputText);
 
                     this.navigationTarget.address = inputText;
-                    if (this.#getAddressExhaustiveDataFromMemoryOrSendRequest(inputText) === 'request sent') { return; }
+                    if (this.getAddressExhaustiveDataFromMemoryOrSendRequest(inputText) === 'request sent') { return; }
     
                     // display address infos
                     this.navigateUntilTarget(true);
@@ -434,6 +434,7 @@ class BlockExplorerWidget {
         let modalContentCreated = false;
         const { blockReference, txId, outputIndex, address } = this.navigationTarget;
         this.navigationTarget = { blockReference: null, txId: null, outputIndex: null, address: null };
+        if (blockReference === null) { console.info('navigateUntilTarget => blockReference === null'); return; }
 
         if (address) {
             console.info('navigateUntilTarget =>', address);
@@ -453,7 +454,7 @@ class BlockExplorerWidget {
         
         // fill the modal content with the block data
         const blockData = isNaN(blockReference) ? this.blocksDataByHash[blockReference] : this.blocksDataByIndex[blockReference];
-        if (!blockData) { console.error('navigateUntilTarget => error: blockData not found'); return; }
+        if (!blockData) { console.info('navigateUntilTarget => error: blockData not found'); return; }
         this.#fillModalContentWithBlockData(blockData);
         if (!txId) { return; }
 
@@ -958,12 +959,14 @@ class BlockExplorerWidget {
         return 'request sent';
     }
     /** @param {string} address */
-    #getAddressExhaustiveDataFromMemoryOrSendRequest(address) {
+    getAddressExhaustiveDataFromMemoryOrSendRequest(address) {
         const fromMemory = this.addressesExhaustiveData[address];
         if (fromMemory) { return fromMemory; }
 
-        console.log(`requesting address exhaustive data: ${address}`);
-        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: address }));
+        const lastIndex = this.getLastBlockInfoIndex();
+        const untilHeight = Math.max(0, lastIndex - 100);
+        console.log(`requesting address exhaustive data: address: ${address}, untilHeight: ${untilHeight}`);
+        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: { address, untilHeight } }));
         return 'request sent';
     }
     getLastBlockInfoIndex() {
@@ -990,7 +993,7 @@ class AddressInfo {
         this.UTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
     }
 }
-class AddressExhaustiveData {
+export class AddressExhaustiveData {
     constructor(UTXOs, addressTxsReferences) {
         this.balances = utils.utxoUtils.extractBalances(UTXOs);
         this.UTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
@@ -1122,6 +1125,7 @@ class BlockChainElementsManager {
 }
 
 blockExplorerWidget = new BlockExplorerWidget();
+window.blockExplorerWidget = blockExplorerWidget;
  //test - ignore
 /*setTimeout(() => {
     ws.send(JSON.stringify({ type: 'get_blocks_data_by_height', data: 104 }));

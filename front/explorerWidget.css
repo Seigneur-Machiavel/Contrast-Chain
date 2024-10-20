@@ -1,12 +1,15 @@
 :root {
-    --cbe-widget-margin-default: 2% 10%; /* customizable */
-    --cbe-color1-default: #c5c8d0; /* customizable */
-    --cbe-color2-default: #787878; /* customizable */
-    --cbe-color3-default: #4f4f4f; /* customizable */
-    --cbe-color4-default: #e5e9f4; /* customizable */
-    --cbe-color5-default: #f1f3f8;; /* customizable */
-    --inner-height-default: 140px;   /* customizable */
-    --wrap-border-radius-default: 20px; /* customizable */
+    --cbe-widget-margin-default: 2% 10%;
+    --cbe-color1-default: #c5c8d0;  /* USELESS ATM */
+    --cbe-color2-default: #787878;
+    --cbe-color3-default: #4f4f4f;
+    --cbe-color4-default: #e5e9f4;
+    --cbe-color5-default: #f1f3f8;
+    --inner-height-default: 140px;
+    --wrap-border-radius-default: 20px;
+
+    --cbe-neumo-color1-default: #ffffff;
+    --cbe-neumo-color2-default: #c3c6cf;
 }
 
 #cbe-modalContentWrap::-webkit-scrollbar, #cbe-TxDetails::-webkit-scrollbar,
@@ -20,19 +23,22 @@
 }
 #cbe-modalContentWrap::-webkit-scrollbar-thumb, #cbe-TxDetails::-webkit-scrollbar-thumb,
 .cbe-utxosRuleWrap::-webkit-scrollbar-thumb {
-    background: var(--cbe-color4, var(--cbe-color4-default)); /* customizable */
+    background: var(--cbe-color4, var(--cbe-color4-default));
     border-radius: 2px;
 }
 
 #cbe-contrastBlocksWidget {
     position: relative;
     margin: var(--cbe-widget-margin, var(--cbe-widget-margin-default));
-    border-radius: var(--wrap-border-radius, var(--wrap-border-radius-default)); /* customizable */
-    height: var(--inner-height, var(--inner-height-default)); /* customizable */
+    border-radius: var(--wrap-border-radius, var(--wrap-border-radius-default));
+    height: var(--inner-height, var(--inner-height-default));
     padding: 0 10px;
 
-    box-shadow: -.6rem -.6rem 1rem hsl(0 0% 100% / .65), .6rem .5rem .5rem hsl(0 0% 50% / .25),
-    inset .2rem .2rem .2rem hsl(0 0% 74% / .6), inset -.2rem -.2rem .2rem hsl(0 0% 100% / .8);
+    box-shadow:
+    -10px -10px 20px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    10px 10px 20px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default)),
+    inset 2px 2px 2px var(--cbe-neumo-color1, var(--cbe-neumo-color2-default)),
+    inset 2px 2px 2px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default));
     background: none;
 }
 #cbe-contrastBlocksWidget input {
@@ -62,7 +68,7 @@
     top: 0;
     width: 100%;
     height: 100%;
-    border-radius: var(--wrap-border-radius, var(--wrap-border-radius-default)); /* customizable */
+    border-radius: var(--wrap-border-radius, var(--wrap-border-radius-default));
     background: radial-gradient(ellipse farthest-side at 45% 52%, rgba(255, 255, 255, 0) 80%, rgb(255 255 255 / 12%) 120%),
     linear-gradient(90deg, rgba(0, 0, 0, 0) 90%, var(--cbe-color4, var(--cbe-color4-default)) 100%),
     radial-gradient(ellipse closest-side at 46% 47%, rgba(255, 255, 255, 0) 80%, rgb(255 255 255 / 0%) 148%);
@@ -91,7 +97,9 @@
 #cbe-searchMenu {
     position: absolute;
     background: var(--cbe-color4, var(--cbe-color4-default));
-    box-shadow: -.2rem -.2rem .6rem hsl(0 0% 100% / .75), .6rem .2rem .6rem hsl(0 0% 40% / .2);
+    box-shadow:
+    -3px -3px 10px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    10px 10px 20px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     border-radius: 10px;
     height: 100%;
     width: 0%;
@@ -154,7 +162,9 @@
     position: relative;
     height: 74%;
     aspect-ratio: 1 / 1;
-    box-shadow: -.4rem -.3rem 1rem hsl(0 0% 100% / .75), .5rem .2rem 1rem hsl(0 0% 50% / .4);
+    box-shadow:
+    -8px -8px 16px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    8px 8px 16px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     background: none;
     border-radius: 10%;
     transition: background .2s;
@@ -162,8 +172,10 @@
 .cbe-blockSquare:hover {
     cursor: pointer;
     transform: scale(1.02);
-    background: var(--cbe-color5, var(--cbe-color5-default)); /* customizable */
-    box-shadow: -.44rem -.33rem 1rem hsl(0 0% 100% / .85), .55rem .25rem 1rem hsl(0 0% 50% / .5);
+    background: var(--cbe-color5, var(--cbe-color5-default));
+    box-shadow:
+    -10px -10px 20px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    10px 10px 20px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
 }
 .cbe-blockMiniHash {
     position: absolute;
@@ -230,7 +242,12 @@
     left: 50%;
     border-radius: 20px;
     background: var(--cbe-color4, var(--cbe-color4-default));
-    box-shadow: -.1rem -.2rem 1rem hsl(0 0% 100% / .65), .6rem .2rem .4rem hsl(0 0% 50% / .25);
+    /*box-shadow:
+    -10px -10px 20px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    10px 10px 20px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));*/
+    box-shadow:
+    -20px -20px 60px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    20px 20px 60px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     transform: translate(-50%, -50%);
     opacity: 0;
     transition: opacity .2s .12s;
@@ -256,7 +273,10 @@
     margin: 20px 0;
     text-align: center;
     background: var(--cbe-color4, var(--cbe-color4-default));
-    box-shadow: 3px 2px 3px #adaeb230, -3px -2px 3px #f0f5ffb8;
+    /*box-shadow: 3px 2px 3px #adaeb230, -3px -2px 3px #f0f5ffb8;*/
+    box-shadow:
+    -6px -6px 12px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    6px 6px 12px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
 }
 #cbe-modalContent.blockDataContent {
 }
@@ -294,7 +314,9 @@
 }
 .cbe-leftContainer, .cbe-rightContainer {
     background: var(--cbe-color4, var(--cbe-color4-default));
-    box-shadow: inset 5px 5px 8px #dadde8, inset -5px -5px 8px #f0f5ff;
+    box-shadow:
+    -16px -16px 40px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    16px 16px 40px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     padding: 1% 2%;
     border-radius: 20px;
     width: 44%;
@@ -305,7 +327,9 @@
 
 .cbe-TxsTable {
     background: var(--cbe-color4, var(--cbe-color4-default));
-    box-shadow: inset 5px 5px 8px #dadde8, inset -5px -5px 8px #f0f5ff;
+    box-shadow:
+    inset -2px -2px 20px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    inset 2px 2px 3px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     padding: 1% 2%;
     border-radius: 10px;
     width: 92%;
@@ -332,18 +356,19 @@
     cursor: pointer;
 }
 .cbe-TxRow:hover, .cbe-addressTxRow:hover {
-    background: var(--cbe-color5, var(--cbe-color5-default)); /* customizable */
+    background: var(--cbe-color5, var(--cbe-color5-default));
 }
 
 #cbe-TxDetails {
     position: absolute;
     margin-left: -1%;
     width: 102%;
-    background: var(--cbe-color5, var(--cbe-color5-default)); /* customizable */
+    max-width: 800px;
+    background: var(--cbe-color5, var(--cbe-color5-default));
     padding: 2%;
     border-radius: 10px;
     font-size: 72%;
-    box-shadow: 4px 4px 6px 4px rgba(0, 0, 0, .3);
+    box-shadow: 1px 1px 8px 6px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
     transform: translateY(calc(-100% - 32px));
     overflow-y: auto;
     max-height: 320px;
@@ -355,7 +380,7 @@
         background: transparent;
     }
     to {
-        background: var(--cbe-color5, var(--cbe-color5-default)); /* customizable */
+        background: var(--cbe-color5, var(--cbe-color5-default));
     }
 }
 @keyframes scaleTxDetailsFromBottom {
@@ -390,8 +415,12 @@
 .cbe-TxInfoWrap, .cbe-TxInputsWrap, .cbe-TxOutputsWrap {
     border-radius: 6px;
     padding: 0 10px 10px 10px;
-    box-shadow:  10px 10px 20px #eceef3,
-     -10px -10px 20px #f6f8fd;
+
+    box-shadow:
+    0px 0px 18px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    -0px -0px 18px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default)),
+    inset 2px 2px 6px -2px var(--cbe-neumo-color1, var(--cbe-neumo-color2-default)),
+    inset -2px -2px 4px -2px var(--cbe-neumo-color2, var(--cbe-neumo-color1-default))
 }
 .cbe-TxInputsWrap, .cbe-TxOutputsWrap {
     text-align: right;
@@ -414,22 +443,25 @@
 .cbe-folderWrap {
     /*overflow: auto;*/
 }
-.cbe-folderWrap .cbe-spacedText:first-child {
-    cursor: pointer;
-    position: relative;
-    background: var(--cbe-color4, var(--cbe-color4-default));
-    z-index: 1;
-}
 .cbe-folderWrap:first-child .cbe-spacedText:first-child {
     margin-top: -6px;
     padding-top: 6px !important;
 }
 .cbe-folderWrap .cbe-spacedText {
     border: none !important;
-    box-shadow: 3px 2px 3px #adaeb230, -3px -2px 3px #f0f5ffb8;
     margin-top: 10px;
     width: calc(100% - 16px) !important;
     padding: 8px 8px !important;
+}
+.cbe-folderWrap .cbe-spacedText:first-child {
+    cursor: pointer;
+    position: relative;
+    background: var(--cbe-color4, var(--cbe-color4-default));
+    z-index: 1;
+    border-radius: 10px 10px 0 0;
+    box-shadow:
+    0px -6px 20px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    6px 0px 20px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default));
 }
 .cbe-folderWrap .cbe-spacedText:first-child div {
     pointer-events: none;
@@ -477,7 +509,11 @@
     width: fit-content;
     padding: 10px;
     border-radius: 0 0 6px 6px;
-    box-shadow: inset 5px 5px 8px #dadde8, inset -5px -5px 8px #f0f5ff;
+    box-shadow:
+    -6px -6px 18px var(--cbe-neumo-color1, var(--cbe-neumo-color1-default)),
+    6px 6px 18px var(--cbe-neumo-color2, var(--cbe-neumo-color2-default)),
+    inset 2px 2px 6px -2px var(--cbe-neumo-color1, var(--cbe-neumo-color2-default)),
+    inset -2px -2px 4px -2px var(--cbe-neumo-color2, var(--cbe-neumo-color1-default));
 }
 .cbe-utxosRuleWrap {
     overflow-y: auto;

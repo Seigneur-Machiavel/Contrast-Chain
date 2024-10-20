@@ -18,15 +18,17 @@
     --valid-color: cornflowerblue;
     --correct-color: green;
 
-    /* EXPLORER CSS */
-    --cbe-widget-margin: 2%; /* customizable */
-    --cbe-color1: #c5c8d0; /* customizable */
-    --cbe-color2: #787878; /* customizable */
-    --cbe-color3: #4f4f4f; /* customizable */
-    --cbe-color4: #e5e9f4; /* customizable */
-    --cbe-color5: #f1f3f8;; /* customizable */
-    --inner-height: 120px;   /* customizable */
-    --wrap-border-radius: 16px; /* customizable */
+    /* EXPLORER CUSTOMIZABLE CSS */
+    --cbe-neumo-color1: #ffffff;
+    --cbe-neumo-color2: #c3c6cf;
+    --cbe-widget-margin: 2%;
+    --cbe-color1: #c5c8d0; /* USELESS ATM */
+    --cbe-color2: #787878;
+    --cbe-color3: #4f4f4f;
+    --cbe-color4: #e5e9f4;
+    --cbe-color5: #f1f3f8;
+    --inner-height: 120px;
+    --wrap-border-radius: 16px;
 }
 
 ::-webkit-scrollbar {
@@ -57,10 +59,8 @@ h1, h2 {
 #popUpExplorer {
     z-index: 2;
     position: absolute;
-    /*background: var(--background-color1);*/
     background: var(--cbe-color4);
     color: var(--cbe-color3);
-    /*width: calc(800px - 322px);*/
     height: 100%;
     opacity: 1;
     transition: opacity 0.12s ease-in-out;
@@ -81,6 +81,30 @@ h1, h2 {
     transform: scale(1.02);
     filter: brightness(1);
     filter: brightness(1) drop-shadow(0px 0px 2px rgba(255, 255, 255, .2));
+}
+
+#txHistoryWrap {
+    border-top: 3px solid var(--cbe-color1, var(--cbe-color1-default));
+    margin-top: 30px;
+}
+.txHistoryHeader {
+    border-bottom: 2px solid var(--cbe-color1, var(--cbe-color1-default));
+    width: 80%;
+    margin-left: 10%;
+}
+.txHistoryHeader h2 {
+    text-align: center;
+    color: var(--cbe-color2, var(--cbe-color2-default));
+}
+#txHistoryWrap table thead {
+    color: var(--cbe-color3);
+    font-weight: bolder;
+}
+.w-addressTxRow {
+
+}
+.w-addressTxDate, .w-addressTxAmount, .w-addressTxFee, .w-addressTxReference {
+
 }
 
 #popUpContent {
