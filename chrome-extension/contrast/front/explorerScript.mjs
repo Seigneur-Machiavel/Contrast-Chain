@@ -963,10 +963,12 @@ export class BlockExplorerWidget {
         const fromMemory = this.addressesExhaustiveData[address];
         if (fromMemory) { return fromMemory; }
 
-        const lastIndex = this.getLastBlockInfoIndex();
+        /*const lastIndex = this.getLastBlockInfoIndex();
         const untilHeight = Math.max(0, lastIndex - 100);
         console.log(`requesting address exhaustive data: address: ${address}, untilHeight: ${untilHeight}`);
-        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: { address, untilHeight } }));
+        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: { address, untilHeight } }));*/
+        console.log(`requesting address exhaustive data: address: ${address}, untilHeight: ${untilHeight}`);
+        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: address }));
         return 'request sent';
     }
     getLastBlockInfoIndex() {
