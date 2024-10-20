@@ -1,14 +1,13 @@
-import { exec } from 'child_process';
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import localStorage_v1 from '../storage/local-storage-management.mjs';
 import contrast from '../src/contrast.mjs'; //? Not all libs needed
-
+import { exec } from 'child_process';
 import { CallBackManager } from '../src/websocketCallback.mjs';
 import utils from '../src/utils.mjs';
-
 /**
 * @typedef {import("../src/account.mjs").Account} Account
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
@@ -206,6 +205,36 @@ export class DashboardWsApp {
         }
     }
 
+    #hardResetAndClose() {
+        exec('git reset --hard HEAD', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git reset error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git reset failed');
+                return;
+            }
+            console.log(`Git reset output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+
+    #updateAndClose() {
+        exec('git pull', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git pull error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git pull failed');
+                return;
+            }
+            console.log(`Git pull output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+
     async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
         console.log('Modifying account and restarting node id:', nodeId);
         const wallet = new contrast.Wallet(newPrivateKey, false);
@@ -235,12 +264,16 @@ export class DashboardWsApp {
                 this.#nodesSettings[this.node.id].privateKey = data;
                 this.#saveNodeSettings();
                 break;
-
             case 'reset_wallet':    
                 console.log('Resetting wallet');
                 await this.#modifyAccountAndRestartNode(this.node.id, data);
-
             break;
+            case 'update_git':
+                this.#updateAndClose();
+                break;
+            case 'hard_reset':
+                this.#hardResetAndClose();
+                break;
             case 'set_validator_address':
                 if (!this.node) { console.error('No active node'); break; }
                 try {

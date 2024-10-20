@@ -1,5 +1,3 @@
-// nodeDashboardScript.mjs
-
 import { Transaction_Builder, UTXO } from '../src/transaction.mjs';
 import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
@@ -26,7 +24,6 @@ let modalOpen = false;
 let currentAction = null;
 
 const ACTIONS = {
-    ERASE_CHAIN_DATA: 'erase_chain_data',
     HARD_RESET: 'hard_reset',
     UPDATE_GIT: 'update_git',
     FORCE_RESTART: 'force_restart',
@@ -177,7 +174,6 @@ const eHTML = {
     resetInfoBtn: document.getElementById('resetInfo'),
     peerId: document.getElementById('peerId'),
     peersConnectedList: document.getElementById('peersConnectedList'),
-    eraseChainDataBtn: document.getElementById('eraseChainData'),
     hardResetBtn: document.getElementById('hardReset'),
     updateGitBtn: document.getElementById('updateGit'),
 }
@@ -274,9 +270,6 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
             }
             ws.send(JSON.stringify({ type: 'set_miner_address', data: newMinerAddress }));
             break;
-        case ACTIONS.ERASE_CHAIN_DATA:
-            ws.send(JSON.stringify({ type: 'erase_chain_data', data: nodeId }));
-            break;
         case ACTIONS.HARD_RESET:
             ws.send(JSON.stringify({ type: 'hard_reset', data: nodeId }));
             break;
@@ -319,21 +312,24 @@ eHTML.modals.unifiedModal.toggleInputBtn.addEventListener('click', () => {
 eHTML.validatorAddressEditBtn.addEventListener('click', () => {
     console.log('validatorAddressEditBtn clicked');
     openModal(ACTIONS.SET_VALIDATOR_ADDRESS, {
-        message: 'Enter new Validator Address:',
+        message: 'Please enter the new Validator Address:',
         inputLabel: 'Validator Address:',
         inputType: 'text',
+        inputPlaceholder: 'Enter new Validator Address',
         showInput: true,
         showToggle: false
     });
 });
 
+
 // Miner Address Edit Button
 eHTML.minerAddressEditBtn.addEventListener('click', () => {
     console.log('minerAddressEditBtn clicked');
     openModal(ACTIONS.SET_MINER_ADDRESS, {
-        message: 'Enter new Miner Address:',
+        message: 'Please enter the new Miner Address:',
         inputLabel: 'Miner Address:',
         inputType: 'text',
+        inputPlaceholder: 'Enter new Miner Address',
         showInput: true,
         showToggle: false
     });
@@ -504,6 +500,15 @@ function openModal(action, options) {
         modal.inputLabel.textContent = options.inputLabel || 'Input:';
         modal.input.type = options.inputType || 'text';
         modal.input.value = ''; // Clear previous value
+
+        // Set placeholder dynamically
+        if (options.inputPlaceholder) {
+            modal.input.placeholder = options.inputPlaceholder;
+        } else {
+            // Default placeholder based on input type
+            modal.input.placeholder = options.inputType === 'password' ? 'Enter your private key' : '';
+        }
+
         if (options.inputType === 'password') {
             modal.toggleInputBtn.style.display = 'inline';
             modal.input.type = 'password';
@@ -553,6 +558,7 @@ function openModal(action, options) {
 }
 
 
+
 // Function to close unified modal
 function closeModal() {
     if (!modalOpen) { return false; }
@@ -588,8 +594,6 @@ function closeModal() {
     });
 }
 
-
-// Function to toggle password visibility
 function togglePasswordVisibility(inputElement, toggleButton) {
     if (inputElement.type === 'password') {
         inputElement.type = 'text';
@@ -598,13 +602,6 @@ function togglePasswordVisibility(inputElement, toggleButton) {
         inputElement.type = 'password';
         toggleButton.textContent = 'Show';
     }
-}
-
-function formatInputValueAsCurrency(input) {
-    const cleanedValue = input.value.replace(",","").replace(".","");
-    const intValue = parseInt(cleanedValue);
-    if (isNaN(intValue)) { input.value = ''; return; }
-    input.value = utils.convert.number.formatNumberAsCurrency(intValue);
 }
 function adjustInputValue(targetInput, delta, min = 1, max = 16) {
     const currentValue = parseInt(targetInput.value);
