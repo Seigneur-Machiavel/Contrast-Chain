@@ -253,7 +253,7 @@ export class DashboardWsApp {
 
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
-        console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
+        //console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
         const messageAsString = message.toString();
         const parsedMessage = JSON.parse(messageAsString);
         const data = parsedMessage.data;
