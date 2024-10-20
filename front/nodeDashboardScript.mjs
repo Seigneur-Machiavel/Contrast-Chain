@@ -211,6 +211,7 @@ function displayNodeInfo(data) {
     eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId : 'No Peer ID';
+    eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
     if (Array.isArray(data.peerIds)) {
         renderPeers(data.peerIds);
     } else {

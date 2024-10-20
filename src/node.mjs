@@ -88,6 +88,7 @@ export class Node {
     }
 
     async start(startFromScratch = false) {
+        this.blockchainStats.state = "starting";
         await this.configManager.init();
         this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
@@ -130,6 +131,7 @@ export class Node {
     }
 
     async #loadBlockchain() {
+        this.blockchainStats.state = "loading";
         // OPENNING BLOCKCHAIN DATABASE
         try {
             while (this.blockchain.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
@@ -234,6 +236,7 @@ export class Node {
         return false;
     }
     async createBlockCandidateAndBroadcast() {
+        this.blockchainStats.state = "creating block candidate";
         try {
             if (this.p2pNetwork.getConnectedPeers() > 1) { return; }
 
@@ -251,6 +254,7 @@ export class Node {
 
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
+        this.blockchainStats.state = "validating block";
         performance.mark('validation start');
         performance.mark('validation height-timestamp-hash');
 
@@ -325,7 +329,7 @@ export class Node {
         const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2); 
         this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
         performance.mark('validation fullTxsValidation end');
-
+        this.blockchainStats.state = "idle";
         return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
     }
     /**
@@ -339,6 +343,7 @@ export class Node {
      * @param {boolean} [options.storeAsFiles] - default: false
      */
     async digestFinalizedBlock(finalizedBlock, options = {}, byteLength) {
+        this.blockchainStats.state = "digesting finalized block";
         if (this.restartRequested) { return; }
         const blockBytes = byteLength ? byteLength : utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;
         const {
