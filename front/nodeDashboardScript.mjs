@@ -295,7 +295,7 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
                 alert('Private key is required to reset the wallet.');
                 return;
             }
-            ws.send(JSON.stringify({ type: 'reset_wallet', data: nodeId, privKey: resetPrivKey }));
+            ws.send(JSON.stringify({ type: 'reset_wallet', data: resetPrivKey }));
             break;
         default:
             console.error('Unknown action:', currentAction);

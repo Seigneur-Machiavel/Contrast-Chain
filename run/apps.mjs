@@ -207,7 +207,8 @@ export class DashboardWsApp {
     }
 
     async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
-        const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
+        console.log('Modifying account and restarting node id:', nodeId);
+        const wallet = new contrast.Wallet(newPrivateKey, false);
         const restored = await wallet.restore();
         if (!restored) { console.error('Failed to restore wallet.'); return; }
         wallet.loadAccounts();
@@ -215,13 +216,13 @@ export class DashboardWsApp {
         if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
         wallet.saveAccounts();
 
-        await this.factory.restartNode(nodeId, derivedAccounts[0], derivedAccounts[1].address);
+        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
 
     }
 
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
-        //console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
+        console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
         const messageAsString = message.toString();
         const parsedMessage = JSON.parse(messageAsString);
         const data = parsedMessage.data;
@@ -236,6 +237,8 @@ export class DashboardWsApp {
                 break;
 
             case 'reset_wallet':    
+                console.log('Resetting wallet');
+                await this.#modifyAccountAndRestartNode(this.node.id, data);
 
             break;
             case 'set_validator_address':

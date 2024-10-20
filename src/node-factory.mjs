@@ -64,6 +64,7 @@ export class NodeFactory {
      */
     async forceRestartNode(nodeId, startFromScratch = false, newAccount = null, newMinerAddress = null) {
         /** @type {Node} */
+        console.log(`Forcing restart of node ${nodeId} with account ${newAccount ? newAccount.address : 'unchanged'}`);
         const targetNode = this.getNode(nodeId);
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
         targetNode.restarting = true;
