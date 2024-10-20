@@ -76,6 +76,7 @@ class AppStaticFncs {
         result.averageBlockTime = node.blockchainStats?.averageBlockTime ? (node.blockchainStats.averageBlockTime / 1000).toFixed(2) : 'No Data';
         result.peerId = node.p2pNetwork?.p2pNode?.peerId ?? 'No Peer ID';
         result.peerIds = node.p2pNetwork?.getConnectedPeers() ?? 'No Peer IDs';
+        result.repScores = node.p2pNetwork?.reputationManager?.getScores() ?? 'No Rep Scores';
         return result;
     }
     /** @param {Node} node */
@@ -358,11 +359,6 @@ export class DashboardWsApp {
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
     }
-    #resetNodeSettings() {
-        localStorage_v1.saveJSON('nodeSettings', {});
-        console.log(`Nodes settings reset`);
-    }
-
 }
 
 export class ObserverWsApp {

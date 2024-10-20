@@ -432,7 +432,22 @@ class ReputationManager extends EventEmitter {
         this.saveScoresToDisk();
         this.emit('shutdown');
     }
+    /**
+     * Get a clean list of identifiers and their scores for the dashboard.
+     * Each entry includes the identifier, its score, and ban status.
+     * @returns {Array<{ identifier: string, score: number, banned: boolean }>}
+     */
+    getScores() {
+        const scoresList = [];
 
+        for (const identifier of this.identifierScores.keys()) {
+            const score = this.getIdentifierScore(identifier);
+            const banned = this.isIdentifierBanned(identifier);
+            scoresList.push({ identifier, score, banned });
+        }
+
+        return scoresList;
+    }
 }
 
 export default ReputationManager;

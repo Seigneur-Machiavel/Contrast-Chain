@@ -37,7 +37,7 @@ const ACTIONS = {
 
 function connectWS() {
     ws = new WebSocket(`${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
-    console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
+    //console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
   
     ws.onopen = function() {
         console.log('Connection opened');
@@ -176,6 +176,8 @@ const eHTML = {
     peersConnectedList: document.getElementById('peersConnectedList'),
     hardResetBtn: document.getElementById('hardReset'),
     updateGitBtn: document.getElementById('updateGit'),
+    nodeState: document.getElementById('nodeState'),
+    repScoresList: document.getElementById('repScoreList'),
 }
 
 // Function to display node information
@@ -215,6 +217,10 @@ function displayNodeInfo(data) {
         console.warn('peerIds is not an array:', data.peerIds);
         eHTML.peersConnectedList.innerHTML = '<li>No peers available.</li>';
     }
+
+    if (data.repScores) {
+        renderScores(data.repScores);
+    }
 }
 
 function renderPeers(peers) {
@@ -231,6 +237,23 @@ function renderPeers(peers) {
         const li = document.createElement('li');
         li.textContent = peerId;
         eHTML.peersConnectedList.appendChild(li);
+    });
+}
+
+function renderScores(scores) {
+    eHTML.repScoresList.innerHTML = ''; // Clear existing list
+
+    if (scores.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No reputation scores available.';
+        eHTML.repScoresList.appendChild(li);
+        return;
+    }
+
+    scores.forEach(score => {
+        const li = document.createElement('li');
+        li.textContent = score.identifier + ': ' + score.score;
+        eHTML.repScoresList.appendChild(li);
     });
 }
 
