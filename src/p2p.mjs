@@ -184,10 +184,23 @@ class P2PNetwork extends EventEmitter {
         this.p2pNode.addEventListener('peer:connect', this.#handlePeerConnect);
         this.p2pNode.addEventListener('peer:disconnect', this.#handlePeerDisconnect);
         this.p2pNode.addEventListener('peer:discovery', async (event) => {
+
             const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
-            const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
-           // await this.p2pNode.components.connectionManager.openConnection(peerInfo.multiaddrs);
             this.logger.info({ peerId }, 'Peer discovered');
+            const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
+            const ma = peerId.multiaddrs ?? peerInfo.multiaddrs;
+            if (!ma) {
+                this.logger.error({ component: 'P2PNetwork', peerId }, 'Failed to find multiaddrs for peer');
+                return;
+            }
+            try 
+            {
+            await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
+            }
+            catch (error) {
+                this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to dial peer');
+            }
+
         });
         this.p2pNode.services.pubsub.addEventListener('message', this.#handlePubsubMessage);
     }
