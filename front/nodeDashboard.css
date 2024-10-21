@@ -306,3 +306,47 @@ input[type="text"] {
 .network-list li:last-child {
     border-bottom: none;
 }
+
+/* Style for each peer item */
+.peer-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 0;
+}
+
+/* Style for peer ID */
+.peer-id {
+    flex: 1;
+    margin-right: 10px;
+}
+
+/* Style for buttons */
+.disconnect-btn,
+.ask-sync-btn {
+    margin-left: 5px;
+    padding: 5px 10px;
+    font-size: 0.9em;
+    cursor: pointer;
+    border: none;
+    border-radius: 3px;
+    transition: background-color 0.3s;
+}
+
+.disconnect-btn {
+    background-color: #e74c3c; /* Red */
+    color: white;
+}
+
+.disconnect-btn:hover {
+    background-color: #c0392b;
+}
+
+.ask-sync-btn {
+    background-color: #3498db; /* Blue */
+    color: white;
+}
+
+.ask-sync-btn:hover {
+    background-color: #2980b9;
+}

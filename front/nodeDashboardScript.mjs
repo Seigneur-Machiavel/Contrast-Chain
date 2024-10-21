@@ -22,7 +22,7 @@ let validatorUTXOs = [];
 let minerUTXOs = [];
 let modalOpen = false;
 let currentAction = null;
-
+let currentActionPeerId = null; 
 const ACTIONS = {
     HARD_RESET: 'hard_reset',
     UPDATE_GIT: 'update_git',
@@ -280,6 +280,43 @@ function renderScores(scores) {
         eHTML.repScoresList.appendChild(li);
     });
 }
+// Add event listener to the peersConnectedList for delegation
+eHTML.peersConnectedList.addEventListener('click', (event) => {
+    const target = event.target;
+
+    // Check if Disconnect button was clicked
+    if (target.classList.contains('disconnect-btn')) {
+        const peerId = target.dataset.peerId;
+        handleDisconnectPeer(peerId);
+    }
+
+    // Check if Ask Sync button was clicked
+    if (target.classList.contains('ask-sync-btn')) {
+        const peerId = target.dataset.peerId;
+        handleAskSyncPeer(peerId);
+    }
+});
+
+function handleDisconnectPeer(peerId) {
+    console.log(`Disconnecting peer: ${peerId}`);
+    currentAction = 'disconnect_peer';
+    currentActionPeerId = peerId;
+    openModal('disconnect_peer', {
+        message: `Are you sure you want to disconnect peer ${peerId}?`,
+        showInput: false
+    });
+}
+
+function handleAskSyncPeer(peerId) {
+    console.log(`Asking peer ${peerId} to sync`);
+    currentAction = 'ask_sync_peer';
+    currentActionPeerId = peerId;
+    openModal('ask_sync_peer', {
+        message: `Do you want to request a sync from peer ${peerId}?`,
+        showInput: false
+    });
+}
+
 
 // Event listeners for modals
 eHTML.modals.wrap.addEventListener('click', (event) => {
@@ -337,6 +374,18 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
             }
             ws.send(JSON.stringify({ type: 'reset_wallet', data: resetPrivKey }));
             break;
+
+        case 'disconnect_peer':
+            const disconnectPeerId = currentActionPeerId; 
+            console.log('Disconnecting peer:', disconnectPeerId);
+            ws.send(JSON.stringify({ type: 'disconnect_peer', data: disconnectPeerId }));
+            break;
+        case 'ask_sync_peer':
+            const askSyncPeerId = currentActionPeerId; 
+            console.log('Asking peer to sync:', askSyncPeerId);
+            ws.send(JSON.stringify({ type: 'ask_sync_peer', data: askSyncPeerId }));
+            break;
+
         default:
             console.error('Unknown action:', currentAction);
     }
