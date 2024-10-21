@@ -189,6 +189,9 @@ export class Node {
         this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - 100);
         // avoid gap between the loaded snapshot and the new one
         // at this stage we know that the loaded snapshot is consistent with the blockchain
+        if (this.snapshotSystemDoc.loadedSnapshotHeight < finalizedBlock.index - 200) {
+            this.snapshotSystemDoc.loadedSnapshotHeight = 0;
+        }
         this.snapshotSystemDoc.restoreLoadedSnapshot();
     }
     getTopicsToSubscribeRelatedToRoles() {

@@ -4,19 +4,23 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
     const { htmlAnimations } = require("./htmlAnimations.js");
-    const { Wallet } = require("./contrast/src/wallet.mjs");
-    const utils = require("./contrast/src/utils.mjs").default;
-    const { Account } = require("./contrast/src/account.mjs");
+    const { Wallet } = require("../contrast/src/wallet.mjs");
+    const utils = require("../contrast/src/utils.mjs").default;
+    const { Account } = require("../contrast/src/account.mjs");
     const { Transaction, Transaction_Builder } = require("./contrast/src/transaction.mjs");
 }
 
 /**
-* @typedef {import("../../src/transaction.mjs").Transaction} Transaction
-* @typedef {import("../../src/transaction.mjs").UTXO} UTXO
+* @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
+* @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
+* @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
+* @typedef {import("../contrast/front/explorerScript.mjs").AddressExhaustiveData} AddressExhaustiveData
 */
 
-const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
+/** @type {BlockExplorerWidget} */
+let blockExplorerWidget;
 
+const patternGenerator = new PatternGenerator({ width: 48, height: 48, scale: 1 });
 class WalletInfo {
     constructor(walletInfo = {}) {
         this.name = walletInfo.name || 'wallet1';
@@ -36,7 +40,12 @@ const settings = {
     appVersion: chrome.runtime.getManifest().version,
     minVersionAcceptedWithoutReset: '1.2.0',
     hardcodedPassword: '123456',
-    serverUrl: "http://localhost:4340"
+    serverUrl: "http://localhost:4340",
+    popUpSizes: {
+        small: '302px',
+        medium: '322px',
+        large: '800px'
+    }
 };
 const UX_SETTINGS = {
     shapes: 4
@@ -71,6 +80,8 @@ const eHTML = {
 
     //? mnemonicOverviewForm: document.getElementById('mnemonicOverviewForm'),
 
+    settingsForm: document.getElementById('settingsForm'),
+
     walletForm: document.getElementById('walletForm'),
     spendableBalanceStr: document.getElementById('spendableBalanceStr'),
     stakedStr: document.getElementById('stakedStr'),
@@ -99,9 +110,15 @@ const eHTML = {
     },
 
     bottomBar: document.getElementById('bottomBar'),
+    explorerBtn: document.getElementById('explorerBtn'),
     walletBtn: document.getElementById('walletBtn'),
     miningBtn: document.getElementById('miningBtn'),
-    settingsBtn: document.getElementById('settingsBtn')
+    settingsBtn: document.getElementById('settingsBtn'),
+
+    popUpExplorer: document.getElementById('popUpExplorer'),
+    txHistoryAddress: document.getElementById('txHistoryAddress'),
+    txHistoryWrap: document.getElementById('txHistoryWrap'),
+    txHistoryTable: document.getElementById('txHistoryWrap').getElementsByTagName('table')[0],
 };
 
 /** @type {Wallet} */
@@ -109,9 +126,10 @@ let activeWallet;
 const defaultAddressPrefix = "C";
 let activeAddressPrefix = "C";
 let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
+let currentTextInfo = '';
 const busy = [];
 //#region - UX FUNCTIONS
-function resizePopUp(applyBLur = true, large = false, duration = 200) {
+function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
     const contentHeight = Math.max(contentDivHeight, contentWrapHeight);
@@ -121,7 +139,7 @@ function resizePopUp(applyBLur = true, large = false, duration = 200) {
     
     resizePopUpAnimations[0] = anime({
         targets: 'body',
-        width: large ? '320px' : '300px',
+        width: settings.popUpSizes[popUpSize],
         height: `${newHeight}px`,
         filter: applyBLur ? 'blur(2px)' : 'blur(0px)',
         duration,
@@ -144,13 +162,19 @@ async function setMiningIntensityFromLocalStorage() {
     document.getElementById('intensityValueStr').innerText = intensity;
 }
 function setVisibleForm(formId, applyBLur = true) {
+    //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
     eHTML.walletBtn.classList.add('active');
     eHTML.miningBtn.classList.add('active');
     eHTML.settingsBtn.classList.add('active');
-    let largePopUp = true;
+
+    eHTML.popUpExplorer.classList.add('hidden');
+    eHTML.explorerBtn.classList.remove('active');
+    eHTML.explorerBtn.classList.remove('explorerOpenned');
+    //if (explorerOpenned) { eHTML.explorerBtn.classList.add('active'); }
+    let popUpSize = 'medium';
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
     eHTML.centerScreenBtnContrainer.classList.add('hidden');
@@ -166,18 +190,20 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.bottomBar.classList.add('hidden');
         eHTML.appTitle.classList.remove('hidden');
         eHTML.popUpContent.classList.remove('large');
-        largePopUp = false;
+        popUpSize = 'small';
     }
 
     if (formId === "walletForm") {
+        eHTML.explorerBtn.classList.add('active');
         eHTML.walletBtn.classList.remove('active');
+        eHTML.explorerBtn.classList.add('active');
     }
     if (formId === "createWalletForm") {
         eHTML.miningBtn.classList.remove('active');
         eHTML.settingsBtn.classList.remove('active');
         eHTML.bottomBar.classList.add('hidden');
         eHTML.popUpContent.classList.remove('large');
-        largePopUp = false;
+        popUpSize = 'small';
     }
 
     if (formId === "miningForm") {
@@ -191,7 +217,56 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.settingsBtn.classList.remove('active');
     }
 
-    resizePopUp(applyBLur, largePopUp);
+    resizePopUp(applyBLur, popUpSize);
+}
+function toggleExplorer() {
+    const popUpContentWrapChildren = eHTML.popUpContentWrap.children;
+    const activeForm = Array.from(popUpContentWrapChildren).find(form => !form.classList.contains('hidden'));
+    console.log(`activeForm: ${activeForm.id}`);
+
+    let popUpSize = 'medium';
+    
+    if (animations.popUpExplorer) { animations.popUpExplorer.pause(); }
+    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    if (explorerOpenned) {
+        eHTML.explorerBtn.classList.remove('explorerOpenned');
+
+        eHTML.popUpExplorer.style.opacity = '.6';
+        eHTML.popUpExplorer.style.zIndex = '-1';
+        animations.popUpExplorer = anime({
+            targets: eHTML.popUpExplorer,
+            opacity: 0,
+            width: settings.popUpSizes[popUpSize],
+            duration: 200,
+            easing: 'easeInOutQuad',
+            complete: () => { eHTML.popUpExplorer.classList.add('hidden'); }
+        });
+    }
+    if (!explorerOpenned) {
+        eHTML.popUpExplorer.classList.remove('hidden');
+        eHTML.explorerBtn.classList.add('explorerOpenned');
+        eHTML.explorerBtn.classList.add('active');
+        popUpSize = 'large';
+        
+        eHTML.popUpExplorer.style.opacity = '0';
+        eHTML.popUpExplorer.style.zIndex = '-1';
+        eHTML.popUpExplorer.style.width = settings.popUpSizes['medium'];
+        const popUpLargeSizeNumber = parseInt(settings.popUpSizes['large'].replace('px', ''));
+        const popUpMediumSizeNumber = parseInt(settings.popUpSizes['medium'].replace('px', ''));
+        animations.popUpExplorer = anime({
+            targets: eHTML.popUpExplorer,
+            opacity: 1,
+            //width: `calc(800px - ${settings.popUpSizes[popUpSize]})`,
+            width: `${popUpLargeSizeNumber - popUpMediumSizeNumber}px`,
+            duration: 200,
+            easing: 'easeInOutQuad',
+            complete: () => { eHTML.popUpExplorer.style.zIndex = '2'; }
+        });
+    }
+
+    if (activeForm.id === "walletForm") { eHTML.explorerBtn.classList.add('active'); }
+
+    resizePopUp(true, popUpSize);
 }
 function toggleMiniForm(miniFormElmnt) {
     updateMiniFormsInfoRelatedToActiveAccount();
@@ -244,20 +319,16 @@ function showFormDependingOnStoredPassword(sanitizedAuthInfo) {
         eHTML.passwordCreationFormInputPassword.focus();
     }
 }
-function bottomInfo(targetForm, text, timeout = 3000) {
-    const infoElmnt = targetForm.getElementsByClassName('bottomInfo')[0];
+function textInfo(targetForm, text, timeout = 3000, eraseAnyCurrentTextInfo = false) {
+    const infoElmnt = targetForm.getElementsByClassName('textInfo')[0];
+    if (!eraseAnyCurrentTextInfo && currentTextInfo) { return; }
+    currentTextInfo = text;
     infoElmnt.innerText = text;
 
     setTimeout(() => {
+        currentTextInfo = null;
         infoElmnt.innerText = "";
     }, timeout);
-
-    /*const infoElmnts = targetForm.getElementsByClassName('bottomInfo');
-    for (const infoElmnt of infoElmnts) { infoElmnt.innerText = text; }
-    
-	setTimeout(() => {
-        for (const infoElmnt of infoElmnts) { infoElmnt.innerText = ""; }
-	}, timeout);*/
 }
 function setWaitingForConnectionFormLoading(loading = true) {
     const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
@@ -268,18 +339,6 @@ function initUI() {
     document.body.style.width = "0px";
     document.body.style.height = "0px";
 }
-/*<div class="accountLabel">
-    <img src="../images/qr-code32.png" alt="Account">
-    <div class="accountLabelInfoWrap">
-        <div class="accountLabelNameAndValueWrap">
-            <h2>Account 1</h2>
-            <h3>0.00c</h3>
-        </div>
-        <div class="accountLabelAddress">
-            <h3>WKDEJFIUHESVUOHEIUEF</h3>
-        </div>
-    </div>
-</div>*/
 function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');
     accountLabel.classList.add('accountLabel');
@@ -320,49 +379,6 @@ function createAccountLabel(name, address, amount = 0) {
 
     return accountLabel;
 }
-async function updateBalances() {
-    let walletTotalBalance = 0;
-    let walletTotalSpendableBalance = 0;
-    let walletTotalStakedBalance = 0;
-    // for each address type
-    const addressTypes = Object.keys(activeWallet.accounts);
-    for (let i = 0; i < addressTypes.length; i++) {
-        const addressPrefix = addressTypes[i];
-        const showInLabelsWrap = addressPrefix === activeAddressPrefix;
-        const { totalBalance, totalSpendableBalance, totalStakedBalance } = updateLabelsBalances(addressPrefix, showInLabelsWrap);
-        walletTotalBalance += totalBalance;
-        walletTotalSpendableBalance += totalSpendableBalance;
-        walletTotalStakedBalance += totalStakedBalance;
-    }
-
-    eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalBalance);
-    eHTML.stakedStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalStakedBalance);
-
-    updateActiveAccountLabel();
-
-    //console.log(`[POPUP] wallet accounts updated: ${activeWallet.accounts[activeAddressPrefix].length}`);
-}
-function updateLabelsBalances(addressPrefix = defaultAddressPrefix, showInLabelsWrap = false) {
-    if (showInLabelsWrap) { eHTML.accountsWrap.innerHTML = ''; }
-
-    let totalBalance = 0;
-    let totalSpendableBalance = 0;
-    let totalStakedBalance = 0;
-    const nbOfAccounts = activeWallet.accounts[addressPrefix].length;
-    for (let i = 0; i < nbOfAccounts; i++) {
-        const account = activeWallet.accounts[addressPrefix][i];
-        totalBalance += account.balance;
-        totalSpendableBalance += account.spendableBalance;
-        totalStakedBalance += account.stakedBalance || 0;
-        if (!showInLabelsWrap) { continue; }
-
-        const accountName = `Account ${i + 1}`;
-        const accountLabel = createAccountLabel(accountName, account.address, account.spendableBalance);
-        eHTML.accountsWrap.appendChild(accountLabel);
-    }
-
-    return { totalBalance, totalSpendableBalance, totalStakedBalance };
-}
 function updateActiveAccountLabel() {
     const accountLabels = eHTML.accountsWrap.getElementsByClassName('accountLabel');
     if (accountLabels.length === 0) { return; }
@@ -374,6 +390,87 @@ function updateActiveAccountLabel() {
         accountLabels[i].classList.add('active');
     }
 }
+function updateAccountsLabels() {
+    const accounts = activeWallet.accounts[activeAddressPrefix];
+    if (accounts.length === 0) { return; }
+    
+    const accountLabels = eHTML.accountsWrap.getElementsByClassName('accountLabel');
+    for (let i = 0; i < accounts.length; i++) {
+        const account = accounts[i];
+        const accountName = `Account ${i + 1}`;
+        const existingAccountLabel = accountLabels[i];
+        if (existingAccountLabel) { // fill existing label
+            const name = existingAccountLabel.getElementsByClassName('accountLabelNameAndValueWrap')[0].getElementsByTagName('h2')[0];
+            const address = existingAccountLabel.getElementsByClassName('accountLabelAddress')[0].getElementsByTagName('h3')[0];
+            const amount = existingAccountLabel.getElementsByClassName('accountLabelNameAndValueWrap')[0].getElementsByTagName('h3')[0];
+
+            name.innerText = accountName;
+            address.innerText = account.address;
+            amount.innerText = `${utils.convert.number.formatNumberAsCurrency(account.balance)}c`;
+            continue;
+        }
+
+        const accountLabel = createAccountLabel(accountName, account.address, account.balance);
+        eHTML.accountsWrap.insertBefore(accountLabel, eHTML.newAddressBtn);
+    }
+
+    //console.log(`Accounts labels updated: ${accounts.length}`);
+}
+function updateAccountLabel(account) {
+    let labelUpdated = false;
+
+    const accountLabels = eHTML.accountsWrap.getElementsByClassName('accountLabel');
+    for (let i = 0; i < accountLabels.length; i++) {
+        const address = accountLabels[i].getElementsByClassName('accountLabelAddress')[0].getElementsByTagName('h3')[0];
+        if (address.innerText !== account.address) { continue; }
+
+        const amount = accountLabels[i].getElementsByClassName('accountLabelNameAndValueWrap')[0].getElementsByTagName('h3')[0];
+        amount.innerText = `${utils.convert.number.formatNumberAsCurrency(account.balance)}c`;
+        labelUpdated = true;
+        break;
+    }
+    
+    if (!labelUpdated) {
+        const accountLabel = createAccountLabel(`Account ${i + 1}`, account.address, account.balance);
+        eHTML.accountsWrap.insertBefore(accountLabel, eHTML.newAddressBtn);
+    }
+
+    //console.log(`Account label updated: ${account.address}`);
+}
+async function updateTotalBalances() {
+    let walletTotalBalance = 0;
+    let walletTotalSpendableBalance = 0;
+    let walletTotalStakedBalance = 0;
+ 
+    const addressTypes = Object.keys(activeWallet.accounts);
+    for (let i = 0; i < addressTypes.length; i++) {
+        const addressPrefix = addressTypes[i];
+        const showInLabelsWrap = addressPrefix === activeAddressPrefix;
+        const { totalBalance, totalSpendableBalance, totalStakedBalance } = calculateTotalOfBalances(addressPrefix, showInLabelsWrap);
+        walletTotalBalance += totalBalance;
+        walletTotalSpendableBalance += totalSpendableBalance;
+        walletTotalStakedBalance += totalStakedBalance;
+    }
+
+    eHTML.spendableBalanceStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalBalance);
+    eHTML.stakedStr.innerText = utils.convert.number.formatNumberAsCurrency(walletTotalStakedBalance);
+
+    //console.log(`[POPUP] totalBalances updated: ${walletTotalBalance}c, from ${activeWallet.accounts[activeAddressPrefix].length} accounts`);
+}
+function calculateTotalOfBalances(addressPrefix = defaultAddressPrefix) {
+    let totalBalance = 0;
+    let totalSpendableBalance = 0;
+    let totalStakedBalance = 0;
+    const nbOfAccounts = activeWallet.accounts[addressPrefix].length;
+    for (let i = 0; i < nbOfAccounts; i++) {
+        const account = activeWallet.accounts[addressPrefix][i];
+        totalBalance += account.balance;
+        totalSpendableBalance += account.spendableBalance;
+        totalStakedBalance += account.stakedBalance || 0;
+    }
+
+    return { totalBalance, totalSpendableBalance, totalStakedBalance };
+}
 function updateMiniFormsInfoRelatedToActiveAccount() {
     const activeAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
     eHTML.send.senderAddress.innerText = activeAccount.address;
@@ -383,6 +480,7 @@ function newAddressBtnLoadingToggle() {
     const isGenerating = eHTML.newAddressBtn.innerHTML !== '+';
 
     if (isGenerating) {
+        eHTML.newAddressBtn.classList.remove('loading');
         if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
         animations.newAddressBtn = anime({
             targets: eHTML.newAddressBtn,
@@ -395,16 +493,58 @@ function newAddressBtnLoadingToggle() {
             }
         });
     } else {
+        eHTML.newAddressBtn.classList.add('loading');
         eHTML.newAddressBtn.innerHTML = htmlAnimations.horizontalBtnLoading;
         if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
         animations.newAddressBtn = anime({
             targets: eHTML.newAddressBtn,
-            width: ['60px', '200px', '60px'],
+            width: ['80px', '200px', '80px'],
             duration: 1600,
             loop: true,
             easing: 'easeInOutQuad'
         });
     }
+}
+function updateTxHistory() {
+    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+    eHTML.txHistoryAddress.innerText = activeAddress;
+
+    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    if (!explorerOpenned) { return; }
+
+    const addressExhaustiveData = blockExplorerWidget.getAddressExhaustiveDataFromMemoryOrSendRequest(activeAddress);
+    if (addressExhaustiveData === "request sent") { return; }
+    
+    fillTxHistoryWithTxsReferencesElement(addressExhaustiveData);
+}
+/** @param {AddressExhaustiveData} addressExhaustiveData */
+function fillTxHistoryWithTxsReferencesElement(addressExhaustiveData) {
+    const txHistoryTable = eHTML.txHistoryTable;
+    const txHistoryRows = txHistoryTable.getElementsByTagName('tr');
+    for (let i = 0; i < txHistoryRows.length; i++) { txHistoryRows[i].remove(); }
+
+    // FILLING THE ADDRESS TXS HISTORY
+    const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
+    const txsReferences = addressExhaustiveData.addressTxsReferences;
+    for (const txReference of txsReferences) {
+        const transaction = blockExplorerWidget.transactionsByReference[txReference];
+        const row = createHtmlElement('tr', undefined, ['w-addressTxDate'], tbody);
+        const amountText = createHtmlElement('td', undefined, ['w-addressTxAmount'], row);
+        amountText.textContent = transaction ? utils.convert.number.formatNumberAsCurrencyChange(transaction.balanceChange) : '...';
+        const feeText = createHtmlElement('td', undefined, ['w-addressTxFee'], row);
+        feeText.textContent = transaction ? utils.convert.number.formatNumberAsCurrency(transaction.fee) : '...';
+        createHtmlElement('td', undefined, ['w-addressTxReference'], row).textContent = txReference;
+    }
+}
+function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
+    /** @type {HTMLElement} */
+    const element = document.createElement(tag);
+    if (id) { element.id = id; }
+
+    for (const cl of classes) { element.classList.add(cl); }
+
+    if (divToInject) { divToInject.appendChild(element); }
+    return element;
 }
 //#endregion
 
@@ -420,20 +560,12 @@ function newAddressBtnLoadingToggle() {
     const sanitizedAuthInfo = authInfoResult.authInfo ? sanitizer.sanitize(authInfoResult.authInfo) : {};
     showFormDependingOnStoredPassword(sanitizedAuthInfo);
 
-    /*if (!vaultState || !vaultState.vaultUnlocked) {
-        await initAuth();
-    } else {
-        const connectionResult = await pingServerAndSetMode();
-        if (!connectionResult) { return; }
-
-        setVisibleForm('miningForm');
-
-        miner.init();
-        centerScreenBtn.delayBeforeIdleAnimationIfLocked = 1;
-
-        const bottomBar = document.getElementById('bottomBar');
-        bottomBar.classList.remove('hidden');
-    }*/
+    while(!window.blockExplorerWidget) {
+        console.log('Waiting for blockExplorerWidget...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    blockExplorerWidget = window.blockExplorerWidget;
+    console.log('blocksTimeInterval:', blockExplorerWidget.blocksTimeInterval);
 })();
 async function setNewPassword(password, passComplement = false) {
     const startTimestamp = Date.now();
@@ -477,14 +609,17 @@ async function setNewPassword(password, passComplement = false) {
     return passComplement ? { authID, authTokenHash, encryptedPassComplement, totalTimings } : true;
 }
 async function resetApplication() {
+    await chrome.runtime.sendMessage({action: "unsubscribe_all" });
     await chrome.storage.local.clear(function() {
         var error = chrome.runtime.lastError;
         if (error) {
             console.error(error);
         } else {
             console.log('Application reset');
-            setVisibleForm('passwordCreationForm');
-            eHTML.passwordCreationFormInputPassword.focus();
+            //setVisibleForm('passwordCreationForm');
+            //eHTML.passwordCreationFormInputPassword.focus();
+            // close popup
+            window.close();
         }
     });
 }
@@ -557,20 +692,17 @@ async function loadWalletGeneratedAccounts(walletInfo) {
     if (walletInfo.accountsGenerated[activeAddressPrefix].length === 0) { return; }
 
     const nbOfExistingAccounts = walletInfo.accountsGenerated[activeAddressPrefix].length;
+    if (nbOfExistingAccounts === 0) { console.error('No existing accounts'); return; }
 
     /** @type {Account[]} */
     const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts, activeAddressPrefix);
     if (!derivedAccounts) { console.error('Derivation failed'); return; }
 
-    const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
-    for (let i = 0; i < nbOfAccounts; i++) {
-        const account = activeWallet.accounts[activeAddressPrefix][i];
-        const accountName = `Account ${i + 1}`;
-        const accountLabel = createAccountLabel(accountName, account.address, account.balance);
-        eHTML.accountsWrap.appendChild(accountLabel);
-    }
+    updateAccountsLabels();
     updateActiveAccountLabel();
-
+    updateTxHistory();
+    
+    const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
 }
 async function addPendingAnchorsRelatedToAddress(address, anchors = []) {
@@ -711,9 +843,10 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
 
     const button = targetForm.getElementsByTagName('button')[0];
     button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    button.classList.add('clicked');
 
     function infoAndWrongAnim(text) {
-		bottomInfo(targetForm, text);
+		textInfo(targetForm, text);
 		input.classList.add('wrong');
         cryptoLight.clear();
         button.innerHTML = 'Unlock';
@@ -762,10 +895,9 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     }
 
     const res = await cryptoLight.generateKey(passwordReadyUse, salt1Base64, iv1Base64, hash);
-    if (!res) { infoAndWrongAnim('Key derivation failed'); busy.splice(busy.indexOf('loginForm'), 1); return; }
-    
-    //cryptoLight.clear(); // needed to sign tx, will be clear on close
     button.innerHTML = 'Unlock';
+    button.classList.remove('clicked');
+    if (!res) { infoAndWrongAnim('Key derivation failed'); busy.splice(busy.indexOf('loginForm'), 1); return; }
 
     totalTimings.argon2Time += res.argon2Time;
     totalTimings.deriveKTime += res.deriveKTime;
@@ -804,9 +936,32 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
 });
 
 document.addEventListener('mouseup', function(e) { // release click
+    switch (e.target.id) {
+        case 'deleteDataBtn':
+            if (animations.deleteDataBtn) {
+                animations.deleteDataBtn.pause();
+                textInfo(eHTML.settingsForm, 'Hold the button to confirm');
+            }
+            animations.deleteDataBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    e.target.style.background = 'white';
+                }
+            });
+            break;
+        default:
+            break;
+    }
+
     switch (e.target.className) {
         case 'sendBtn':
-            if (animations.sendBtn) { animations.sendBtn.pause(); }
+            if (animations.sendBtn) {
+                animations.sendBtn.pause();
+                textInfo(eHTML.send.miniForm, 'Hold the button to confirm');
+            }
             animations.sendBtn = anime({
                 targets: e.target,
                 background: 'linear-gradient(90deg, white 0%, transparent 0%)',
@@ -818,7 +973,10 @@ document.addEventListener('mouseup', function(e) { // release click
             });
             break;
         case 'stakeBtn':
-            if (animations.stakeBtn) { animations.stakeBtn.pause(); }
+            if (animations.stakeBtn) {
+                animations.stakeBtn.pause();
+                textInfo(eHTML.stake.miniForm, 'Hold the button to confirm');
+            }
             animations.stakeBtn = anime({
                 targets: e.target,
                 background: 'linear-gradient(90deg, white 0%, transparent 0%)',
@@ -834,10 +992,29 @@ document.addEventListener('mouseup', function(e) { // release click
     }
 });
 document.addEventListener('mousedown', function(e) { // hold click
+    switch (e.target.id) {
+        case 'deleteDataBtn':
+            if (animations.deleteDataBtn) { animations.deleteDataBtn.pause(); }
+            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
+            animations.deleteDataBtn = anime({
+                targets: e.target,
+                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
+                duration: 1000,
+                easing: 'easeInOutQuad',
+                complete: () => {
+                    resetApplication();
+                    e.target.style.background = 'white';
+                }
+            });
+            break;
+        default:
+            break;
+    }
+
     switch (e.target.className) {
         case 'sendBtn':
-            if (eHTML.send.address.value === '') { bottomInfo(eHTML.send.miniForm, 'Address is empty'); return; }
-            if (eHTML.send.amount.value === '') { bottomInfo(eHTML.send.miniForm, 'Amount is empty'); return; }
+            if (eHTML.send.amount.value === '') { textInfo(eHTML.send.miniForm, 'Amount is empty'); return; }
+            if (eHTML.send.address.value === '') { textInfo(eHTML.send.miniForm, 'Address is empty'); return; }
             if (animations.sendBtn) { animations.sendBtn.pause(); }
             e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
             animations.sendBtn = anime({
@@ -855,18 +1032,19 @@ document.addEventListener('mousedown', function(e) { // hold click
                     const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
                     if (!createdSignedTx.signedTx) {
                         console.error('Transaction creation failed', createdSignedTx.error);
-                        bottomInfo(eHTML.send.miniForm, createdSignedTx.error);
+                        textInfo(eHTML.send.miniForm, createdSignedTx.error);
                         return;
                     }
                     
                     console.log('transaction:', createdSignedTx.signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
                     e.target.style.background = 'white';
+                    animations.sendBtn = null;
                 }
             });
             break;
         case 'stakeBtn':
-            if (eHTML.stake.amount.value === '') { bottomInfo(eHTML.stake.miniForm, 'Amount is empty'); return; }
+            if (eHTML.stake.amount.value === '') { textInfo(eHTML.stake.miniForm, 'Amount is empty'); return; }
             if (animations.stakeBtn) { animations.stakeBtn.pause(); }
             e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
             animations.stakeBtn = anime({
@@ -883,14 +1061,14 @@ document.addEventListener('mousedown', function(e) { // hold click
                     createdTx = await Transaction_Builder.createStakingVss(senderAccount, senderAccount.address, amount);
                     if (!createdTx) {
                         console.error('Transaction creation failed');
-                        bottomInfo(eHTML.stake.miniForm, 'Transaction creation failed');
+                        textInfo(eHTML.stake.miniForm, 'Transaction creation failed');
                         return;
                     }
         
                     signedTx = await senderAccount.signTransaction(createdTx);
                     if (!signedTx) {
                         console.error('Transaction signing failed');
-                        bottomInfo(eHTML.stake.miniForm, 'Transaction signing failed');
+                        textInfo(eHTML.stake.miniForm, 'Transaction signing failed');
                         return;
                     }
         
@@ -931,7 +1109,7 @@ document.addEventListener('click', async function(e) {
         case 'privateKeyHexInput':
             if (!eHTML.privateKeyHexInput.readOnly) { return; } // if not readOnly, do nothing
             copyTextToClipboard(eHTML.privateKeyHexInput.placeholder);
-            bottomInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
+            textInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
             break;
         case 'confirmPrivateKeyBtn':
             if (e.target.classList.contains('disabled')) { return; }
@@ -951,14 +1129,20 @@ document.addEventListener('click', async function(e) {
             if (!e.target.classList.contains('active')) { return; }
             setVisibleForm('walletForm', false);
             break;
+        case 'explorerBtn':
+            if (!e.target.classList.contains('active')) { return; }
+            //setVisibleForm('explorerForm', true);
+            toggleExplorer();
+            break;
         case 'newAddressBtn':
-            console.log('newAddressBtn');
             if (e.target.innerHTML !== '+') { console.log('Already generating new address'); return; }
             privateKeyHex = await getWalletPrivateKey(selectedWalletIndex);
 
             newAddressBtnLoadingToggle();
             console.log('privateKeyHex:', privateKeyHex);
             const nbOfExistingAccounts = activeWallet.accounts[activeAddressPrefix].length;
+            if (nbOfExistingAccounts === 0) { activeWallet.accountsGenerated = { [activeAddressPrefix]: [] }; }
+
             const derivedAccounts = await activeWallet.deriveAccounts(nbOfExistingAccounts + 1, activeAddressPrefix);
             newAddressBtnLoadingToggle();
             if (!derivedAccounts) { console.error('Derivation failed'); return; }
@@ -966,14 +1150,7 @@ document.addEventListener('click', async function(e) {
             await saveWalletGeneratedAccounts(selectedWalletIndex);
             console.log('[POPUP] wallet accounts generated and saved');
 
-            eHTML.accountsWrap.innerHTML = '';
-            const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
-            for (let i = 0; i < nbOfAccounts; i++) {
-                const account = activeWallet.accounts[activeAddressPrefix][i];
-                const accountName = `Account ${i + 1}`;
-                const accountLabel = createAccountLabel(accountName, account.address, account.balance);
-                eHTML.accountsWrap.appendChild(accountLabel);
-            }
+            updateAccountsLabels();
 
             const lastAccountAddress = activeWallet.accounts[activeAddressPrefix][nbOfExistingAccounts].address;
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: lastAccountAddress });
@@ -1017,6 +1194,7 @@ document.addEventListener('click', async function(e) {
             activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
             updateActiveAccountLabel();
             updateMiniFormsInfoRelatedToActiveAccount();
+            updateTxHistory();
             break;
         case 'foldBtn':
             console.log('foldBtn');
@@ -1063,9 +1241,9 @@ document.addEventListener('input', async (event) => {
         } else {
             eHTML.confirmPrivateKeyBtn.classList.add('disabled');
             if (event.target.value.length > 64) {
-                bottomInfo(eHTML.createWalletForm, 'Private key too long');
+                textInfo(eHTML.createWalletForm, 'Private key too long');
             } else if (event.target.value.length < 64) {
-                bottomInfo(eHTML.createWalletForm, 'Private key too short');
+                textInfo(eHTML.createWalletForm, 'Private key too short');
             }
         }
     }
@@ -1121,7 +1299,8 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             targetAccount.stakedBalance = stakedBalance;
             targetAccount.UTXOs = spendableUTXOs;
 
-            updateBalances();
+            await updateTotalBalances();
+            updateAccountLabel(targetAccount);
             break;
         case 'address_utxos_requested':
             console.log(`[POPUP] received address_utxos_requested: ${request.address}`);
@@ -1129,14 +1308,14 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case 'transaction_broadcast_result':
             // chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error, data.error, success: data.success});
             if (!request.success) {
-                bottomInfo(eHTML.walletForm, `Transaction broadcast failed: ${request.error}`);
+                textInfo(eHTML.walletForm, `Transaction broadcast failed: ${request.error}`, 5000, true);
                 console.error('Transaction broadcast failed');
                 return; 
             }
             await addPendingAnchorsRelatedToAddress(request.senderAddress, request.consumedAnchors);
 
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: request.senderAddress });
-            bottomInfo(eHTML.walletForm, `Transaction sent, ID: ${request.txId}`, 5000);
+            textInfo(eHTML.walletForm, `Transaction sent, ID: ${request.txId}`, 5000, true);
             break;
         case 'derivedAccountResult': // DEPRECATED
             console.log('derivedAccountResult:', request.success);

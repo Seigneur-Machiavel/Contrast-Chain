@@ -18,6 +18,10 @@ const SETTINGS = {
     RECONNECT_INTERVAL: 5000,
     GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
+const subscriptions = {
+    /** @type {Object<string, boolean>} */
+    balanceUpdates: {}
+}
 
 /** @type {WebSocket} */
 let ws;
@@ -89,9 +93,11 @@ function connectWS() {
                 }*/
                 break;
             case 'subscribed_balance_update':
+                subscriptions.balanceUpdates[data] = true;
                 console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
                 break;
             case 'balance_updated':
+                if (!subscriptions.balanceUpdates[trigger]) { return; }
                 console.log(`[BACKGROUND] balance_updated: ${trigger}`);
                 ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
                 break;
@@ -133,9 +139,26 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             break;
         case 'subscribe_balance_update':
             console.log(`[BACKGROUND] subscribing balance update: ${request.address}`);
-            //return;
+            
+            if (subscriptions.balanceUpdates[request.address]) { return; }
             await readyWS();
             ws.send(JSON.stringify({ type: 'subscribe_balance_update', data: request.address }));
+            break;
+        case 'unsubscribe_balance_update':
+            console.log(`[BACKGROUND] unsubscribing balance update: ${request.address}`);
+            if (!subscriptions.balanceUpdates[request.address]) { return; }
+            //await readyWS();
+            //ws.send(JSON.stringify({ type: 'unsubscribe_balance_update', data: request.address }));
+            delete subscriptions.balanceUpdates[request.address];
+            break;
+        case 'unsubscribe_all':
+            console.log(`[BACKGROUND] unsubscribing all...`);
+            for (let key in subscriptions.balanceUpdates) {
+                //await readyWS();
+                //ws.send(JSON.stringify({ type: 'unsubscribe_balance_update', data: key }));
+                delete subscriptions.balanceUpdates[key];
+            }
+            console.log(`[BACKGROUND] all unsubscribed!`);
             break;
         case 'authentified':
             console.log(`[BACKGROUND] ${request.action}!`);
@@ -162,7 +185,6 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             break;
     }
 });
-
 chrome.storage.onChanged.addListener(function(changes, namespace) {
     for (let key in changes) {
         if (key === 'miningIntensity') {
@@ -171,7 +193,6 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
         }
     }
 });
-
 (async () => { // INIT FUNCTION
     console.log('Background script starting...');
     

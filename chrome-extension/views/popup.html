@@ -1,23 +1,49 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <link rel="stylesheet" href="../styles/popup-styles.css">
+    <link rel="stylesheet" href="../popup-styles.css">
     <script src="../scripts/argon2-bundled.min.js"></script>
     <script src="../scripts/modulesLoader.mjs" type="module"></script>
 
-    <script src="../scripts/contrast/externalLibs/msgpack.min.js"></script>
-    <!--<script crossorigin src="https://unpkg.com/@msgpack/msgpack"></script>-->
+    <script src="../contrast/externalLibs/msgpack.min.js"></script>
 
     <script src="../scripts/pattern-generator.js"></script>
     <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
-    <!--<script src="../scripts/cryptoLight.js"></script> imported as ES6 in modulesLoader.mjs -->
     <script src="../scripts/classes.js"></script>
     <script src="../scripts/htmlAnimations.js"></script>
     <script src="../scripts/popup.js" defer></script>
+    <link rel="stylesheet" href="../explorerWidget.css">
+    <script src="../contrast/front/explorerScript.mjs" type="module"></script>
     <title>Authentification</title>
 </head>
 <body>
+    <div id="popUpExplorer" class="hidden">
+        <div id="cbe-contrastBlocksWidget"></div>
+        <div id="txHistoryWrap" class="cbe-TxHistoryWrap cbe-unfolded">
+            <div class="txHistoryHeader">
+                <h2>Transaction history: <span id="txHistoryAddress"></span></h2>
+            </div>
+            <table class="cbe-TxHistoryTable cbe-Table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Amount</th>
+                        <th>Fee</th>
+                        <th>Anchor</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr class="w-addressTxRow">
+                        <td class="w-addressTxDate">2021-07-07 14:00:00</td>
+                        <td class="w-addressTxAmount">+19.544084</td>
+                        <td class="w-addressTxFee">0.000000</td>
+                        <td class="w-addressTxReference">116:b8d77a4f</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
     <div id="popUpContent">
         <div class="wrap">
             <div id="appTitle" class="appTitle">
@@ -46,23 +72,23 @@
             </form>
     
             <form id="passwordCreationForm" class="hidden">
-                <input type="password" placeholder="Password">
-                <input type="password" placeholder="Confirm password">
+                <input type="password" placeholder="Password" autocomplete="off">
+                <input type="password" placeholder="Confirm password" autocomplete="off">
                 <button type="submit">Set password</button>
             </form>
     
             <form id="loginForm" class="hidden">
-                <input type="password" placeholder="Password">
-                <button type="submit">Unlock</button>
-                <p class="bottomInfo"></p>
+                <input type="password" placeholder="Password" autocomplete="off">
+                <button type="submit" class="classy">Unlock</button>
+                <p class="textInfo"></p>
             </form>
 
             <form id="createWalletForm" class="hidden">
                 <h1>Wallet creation</h1>
-                <input id="privateKeyHexInput" placeholder="Private key">
+                <input id="privateKeyHexInput" placeholder="Private key" autocomplete="off">
                 <button id="randomizeBtn">Randomize</button>
                 <button id="confirmPrivateKeyBtn" class="disabled">Confirm</button>
-                <p class="bottomInfo"></p>
+                <p class="textInfo"></p>
             </form>
 
             <form id="mnemonicOverviewForm" class="hidden">
@@ -74,12 +100,14 @@
             <form id="walletForm" class="hidden">
                 <div id="spendMiniForm" class="miniFold">
                     <button class="foldBtn"></button>
+                    <p class="textInfo"></p>
                     <h2>sender: <span class="senderAddress"></span></h2>
                     <input class="amountInput" type="text" placeholder="Amount to send">
                     <input type="text" placeholder="Receiver address">
                     <button class="sendBtn">Send</button>
                 </div>
                 <div id="stakeMiniForm" class="miniFold">
+                    <p class="textInfo"></p>
                     <button class="foldBtn"></button>
                     <h2>sender: <span class="senderAddress"></span></h2>
                     <input class="amountInput" type="text" placeholder="Amount to stake">
@@ -113,9 +141,8 @@
                                 </div>
                             </div>
                         </div>-->
+                        <button id="newAddressBtn">+</button>
                     </div>
-                    <button id="newAddressBtn">+</button>
-                    <p class="bottomInfo"></p>
                 </div>
             </form>
     
@@ -129,6 +156,7 @@
             </form>
     
             <form id="settingsForm" class="hidden">
+                <p class="textInfo"></p>
                 <button id="changePasswordBtn">Change password</button>
                 <button id="deleteDataBtn">Delete data</button>
                 <div class="inlineCheckBox">
@@ -140,6 +168,8 @@
             </form>
     
             <div id="bottomBar" class="bottomBar">
+                <!--<button id="explorerBtn"><img src="../images/explorer96.png" alt="Explorer"></button>-->
+                <button id="explorerBtn"><div class="icon"></div></button>
                 <button id="walletBtn"><img src="../images/wallet48.png" alt="Wallet"></button>
                 <button id="miningBtn"><img src="../images/pickaxe48.png" alt="Mining"></button>
                 <button id="settingsBtn"><img src="../images/settings48.png" alt="Settings"></button>

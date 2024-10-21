@@ -45,7 +45,6 @@ function connectWS() {
     };
     ws.onclose = function() {
         console.info('Connection closed');
-        clearInterval(pingInterval);
         setTimeout(connectWS, WS_SETTINGS.RECONNECT_INTERVAL); // retry connection
     };
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
