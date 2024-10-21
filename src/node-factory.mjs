@@ -62,8 +62,9 @@ export class NodeFactory {
      * @param {boolean} skipBlocksValidation - if true, the node will not validate the blocks loaded from the database
      * @param {boolean} startFromScratch - if true, the node will start from the genesis block
      */
-    async forceRestartNode(nodeId, startFromScratch = false) {
+    async forceRestartNode(nodeId, startFromScratch = false, newAccount = null, newMinerAddress = null) {
         /** @type {Node} */
+        console.log(`Forcing restart of node ${nodeId} with account ${newAccount ? newAccount.address : 'unchanged'}`);
         const targetNode = this.getNode(nodeId);
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
         targetNode.restarting = true;
@@ -71,15 +72,18 @@ export class NodeFactory {
             targetNode.restartRequested = true;
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
-        
+        const nodeAccount = newAccount || targetNode.account;
+        const nodeMinerAddress = newMinerAddress || targetNode.minerAddress;
+        const validatorRewardAddress = newAccount ? nodeAccount.address : targetNode.validatorRewardAddress;
         const nodeSettings = {
-            account: targetNode.account,
-            validatorRewardAddress: targetNode.validatorRewardAddress,
-            minerAddress: targetNode.minerAddress,
+            account: nodeAccount,
+            validatorRewardAddress: validatorRewardAddress,
+            minerAddress: nodeMinerAddress,
             roles: targetNode.roles,
             p2pOptions: targetNode.p2pOptions
         };
-        
+        console.log(`Node ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+
         targetNode.opStack.terminate();
         targetNode.timeSynchronizer.stop = true;
         await new Promise(resolve => setTimeout(resolve, 1000));

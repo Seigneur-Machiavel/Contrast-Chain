@@ -75,17 +75,7 @@ export class SyncHandler {
             }
         } catch (err) {
             this.logger.error({ error: err.message }, 'Stream error occurred');
-        } finally {
-            if (stream) {
-                try {
-                    stream.close();
-                } catch (closeErr) {
-                    this.logger.error({ error: closeErr.message }, 'Failed to close stream');
-                }
-            } else {
-                this.logger.warn('Stream is undefined; cannot close stream');
-            }
-        }
+        } 
     }
 
     /** Handles incoming messages based on their type.
@@ -113,6 +103,7 @@ export class SyncHandler {
 
     /** Synchronizes with known peers by first fetching their statuses and then syncing with the peer that has the highest block height. */
     async syncWithKnownPeers() {
+        this.node.blockchainStats.state = "syncing";
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
 
         if (this.node.p2pNetwork.subscriptions.size > 0) {
@@ -285,6 +276,7 @@ export class SyncHandler {
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
     async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight) {
+        this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
         let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr);
         if (!peerHeight) { console.log(`[SYNC] (#getMissingBlocks) Failed to get peer height`); }
         

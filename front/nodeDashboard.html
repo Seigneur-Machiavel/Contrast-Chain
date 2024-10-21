@@ -9,30 +9,25 @@
     <script src="../externalLibs/anime.min.js"></script>
     <script src="./front/nodeDashboardScript.mjs" type="module"></script>
     <link rel="stylesheet" href="./front/nodeDashboard.css">
-
 </head>
 
 <body>
     <div id="topBar">
-        <h3>Node Dashboard v1.0</h3>
-        
+        <h1>Contrast Node v1.0</h1>
         <div class="adminPanelContainer">
             <div class="btnWrap hidden">
                 <h3>roles: <span id="roles"></span></h3>
                 <div>
-                    
                     <button id="forceRestart">Restart</button>
                     <button id="Revalidate">Revalidate</button>
                     <button id="resetInfo">Reset Wallet Data</button>
-                    <button id="eraseChainData">Erase Chain Data</button>
-                    <button id="hardReset">Hard Reset</button>
+                    <button id="hardReset">Hard Reset (Git)</button>
                     <button id="updateGit">Update (Git)</button>
                 </div>
             </div>
             <button id="toggleAdminPanel" class="toggleAdminPanelButton">Show Admin Panel</button>
         </div>
     </div> 
-    
 
     <div id="dashboard">
         <div class="dashboard-inner">
@@ -63,13 +58,13 @@
                 </div>
                 <div class="spacedText">
                     <h3>Staking:</h3>
-                    <div id="stakeInputWrap"style="transform: translateY(26%);">
-                        <input type="text" class ="amountInput" value="1.000000" min="0">
-                        <button>Send Tx</button>
+                    <div id="stakeInputWrap" style="transform: translateY(26%);">
+                        <input type="text" class="amountInput" value="1.000000" min="0">
+                        <button>Stake</button>
                     </div>
                 </div>
             </div>
-    
+
             <!-- Miner Container -->
             <div class="container miner">
                 <div class="spacedText">
@@ -101,7 +96,7 @@
                 </div>
             </div>
         </div>
-    
+
         <!-- Global Information Container -->
         <div class="container global-info">
             <div class="spacedText">
@@ -150,70 +145,44 @@
             <div class="spacedText">
                 <h3>Connected Peers:</h3>
                 <ul id="peersConnectedList" class="network-list">
-                    <!-- Connected Peer IDs will be dynamically inserted here -->
                 </ul>
             </div>
+
+            <div class="spacedText">
+                <h3>Reputation Scores:</h3>
+                <ul id="repScoreList" class="network-list">
+                </ul>
             </div>
+        </div>
 
     </div>
     
     <div class="modalsWrap hidden fold">
         <div class="modalsWrapBackground"></div>
-        <div class="modalWrap hidden" id="setupModalWrap">
+        
+        <!-- Unified Modal -->
+        <div class="modalWrap hidden" id="unifiedModalWrap">
             <div class="modal">
-                
-                <form id="setupPrivateKeyForm">
+                <form id="unifiedModalForm">
                     <div class="spacedText">
-                        <h3>Private key:</h3>
-                        <div id="privateKeyInputWrap">
-                            <input type="password" id="privateKeyInput" value="ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff">
-                            <button type="button" id="togglePrivateKey">Show</button>
-                            <button>Confirm</button>
-                        </div>
-                        
+                        <p id="modalMessage">Are you sure?</p>
                     </div>
-                    <!--<div class="loadingSvgDiv"></div>-->
-                </form>
-            </div>
-        </div>
-        <div class="modalWrap hidden" id="validatorAddressModalWrap">
-            <div class="modal">
-                <form id="validatorAddressForm">
-                    <div class="spacedText">
-                        <h3>Validator Address:</h3>
-                        <div id="validatorAddressInputWrap">
-                            <input type="text" value="" placeholder="Won8nzmo1wrocFRErkWj">
-                            <button>Confirm</button>
+                    <!-- Dynamic Input Section -->
+                    <div class="spacedText" id="modalInputSection" style="display: none;">
+                        <h3 id="modalInputLabel">Input:</h3>
+                        <div id="modalInputWrap">
+                            <input type="password" id="modalInput" placeholder="">
+                            <button type="button" id="toggleModalInput">Show</button>
                         </div>
                     </div>
-                </form>
-            </div>
-        </div>
-        <div class="modalWrap hidden" id="minerAddressModalWrap">
-            <div class="modal">
-                <form id="minerAddressForm">
                     <div class="spacedText">
-                        <h3>Miner Address:</h3>
-                        <div id="minerAddressInputWrap">
-                            <input type="text" value="" placeholder="Won8nzmo1wrocFRErkWj">
-                            <button>Confirm</button>
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-        <div class="modalWrap hidden" id="resetInfoModalWrap">
-            <div class="modal">
-                <form id="resetInfoForm">
-                    <div class="spacedText">
-                        <p id="confirmationMessage">Are you sure?</p>
-                    </div>
-                    <div class="spacedText">
-                        <button type="button" id="confirmResetBtn">Confirm</button>
-                        <button type="button" id="cancelResetBtn">Cancel</button>
+                        <button type="button" id="modalCancelBtn">Cancel</button>
+                        <button type="button" id="modalConfirmBtn">Confirm</button> 
                     </div>
                 </form>
             </div>
         </div>
     </div>
 </body>
+
+</html>
