@@ -289,7 +289,7 @@ export class Blockchain {
             const addressesTransactionsPromises = {};
             for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
                 if (actualizedAddressesTxsRefs[address]) { continue; } // already loaded
-                addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, indexEnd);
+                addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexEnd);
             }
 
             for (const [address, newTxReference] of Object.entries(transactionsReferencesSortedByAddress)) {
@@ -312,21 +312,20 @@ export class Blockchain {
             
         console.info(`[DB] Addresses transactions persisted to disk from ${indexStart} to ${indexEnd} (included)`);
     }
-    /** @param {MemPool} memPool @param {string} address @param {number} indexEnd */
-    async getTxsRefencesOfAddress(memPool, address, indexEnd) {
+    /** @param {MemPool} memPool @param {string} address @param {number} [from=0] @param {number} [to=this.currentHeight] */
+    async getTxsRefencesOfAddress(memPool, address, from = 0, to = this.currentHeight) {
+        const cacheStartIndex = this.cache.oldestBlockHeight();
         let txsRefs = [];
         try {
+            if (from >= cacheStartIndex) { throw new Error('Data in cache, no need to get from disk'); }
             // get from disk (db)
             const txsRefsSerialized = await this.db.get(`${address}-txs`);
             txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
         } catch (error) {}; //console.error(error);
 
         // complete with the cache
-        const startIndex = this.cache.oldestBlockHeight();
-        if (indexEnd !== undefined && startIndex > indexEnd) {
-            return txsRefs; }
-        let index = startIndex;
-        while (indexEnd === undefined || index <= indexEnd) {
+        let index = cacheStartIndex;
+        while (index <= to) {
             const blockHash = this.cache.blocksHashByHeight.get(index);
             if (!blockHash) { break; }
             index++;
@@ -337,6 +336,27 @@ export class Blockchain {
 
             const newTxsReferences = transactionsReferencesSortedByAddress[address];
             txsRefs = txsRefs.concat(newTxsReferences);
+        }
+
+        if (txsRefs.length === 0) { return txsRefs; }
+
+        let finalTxsRefs = [];
+        for (let i = 0; i < txsRefs.length; i++) {
+            const txRef = txsRefs[i];
+            const height = parseInt(txRef.split(':')[0], 10);
+            if (from > height) { continue; }
+
+            finalTxsRefs = txsRefs.slice(i);
+            break;
+        }
+
+        for (let i = finalTxsRefs.length - 1; i >= 0; i--) {
+            const txRef = finalTxsRefs[i];
+            const height = parseInt(txRef.split(':')[0], 10);
+            if (to < height) { continue; }
+
+            finalTxsRefs = finalTxsRefs.slice(0, i + 1);
+            break;
         }
 
         return txsRefs;

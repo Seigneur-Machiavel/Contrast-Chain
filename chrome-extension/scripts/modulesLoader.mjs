@@ -1,6 +1,7 @@
 // EXPLORER SETTINGS INJECTIONS
 window.explorerDOMAIN = 'pinkparrot.observer';
-window.explorerPORT = false;
+window.explorerPORT = "27270";
+window.explorerLOCAL = true;
 window.explorerROLES = ['blockExplorer'];
 window.explorerMagnetImgPath = '../img/C_magnet.png';
 window.explorerNB_OF_CONFIRMED_BLOCKS = 2;
@@ -19,6 +20,11 @@ window.Transaction_Builder = Transaction_Builder;
 
 import { cryptoLight } from './cryptoLight.js';
 window.cryptoLight = cryptoLight;
+
+/*import { AddressExhaustiveData } from '../contrast/front/explorerScript.mjs';
+window.AddressExhaustiveData = AddressExhaustiveData;*/ // re declared in popup.js
+
+console.log('Modules loaded!');
 
 async function loadScriptAsText(url) {
     const response = await fetch(url);

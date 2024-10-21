@@ -630,8 +630,8 @@ export class Node {
         blockData.validatorAddress = blockData.Txs[1].inputs[0].split(':')[0];
         return blockData;
     }
-    async getAddressExhaustiveData(address, untilHeight = this.blockchain.currentHeight) {
-        const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, untilHeight);
+    async getAddressExhaustiveData(address, from = 0, to = this.blockchain.currentHeight) {
+        const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, from, to);
         const addressUTXOs = await this.getAddressUtxos(address);
         return { addressUTXOs, addressTxsReferences };
     }
@@ -639,7 +639,7 @@ export class Node {
      * @param {string} txReference - ex: 12:0f0f0f
      * @param {string} address - optional: also return balanceChange for this address
      */
-    async getTransactionByReference(txReference, address = undefined, untilHeight = this.blockchain.currentHeight) {
+    async getTransactionByReference(txReference, address = undefined) {
         try {
             if (address) { utils.addressUtils.conformityCheck(address); }
             const result = { transaction: undefined, balanceChange: 0, inAmount: 0, outAmount: 0, fee: 0 };
@@ -647,8 +647,8 @@ export class Node {
             result.transaction = transaction;
             if (address === undefined) { return result; }
 
-            const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, untilHeight);
-            if (!addressTxsReferences.includes(txReference)) { return result; }
+            //const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, 0, untilHeight);
+            //if (!addressTxsReferences.includes(txReference)) { return result; }
 
             for (const output of transaction.outputs) {
                 result.outAmount += output.amount;

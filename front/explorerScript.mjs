@@ -23,10 +23,29 @@ let pageFocused = true;
 document.addEventListener("visibilitychange", function() { pageFocused = document.visibilityState === 'visible'; });
 /** @type {WebSocket} */
 let ws;
+async function readyWS() {
+    return new Promise((resolve, reject) => {
+        if (ws.readyState === 1) { resolve(); return; }
+        let interval = setInterval(() => {
+            if (ws.readyState === 1) {
+                clearInterval(interval);
+                resolve();
+            }
+        }, 100);
+    });
+}
+async function sendWsWhenReady(message) {
+    await readyWS();
+    ws.send(JSON.stringify(message));
+}
 const SETTINGS = {
-    PROTOCOL: window.location.protocol === "https:" ? "wss:" : "ws:",
+    WS_PROTOCOL: window.location.protocol === "https:" ? "wss" : "ws",
     DOMAIN: window.explorerDOMAIN || window.location.hostname,
     PORT: window.explorerPORT || window.location.port,
+
+    LOCAL_DOMAIN: "localhost",
+    LOCAL_PORT: "27270",
+    LOCAL: window.explorerLOCAL || false,
     //LOCAL_DOMAIN: 'localhost:27270',
     //DOMAIN: 'pinkparrot.observer',
     RECONNECT_INTERVAL: 1000,
@@ -37,10 +56,13 @@ const SETTINGS = {
     NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 6,
 }
 function connectWS() {
-    //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
-    ws = new WebSocket(`${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
-    console.log(`Connecting to ${SETTINGS.PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
-  
+    //ws = new WebSocket(`${SETTINGS.WS_PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
+    //console.log(`Connecting to ${SETTINGS.WS_PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
+    const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
+    const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
+
     ws.onopen = function() {
         console.log('Connection opened');
     };
@@ -116,7 +138,6 @@ function connectWS() {
             case 'address_exhaustive_data_requested':
                 // { address, addressUTXOs, addressTxsReferences }
                 blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressExhaustiveData(data.addressUTXOs.UTXOs, data.addressTxsReferences);
-
                 blockExplorerWidget.navigateUntilTarget(true);
                 break;
             case 'transaction_requested':
@@ -812,7 +833,7 @@ export class BlockExplorerWidget {
             const feeDiv = createHtmlElement('div', undefined, ['cbe-TxFee'], outputsWrap);
             feeDiv.textContent = `Fee: ${utils.convert.number.formatNumberAsCurrency(tx.fee)}`;
         } else {
-            console.error('tx fee not found');
+            console.info('tx fee not found');
         }
 
         if (isMinerTx) { return txDetails; }
@@ -963,12 +984,8 @@ export class BlockExplorerWidget {
         const fromMemory = this.addressesExhaustiveData[address];
         if (fromMemory) { return fromMemory; }
 
-        /*const lastIndex = this.getLastBlockInfoIndex();
-        const untilHeight = Math.max(0, lastIndex - 100);
-        console.log(`requesting address exhaustive data: address: ${address}, untilHeight: ${untilHeight}`);
-        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: { address, untilHeight } }));*/
-        console.log(`requesting address exhaustive data: address: ${address}, untilHeight: ${untilHeight}`);
-        ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: address }));
+        console.log(`requesting address exhaustive data: address: ${address}`);
+        sendWsWhenReady({ type: 'get_address_exhaustive_data', data: address });
         return 'request sent';
     }
     getLastBlockInfoIndex() {
@@ -996,11 +1013,61 @@ class AddressInfo {
     }
 }
 export class AddressExhaustiveData {
+    /** @param {UTXO[]} UTXOs @param {string[]} addressTxsReferences */
     constructor(UTXOs, addressTxsReferences) {
         this.balances = utils.utxoUtils.extractBalances(UTXOs);
         this.UTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
         /** @type {Object<string, string[]>} */
         this.addressTxsReferences = addressTxsReferences;
+    }
+
+    mergeNewUTXOs(UTXOs) {
+        const newBalances = utils.utxoUtils.extractBalances(UTXOs);
+        for (const key in newBalances) {
+            if (this.balances[key]) { this.balances[key] += newBalances[key]; }
+            else { this.balances[key] = newBalances[key]; }
+        }
+       
+        const newUTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
+        for (const rule in newUTXOsByRules) {
+            if (this.UTXOsByRules[rule]) { this.UTXOsByRules[rule].push(...newUTXOsByRules[rule]); }
+            else { this.UTXOsByRules[rule] = newUTXOsByRules[rule]; }
+        }
+    }
+    /** @param {string[]} txsReferences */
+    mergeNewTxsReferences(newTxsReferences) {
+        for (const txReference of newTxsReferences) {
+            if (this.addressTxsReferences.includes(txReference)) { continue; }
+            this.addressTxsReferences.push(txReference);
+        }
+    }
+    /** @param {AddressExhaustiveData} newData @param {boolean} replaceBalances */
+    mergeAddressExhaustiveData(newData, replaceBalances = true) {
+        for (const key in newData.balances) {
+            if (!replaceBalances) { continue; }
+            this.balances[key] = newData.balances[key];
+        }
+
+        for (const rule in newData.UTXOsByRules) {
+            if (this.UTXOsByRules[rule]) { this.UTXOsByRules[rule].push(...newData.UTXOsByRules[rule]); }
+            else { this.UTXOsByRules[rule] = newData.UTXOsByRules[rule]; }
+        }
+
+        this.mergeNewTxsReferences(newData.addressTxsReferences);
+    }
+
+    highestKnownUTXOsHeight() {
+        let highestHeight = 0;
+        for (const rule in this.UTXOsByRules) {
+            for (const UTXO of this.UTXOsByRules[rule]) {
+                const height = UTXO.anchor.split(':')[0];
+                if (height > highestHeight) { highestHeight = UTXO.height; }
+            }
+        }
+        return highestHeight;
+    }
+    highestKnownTxsHeight() {
+        return this.addressTxsReferences.length === 0 ? 0 : this.addressTxsReferences[this.addressTxsReferences.length - 1];
     }
 }
 class BlockChainElementsManager {

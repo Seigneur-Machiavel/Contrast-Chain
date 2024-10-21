@@ -409,17 +409,32 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs } }));
                     break;
                 case 'get_address_transactions_references':
-                    const addTxsRefs = await this.node.blockchain.getTxsRefencesOfAddress(this.node.memPool, data);
+                    if (data === undefined) { console.error('data undefined'); return; }
+                    const gatrParams = {
+                        address: typeof data === 'string' ? data : data.address,
+                        from: typeof data === 'string' ? 0 : data.from,
+                        to: typeof data === 'string' ? this.node.blockchain.currentHeight : data.to,
+                    }
+
+                    const addTxsRefs = await this.node.blockchain.getTxsRefencesOfAddress(this.node.memPool, gatrParams.address, gatrParams.from, gatrParams.to);
                     ws.send(JSON.stringify({ type: 'address_transactionsRefs_requested', data: addTxsRefs }));
                     break;
                 case 'get_address_exhaustive_data':
-                    //const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(data.address, data.untilHeight);
-                    const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(data);
-                    ws.send(JSON.stringify({ type: 'address_exhaustive_data_requested', data: { address: data, addressUTXOs, addressTxsReferences } }));
+                    if (data === undefined) { console.error('data undefined'); return; }
+                    const gaedParams = {
+                        address: typeof data === 'string' ? data : data.address,
+                        from: typeof data === 'object' ? data.from : Math.max(this.node.blockchain.currentHeight - 90, 0),
+                        to: typeof data === 'object' ? data.to || this.node.blockchain.currentHeight : this.node.blockchain.currentHeight,
+                    }
+                    if (!gaedParams.from || gaedParams.from > gaedParams.to) { gaedParams.from = Math.max(gaedParams.to - 90, 0); }
+
+                    const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(gaedParams.address, gaedParams.from, gaedParams.to);
+                    ws.send(JSON.stringify({ type: 'address_exhaustive_data_requested', data: { address: gaedParams.address, addressUTXOs, addressTxsReferences } }));
                     break;
                 case 'address_utxos':
                     ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs: await this.node.getAddressUtxos(data) } }));
                 case 'get_transaction_by_reference': // DEPRECATED
+                    console.log('get_transaction_by_reference: DISABLED');
                     break;
                     const resTx = await this.node.getTransactionByReference(data);
                     if (!res) { console.error(`[OBSERVER] Transaction not found: ${data}`); return; }

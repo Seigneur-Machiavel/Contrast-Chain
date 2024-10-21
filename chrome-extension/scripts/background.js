@@ -9,12 +9,12 @@ const sanitizer = new Sanitizer();
 const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
     WS_PROTOCOL: "ws", // ws or wss
-    DOMAIN: 'pinkparrot.observer',
-    PORT: false, // 27270 (not used with domain)
+    DOMAIN: 'pinkparrot.science', // 'pinkparrot.observer',
+    PORT: false, // "27270", no port using domain
     LOCAL_DOMAIN: "localhost",
-    LOCAL_PORT: "27279",
+    LOCAL_PORT: "27270",
 
-    LOCAL: false,
+    LOCAL: true,
     RECONNECT_INTERVAL: 5000,
     GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
@@ -34,6 +34,7 @@ function connectWS() {
 
     ws.onopen = function() {
         console.log('Connection opened');
+        //console.log(ws);
     };
     ws.onclose = function() {
         console.info('Connection closed');
@@ -63,6 +64,7 @@ function connectWS() {
                     UTXOs: data.addressUTXOs.UTXOs,
                     balance: data.addressUTXOs.balance,
                     spendableBalance: data.addressUTXOs.spendableBalance,
+                    addressTxsReferences: data.addressTxsReferences,
                 });
                 break;
             case 'address_utxos_requested':
@@ -101,7 +103,13 @@ function connectWS() {
                 console.log(`[BACKGROUND] balance_updated: ${trigger}`);
                 ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
                 break;
+            case 'new_block_confirmed':
+                break;
+            case 'current_height':
+                break;
             default:
+                console.log(`[BACKGROUND] Unknown message type, message:`);
+                console.log(message);
                 break;
         }
     }
@@ -133,9 +141,16 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     
     switch (request.action) {
         case 'get_address_exhaustive_data':
-            console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}`);
+            //console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}, from: ${request.from}, to: ${request.to}`);
+            const gaedParams = {
+                address: request.address,
+                from: request.from,
+                to: request.to,
+            }
+            console.log(`[BACKGROUND] get_address_exhaustive_data: ${JSON.stringify(gaedParams)}`);
             await readyWS();
-            ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: request.address }));
+            ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: gaedParams }));
+            //ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: request.address }));
             break;
         case 'subscribe_balance_update':
             console.log(`[BACKGROUND] subscribing balance update: ${request.address}`);
@@ -182,6 +197,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             pow.stopMining();
             break;
         default:
+            console.log(`[BACKGROUND] Unknown request: ${request}`);
             break;
     }
 });

@@ -1,3 +1,4 @@
+
 if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const anime = require("./anime.min.js");
     const PatternGenerator = require("./pattern-generator.js");
@@ -14,7 +15,6 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 * @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
 * @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
-* @typedef {import("../contrast/front/explorerScript.mjs").AddressExhaustiveData} AddressExhaustiveData
 */
 
 /** @type {BlockExplorerWidget} */
@@ -34,7 +34,63 @@ class WalletInfo {
         };
     }
 }
+class AddressExhaustiveData {
+    /** @param {UTXO[]} UTXOs @param {string[]} addressTxsReferences */
+    constructor(UTXOs, addressTxsReferences) {
+        this.balances = utils.utxoUtils.extractBalances(UTXOs);
+        this.UTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
+        /** @type {Object<string, string[]>} */
+        this.addressTxsReferences = addressTxsReferences;
+    }
 
+    mergeNewUTXOs(UTXOs) {
+        const newBalances = utils.utxoUtils.extractBalances(UTXOs);
+        for (const key in newBalances) {
+            if (this.balances[key]) { this.balances[key] += newBalances[key]; }
+            else { this.balances[key] = newBalances[key]; }
+        }
+       
+        const newUTXOsByRules = utils.utxoUtils.extractUTXOsByRules(UTXOs);
+        for (const rule in newUTXOsByRules) {
+            if (this.UTXOsByRules[rule]) { this.UTXOsByRules[rule].push(...newUTXOsByRules[rule]); }
+            else { this.UTXOsByRules[rule] = newUTXOsByRules[rule]; }
+        }
+    }
+    /** @param {string[]} txsReferences */
+    mergeNewTxsReferences(newTxsReferences) {
+        for (const txReference of newTxsReferences) {
+            if (this.addressTxsReferences.includes(txReference)) { continue; }
+            this.addressTxsReferences.push(txReference);
+        }
+    }
+    /** @param {AddressExhaustiveData} newData @param {boolean} replaceBalances */
+    mergeAddressExhaustiveData(newData, replaceBalances = true) {
+        for (const key in newData.balances) {
+            if (!replaceBalances) { continue; }
+            this.balances[key] = newData.balances[key];
+        }
+
+        for (const rule in newData.UTXOsByRules) {
+            if (this.UTXOsByRules[rule]) { this.UTXOsByRules[rule].push(...newData.UTXOsByRules[rule]); }
+            else { this.UTXOsByRules[rule] = newData.UTXOsByRules[rule]; }
+        }
+
+        this.mergeNewTxsReferences(newData.addressTxsReferences);
+    }
+    highestKnownUTXOsHeight() {
+        let highestHeight = 0;
+        for (const rule in this.UTXOsByRules) {
+            for (const UTXO of this.UTXOsByRules[rule]) {
+                const height = UTXO.anchor.split(':')[0];
+                if (height > highestHeight) { highestHeight = UTXO.height; }
+            }
+        }
+        return highestHeight;
+    }
+    highestKnownTxsHeight() {
+        return this.addressTxsReferences.length === 0 ? 0 : this.addressTxsReferences[this.addressTxsReferences.length - 1];
+    }
+}
 cryptoLight.useArgon2Worker = true; console.log('Argon2 worker enabled!');
 const settings = {
     appVersion: chrome.runtime.getManifest().version,
@@ -128,6 +184,8 @@ let activeAddressPrefix = "C";
 let activeAccountIndexByPrefix = { "W": 0, "C": 0 };
 let currentTextInfo = '';
 const busy = [];
+/** @type {Object<string, AddressExhaustiveData>} */
+const addressesExhaustiveData = {};
 //#region - UX FUNCTIONS
 function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
@@ -505,27 +563,32 @@ function newAddressBtnLoadingToggle() {
         });
     }
 }
-function updateTxHistory() {
-    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
-    eHTML.txHistoryAddress.innerText = activeAddress;
-
+/*function updateActiveAddressTxHistory() { // DEPRECATED
     const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
     if (!explorerOpenned) { return; }
 
-    const addressExhaustiveData = blockExplorerWidget.getAddressExhaustiveDataFromMemoryOrSendRequest(activeAddress);
-    if (addressExhaustiveData === "request sent") { return; }
+    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+    eHTML.txHistoryAddress.innerText = activeAddress;
+
+    chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', activeAddress });
+    if (!addressesExhaustiveData[activeAddress]) { return; }
     
+    const addressExhaustiveData = addressesExhaustiveData[activeAddress];
     fillTxHistoryWithTxsReferencesElement(addressExhaustiveData);
-}
+}*/
 /** @param {AddressExhaustiveData} addressExhaustiveData */
-function fillTxHistoryWithTxsReferencesElement(addressExhaustiveData) {
+function fillTxHistoryWithActiveAddressData() {
     const txHistoryTable = eHTML.txHistoryTable;
-    const txHistoryRows = txHistoryTable.getElementsByTagName('tr');
+    const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
+    const txHistoryRows = tbody.getElementsByTagName('tr');
     for (let i = 0; i < txHistoryRows.length; i++) { txHistoryRows[i].remove(); }
 
+    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+    const addressExhaustiveData = addressesExhaustiveData[activeAddress];
+    if (!addressExhaustiveData) { return; }
+    
     // FILLING THE ADDRESS TXS HISTORY
-    const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
-    const txsReferences = addressExhaustiveData.addressTxsReferences;
+    const txsReferences = addressExhaustiveData.addressTxsReferences || [];
     for (const txReference of txsReferences) {
         const transaction = blockExplorerWidget.transactionsByReference[txReference];
         const row = createHtmlElement('tr', undefined, ['w-addressTxDate'], tbody);
@@ -700,7 +763,6 @@ async function loadWalletGeneratedAccounts(walletInfo) {
 
     updateAccountsLabels();
     updateActiveAccountLabel();
-    updateTxHistory();
     
     const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
@@ -768,6 +830,17 @@ async function extractDataFromAccountUTXOs(address, utxos) {
     await setPendingAnchorsRelatedToAddress(address, updatedPendingAnchors);
 
     return { balance, spendableBalance, stakedBalance, spendableUTXOs };
+}
+function updateAddressExhaustiveDataFromNode(address) {
+    let from = 0;
+
+    if (addressesExhaustiveData[address]) {
+        const highestKnownTxsHeight = addressesExhaustiveData[address].highestKnownTxsHeight();
+        const highestKnownUTXOsHeight = addressesExhaustiveData[address].highestKnownUTXOsHeight();
+        from = Math.min(highestKnownTxsHeight, highestKnownUTXOsHeight);
+    }
+
+    chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', address, from });
 }
 //#endregion
 
@@ -924,8 +997,8 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (activeWallet.accounts[activeAddressPrefix][0]) {
         for (let i = 0; i < activeWallet.accounts[activeAddressPrefix].length; i++) {
             const address = activeWallet.accounts[activeAddressPrefix][i].address;
-            chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address });
-            chrome.runtime.sendMessage({action: "subscribe_balance_update", address });
+            chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', address });
+            chrome.runtime.sendMessage({action: 'subscribe_balance_update', address });
         }
     }
 
@@ -1194,7 +1267,12 @@ document.addEventListener('click', async function(e) {
             activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
             updateActiveAccountLabel();
             updateMiniFormsInfoRelatedToActiveAccount();
-            updateTxHistory();
+
+            const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+            if (!explorerOpenned) { return; }
+                
+            updateAddressExhaustiveDataFromNode(activeWallet.accounts[activeAddressPrefix][accountIndex].address);
+
             break;
         case 'foldBtn':
             console.log('foldBtn');
@@ -1286,7 +1364,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case 'address_exhaustive_data_requested':
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             //console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
-            
+            console.log(request);
             const targetAccountAddressPrefix = request.address.slice(0, 1);
             targetAccountIndex = getWalletAccountIndexByAddress(request.address);
             if (targetAccountIndex === -1) { console.error(`No account corresponding to address: ${request.address}`); return; }
@@ -1299,8 +1377,20 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             targetAccount.stakedBalance = stakedBalance;
             targetAccount.UTXOs = spendableUTXOs;
 
+            const addressExhaustiveData = new AddressExhaustiveData(request.UTXOs, request.addressTxsReferences);
+            if (!addressesExhaustiveData[request.address]) {
+                addressesExhaustiveData[request.address] = addressExhaustiveData;
+            } else {
+                addressesExhaustiveData[request.address].mergeAddressExhaustiveData(addressExhaustiveData);
+            }
+
             await updateTotalBalances();
             updateAccountLabel(targetAccount);
+
+            //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+            //if (!explorerOpenned) { return; }
+
+            fillTxHistoryWithActiveAddressData();
             break;
         case 'address_utxos_requested':
             console.log(`[POPUP] received address_utxos_requested: ${request.address}`);
