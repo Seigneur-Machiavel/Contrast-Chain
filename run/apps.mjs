@@ -1,14 +1,13 @@
-import { exec } from 'child_process';
+
 import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { WebSocketServer } from 'ws';
 import localStorage_v1 from '../storage/local-storage-management.mjs';
 import contrast from '../src/contrast.mjs'; //? Not all libs needed
-
+import { exec } from 'child_process';
 import { CallBackManager } from '../src/websocketCallback.mjs';
 import utils from '../src/utils.mjs';
-
 /**
 * @typedef {import("../src/account.mjs").Account} Account
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
@@ -77,6 +76,8 @@ class AppStaticFncs {
         result.averageBlockTime = node.blockchainStats?.averageBlockTime ? (node.blockchainStats.averageBlockTime / 1000).toFixed(2) : 'No Data';
         result.peerId = node.p2pNetwork?.p2pNode?.peerId ?? 'No Peer ID';
         result.peerIds = node.p2pNetwork?.getConnectedPeers() ?? 'No Peer IDs';
+        result.repScores = node.p2pNetwork?.reputationManager?.getScores() ?? 'No Rep Scores';
+        result.nodeState = node.blockchainStats.state ?? 'No State';
         return result;
     }
     /** @param {Node} node */
@@ -205,6 +206,51 @@ export class DashboardWsApp {
             node.miner.address = associatedMinerAddress;
         }
     }
+
+    #hardResetAndClose() {
+        exec('git reset --hard HEAD', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git reset error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git reset failed');
+                return;
+            }
+            console.log(`Git reset output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+
+    #updateAndClose() {
+        exec('git pull', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git pull error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git pull failed');
+                return;
+            }
+            console.log(`Git pull output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+
+    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
+        console.log('Modifying account and restarting node id:', nodeId);
+        const wallet = new contrast.Wallet(newPrivateKey, false);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
+
+    }
+
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
         //console.log(`[onMessage] this.node.account.address: ${this.node.account.address}`);
@@ -219,7 +265,16 @@ export class DashboardWsApp {
                 await this.init(data);
                 this.#nodesSettings[this.node.id].privateKey = data;
                 this.#saveNodeSettings();
-
+                break;
+            case 'reset_wallet':    
+                console.log('Resetting wallet');
+                await this.#modifyAccountAndRestartNode(this.node.id, data);
+            break;
+            case 'update_git':
+                this.#updateAndClose();
+                break;
+            case 'hard_reset':
+                this.#hardResetAndClose();
                 break;
             case 'set_validator_address':
                 if (!this.node) { console.error('No active node'); break; }
@@ -297,7 +352,10 @@ export class DashboardWsApp {
     }
     #loadNodeSettings() {
         const nodeSettings = localStorage_v1.loadJSON('nodeSettings');
-        if (!nodeSettings) { console.log('No nodeSettings found'); return; }
+        if (!nodeSettings || Object.keys(nodeSettings).length === 0) {
+            console.log(`No nodes settings found`);
+            return;
+        }
         
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);

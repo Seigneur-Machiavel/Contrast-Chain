@@ -1,13 +1,11 @@
-console.log('run/nodeDashboardScript.mjs');
-
-// <script src="../externalLibs/anime.min.js"></script>
 import { Transaction_Builder, UTXO } from '../src/transaction.mjs';
 import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
+
 /**
-* @typedef {import("../src/block.mjs").BlockData} BlockData
-* @typedef {import("./transaction.mjs").Transaction} Transaction
-*/
+ * @typedef {import("../src/block.mjs").BlockData} BlockData
+ * @typedef {import("./transaction.mjs").Transaction} Transaction
+ */
 
 let ws;
 const WS_SETTINGS = {
@@ -26,18 +24,20 @@ let modalOpen = false;
 let currentAction = null;
 
 const ACTIONS = {
-    ERASE_CHAIN_DATA: 'erase_chain_data',
     HARD_RESET: 'hard_reset',
     UPDATE_GIT: 'update_git',
     FORCE_RESTART: 'force_restart',
     REVALIDATE: 'revalidate',
-    RESET_WALLET: 'reset_wallet'
+    RESET_WALLET: 'reset_wallet',
+    SETUP: 'setup',
+    SET_VALIDATOR_ADDRESS: 'set_validator_address',
+    SET_MINER_ADDRESS: 'set_miner_address'
 };
 
 
 function connectWS() {
     ws = new WebSocket(`${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
-    console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
+    //console.log(`Connecting to ${WS_SETTINGS.PROTOCOL}//${WS_SETTINGS.DOMAIN}:${WS_SETTINGS.PORT}`);
   
     ws.onopen = function() {
         console.log('Connection opened');
@@ -57,7 +57,13 @@ function connectWS() {
         switch (message.type) {
             case 'error':
                 if (data === 'No active node' && !modalOpen) {
-                    openModal("setup");
+                    openModal(ACTIONS.SETUP, {
+                        message: 'No active node detected. Please set up your private key.',
+                        inputLabel: 'Private Key:',
+                        inputType: 'password',
+                        showInput: true,
+                        showToggle: true
+                    });
                     console.log('No active node, opening setup modal');
                 }
                 break;
@@ -97,13 +103,15 @@ function connectWS() {
         }
     };
 }
+
 async function getGetNodeInfoLoop() {
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, WS_SETTINGS.GET_NODE_INFO_INTERVAL); });
         if (!ws || ws.readyState !== 1) { continue; }
         try { ws.send(JSON.stringify({ type: 'get_node_info', data: Date.now() })) } catch (error) {};
     }
-}; getGetNodeInfoLoop();
+}; 
+getGetNodeInfoLoop();
 connectWS();
 
 const eHTML = {
@@ -114,39 +122,19 @@ const eHTML = {
     RevalidateBtn: document.getElementById('Revalidate'),
 
     modals: {
-		wrap: document.getElementsByClassName('modalsWrap')[0],
+        wrap: document.getElementsByClassName('modalsWrap')[0],
         modalsWrapBackground: document.getElementsByClassName('modalsWrapBackground')[0],
-        setup: {
-			wrap : document.getElementById('setupModalWrap'),
-			modal: document.getElementById('setupModalWrap').getElementsByClassName('modal')[0],
-			setupPrivateKeyForm: document.getElementById('setupPrivateKeyForm'),
-			privateKeyInputWrap: document.getElementById('privateKeyInputWrap'),
-            privateKeyInput: document.getElementById('privateKeyInputWrap').getElementsByTagName('input')[0],
-            confirmBtn: document.getElementById('privateKeyInputWrap').getElementsByTagName('button')[1],
-            togglePrivateKeyBtn: document.getElementById('togglePrivateKey'),
-			//loadingSvgDiv: document.getElementById('waitingForConnectionForm').getElementsByClassName('loadingSvgDiv')[0],
-		},
-        validatorAddress: {
-            wrap: document.getElementById('validatorAddressModalWrap'),
-            modal: document.getElementById('validatorAddressModalWrap').getElementsByClassName('modal')[0],
-            validatorAddressForm: document.getElementById('validatorAddressForm'),
-            validatorAddressInputWrap: document.getElementById('validatorAddressInputWrap'),
-            validatorAddressInput: document.getElementById('validatorAddressInputWrap').getElementsByTagName('input')[0],
-            confirmBtn: document.getElementById('validatorAddressInputWrap').getElementsByTagName('button')[0],
-        },
-        minerAddress: {
-            wrap: document.getElementById('minerAddressModalWrap'),
-            modal: document.getElementById('minerAddressModalWrap').getElementsByClassName('modal')[0],
-            minerAddressForm: document.getElementById('minerAddressForm'),
-            minerAddressInputWrap: document.getElementById('minerAddressInputWrap'),
-            minerAddressInput: document.getElementById('minerAddressInputWrap').getElementsByTagName('input')[0],
-            confirmBtn: document.getElementById('minerAddressInputWrap').getElementsByTagName('button')[0],
-        },
-        resetInfoModal: {
-            wrap: document.getElementById('resetInfoModalWrap'),
-            modal: document.getElementById('resetInfoModalWrap').getElementsByClassName('modal')[0],
-            confirmBtn: document.getElementById('confirmResetBtn'),
-            cancelBtn: document.getElementById('cancelResetBtn'),
+        unifiedModal: {
+            wrap: document.getElementById('unifiedModalWrap'),
+            modal: document.getElementById('unifiedModalWrap').getElementsByClassName('modal')[0],
+            form: document.getElementById('unifiedModalForm'),
+            message: document.getElementById('modalMessage'),
+            inputSection: document.getElementById('modalInputSection'),
+            inputLabel: document.getElementById('modalInputLabel'),
+            input: document.getElementById('modalInput'),
+            toggleInputBtn: document.getElementById('toggleModalInput'),
+            confirmBtn: document.getElementById('modalConfirmBtn'),
+            cancelBtn: document.getElementById('modalCancelBtn'),
         }
     },
 
@@ -163,6 +151,7 @@ const eHTML = {
     },
 
     minerAddress: document.getElementById('minerAddress'),
+    minerRewardAddress: document.getElementById('minerRewardAddress'), // Assuming this exists if needed
     minerAddressEditBtn: document.getElementById('minerAddressEditBtn'),
     minerHeight: document.getElementById('minerHeight'),
     minerBalance: document.getElementById('minerBalance'),
@@ -184,13 +173,13 @@ const eHTML = {
     resetInfoBtn: document.getElementById('resetInfo'),
     peerId: document.getElementById('peerId'),
     peersConnectedList: document.getElementById('peersConnectedList'),
-    eraseChainDataBtn: document.getElementById('eraseChainData'),
     hardResetBtn: document.getElementById('hardReset'),
     updateGitBtn: document.getElementById('updateGit'),
-
-
+    nodeState: document.getElementById('nodeState'),
+    repScoresList: document.getElementById('repScoreList'),
 }
 
+// Function to display node information
 function displayNodeInfo(data) {
     /** @type {StakeReference[]} */
     const validatorStakesReference = data.validatorStakes ? data.validatorStakes : false;
@@ -221,11 +210,16 @@ function displayNodeInfo(data) {
     eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId : 'No Peer ID';
+    eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
     if (Array.isArray(data.peerIds)) {
         renderPeers(data.peerIds);
     } else {
         console.warn('peerIds is not an array:', data.peerIds);
-        eHTML.peerList.innerHTML = '<li>No peers available.</li>';
+        eHTML.peersConnectedList.innerHTML = '<li>No peers available.</li>';
+    }
+
+    if (data.repScores) {
+        renderScores(data.repScores);
     }
 }
 
@@ -235,56 +229,163 @@ function renderPeers(peers) {
     if (peers.length === 0) {
         const li = document.createElement('li');
         li.textContent = 'No peers connected.';
-        eHTML.peersConnected.appendChild(li);
+        eHTML.peersConnectedList.appendChild(li);
         return;
     }
 
     peers.forEach(peerId => {
         const li = document.createElement('li');
-        li.textContent = peerId;
+        li.classList.add('peer-item'); // Optional: Add a class for styling
+
+        // Create a span to hold the peer ID
+        const peerSpan = document.createElement('span');
+        peerSpan.textContent = peerId;
+        peerSpan.classList.add('peer-id'); // Optional: Add a class for styling
+
+        // Create Disconnect Button
+        const disconnectBtn = document.createElement('button');
+        disconnectBtn.textContent = 'Disconnect';
+        disconnectBtn.classList.add('disconnect-btn'); // Add class for styling
+        disconnectBtn.dataset.peerId = peerId; // Store peerId for reference
+
+        // Create Ask Sync Button
+        const askSyncBtn = document.createElement('button');
+        askSyncBtn.textContent = 'Ask Sync';
+        askSyncBtn.classList.add('ask-sync-btn'); // Add class for styling
+        askSyncBtn.dataset.peerId = peerId; // Store peerId for reference
+
+        // Append elements to the list item
+        li.appendChild(peerSpan);
+        li.appendChild(disconnectBtn);
+        li.appendChild(askSyncBtn);
+
         eHTML.peersConnectedList.appendChild(li);
     });
 }
 
+
+function renderScores(scores) {
+    eHTML.repScoresList.innerHTML = ''; // Clear existing list
+
+    if (scores.length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No reputation scores available.';
+        eHTML.repScoresList.appendChild(li);
+        return;
+    }
+
+    scores.forEach(score => {
+        const li = document.createElement('li');
+        li.textContent = score.identifier + ': ' + score.score;
+        eHTML.repScoresList.appendChild(li);
+    });
+}
+
+// Event listeners for modals
 eHTML.modals.wrap.addEventListener('click', (event) => {
-	if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
+    if (event.target === eHTML.modals.modalsWrapBackground) { closeModal(); }
 });
-eHTML.modals.setup.confirmBtn.addEventListener('click', () => {
-    console.log('setupPrivateKeyForm confirmBtn clicked');
-    console.log('privateKeyInput value:', eHTML.modals.setup.privateKeyInput.value);
-    ws.send(JSON.stringify({ type: 'set_private_key', data: eHTML.modals.setup.privateKeyInput.value }));
+
+// Unified modal confirm button
+eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
+    console.log('Confirm button clicked with action:', currentAction);
+    switch (currentAction) {
+        case ACTIONS.SETUP:
+            console.log('Setup: setting private key');
+            const setupPrivKey = eHTML.modals.unifiedModal.input.value.trim();
+            if (!setupPrivKey) {
+                alert('Private key is required for setup.');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'set_private_key', data: setupPrivKey }));
+            break;
+        case ACTIONS.SET_VALIDATOR_ADDRESS:
+            console.log('Set Validator Address:', eHTML.modals.unifiedModal.input.value.trim());
+            const newValidatorAddress = eHTML.modals.unifiedModal.input.value.trim();
+            if (!newValidatorAddress) {
+                alert('Validator address cannot be empty.');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'set_validator_address', data: newValidatorAddress }));
+            break;
+        case ACTIONS.SET_MINER_ADDRESS:
+            console.log('Set Miner Address:', eHTML.modals.unifiedModal.input.value.trim());
+            const newMinerAddress = eHTML.modals.unifiedModal.input.value.trim();
+            if (!newMinerAddress) {
+                alert('Miner address cannot be empty.');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'set_miner_address', data: newMinerAddress }));
+            break;
+        case ACTIONS.HARD_RESET:
+            ws.send(JSON.stringify({ type: 'hard_reset', data: nodeId }));
+            break;
+        case ACTIONS.UPDATE_GIT:
+            ws.send(JSON.stringify({ type: 'update_git', data: nodeId }));
+            break;
+        case ACTIONS.FORCE_RESTART:
+            ws.send(JSON.stringify({ type: 'force_restart', data: nodeId }));
+            break;
+        case ACTIONS.REVALIDATE:
+            ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId }));
+            break;
+        case ACTIONS.RESET_WALLET:
+            const resetPrivKey = eHTML.modals.unifiedModal.input.value.trim();
+            if (!resetPrivKey) {
+                alert('Private key is required to reset the wallet.');
+                return;
+            }
+            ws.send(JSON.stringify({ type: 'reset_wallet', data: resetPrivKey }));
+            break;
+        default:
+            console.error('Unknown action:', currentAction);
+    }
+    currentAction = null;
     closeModal();
 });
-eHTML.modals.setup.togglePrivateKeyBtn.addEventListener('click', () => {
-    if (eHTML.modals.setup.privateKeyInput.type === 'password') {
-        eHTML.modals.setup.privateKeyInput.type = 'text';
-        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Hide';
-    } else {
-        eHTML.modals.setup.privateKeyInput.type = 'password';
-        eHTML.modals.setup.togglePrivateKeyBtn.textContent = 'Show';
-    }
+
+// Unified modal cancel button
+eHTML.modals.unifiedModal.cancelBtn.addEventListener('click', () => {
+    currentAction = null;
+    closeModal();
 });
+
+// Toggle password visibility in unified modal
+eHTML.modals.unifiedModal.toggleInputBtn.addEventListener('click', () => {
+    togglePasswordVisibility(eHTML.modals.unifiedModal.input, eHTML.modals.unifiedModal.toggleInputBtn);
+});
+
+// Validator Address Edit Button
 eHTML.validatorAddressEditBtn.addEventListener('click', () => {
     console.log('validatorAddressEditBtn clicked');
-    openModal('validatorAddress');
+    openModal(ACTIONS.SET_VALIDATOR_ADDRESS, {
+        message: 'Please enter the new Validator Address:',
+        inputLabel: 'Validator Address:',
+        inputType: 'text',
+        inputPlaceholder: 'Enter new Validator Address',
+        showInput: true,
+        showToggle: false
+    });
 });
-eHTML.modals.validatorAddress.confirmBtn.addEventListener('click', () => {
-    console.log('validatorAddressForm confirmBtn clicked');
-    console.log('validatorAddressInput value:', eHTML.modals.validatorAddress.validatorAddressInput.value);
-    ws.send(JSON.stringify({ type: 'set_validator_address', data: eHTML.modals.validatorAddress.validatorAddressInput.value }));
-    closeModal();
-});
+
+
+// Miner Address Edit Button
 eHTML.minerAddressEditBtn.addEventListener('click', () => {
     console.log('minerAddressEditBtn clicked');
-    openModal('minerAddress');
+    openModal(ACTIONS.SET_MINER_ADDRESS, {
+        message: 'Please enter the new Miner Address:',
+        inputLabel: 'Miner Address:',
+        inputType: 'text',
+        inputPlaceholder: 'Enter new Miner Address',
+        showInput: true,
+        showToggle: false
+    });
 });
-eHTML.modals.minerAddress.confirmBtn.addEventListener('click', () => {
-    console.log('minerAddressForm confirmBtn clicked');
-    console.log('minerAddressInput value:', eHTML.modals.minerAddress.minerAddressInput.value);
-    ws.send(JSON.stringify({ type: 'set_miner_address', data: eHTML.modals.minerAddress.minerAddressInput.value }));
-    closeModal();
-});
+
+// Prevent form submission
 document.addEventListener('submit', function(event) { event.preventDefault(); });
+
+// Input validation
 document.addEventListener('input', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
     if (amountInput) {
@@ -294,6 +395,7 @@ document.addEventListener('input', async (event) => {
         if (nbOfDecimals > 6) { event.target.value = parseFloat(event.target.value).toFixed(6); }
     }
 });
+
 document.addEventListener('focusout', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
     if (amountInput) {
@@ -307,6 +409,7 @@ document.addEventListener('focusout', async (event) => {
     }
 });
 
+// Stake Input Confirm Button
 eHTML.stakeInput.confirmBtn.addEventListener('click', async () => {
     const amountToStake = parseInt(eHTML.stakeInput.input.value.replace(",","").replace(".",""));
     const validatorAddress = eHTML.validatorAddress.textContent;
@@ -319,6 +422,8 @@ eHTML.stakeInput.confirmBtn.addEventListener('click', async () => {
     ws.send(JSON.stringify({ type: 'new_unsigned_transaction', data: transaction }));
     eHTML.stakeInput.input.value = 0;
 });
+
+// Miner Threads Event Listeners
 eHTML.minerThreads.input.addEventListener('change', () => {
     console.log('set_miner_threads', eHTML.minerThreads.input.value);
     ws.send(JSON.stringify({ type: 'set_miner_threads', data: eHTML.minerThreads.input.value }));
@@ -326,6 +431,7 @@ eHTML.minerThreads.input.addEventListener('change', () => {
 eHTML.minerThreads.decrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, -1));
 eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue(eHTML.minerThreads.input, 1));
 
+// Admin Panel Toggle Button
 eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
 
 function toggleAdminPanel() {
@@ -362,165 +468,135 @@ function toggleAdminPanel() {
     }
 }
 
-eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
-
-
-eHTML.modals.resetInfoModal.confirmBtn.addEventListener('click', () => {
-    switch (currentAction) {
-        case ACTIONS.ERASE_CHAIN_DATA:
-            ws.send(JSON.stringify({ type: 'erase_chain_data', data: nodeId }));
-            break;
-        case ACTIONS.HARD_RESET:
-            ws.send(JSON.stringify({ type: 'hard_reset', data: nodeId }));
-            break;
-        case ACTIONS.UPDATE_GIT:
-            ws.send(JSON.stringify({ type: 'update_git', data: nodeId }));
-            break;
-        case ACTIONS.FORCE_RESTART:
-            ws.send(JSON.stringify({ type: 'force_restart', data: nodeId }));
-            break;
-        case ACTIONS.REVALIDATE:
-            ws.send(JSON.stringify({ type: 'force_restart_revalidate_blocks', data: nodeId }));
-            break;
-        case ACTIONS.RESET_WALLET:
-            ws.send(JSON.stringify({ type: 'reset_wallet', data: nodeId }));
-            break;
-        default:
-            console.error('Unknown action:', currentAction);
-    }
-    currentAction = null;
-    closeModal();
-});
-
-
-
-eHTML.modals.resetInfoModal.cancelBtn.addEventListener('click', () => {
-    currentAction = null;
-    closeModal();
-});
-
-eHTML.modals.wrap.addEventListener('click', (event) => {
-    if (event.target === eHTML.modals.modalsWrapBackground) { 
-        currentAction = null; 
-        closeModal(); 
-    }
-});
-
+// Admin Buttons Event Listeners
 eHTML.forceRestartBtn.addEventListener('click', () => {
+    console.log('forceRestartBtn clicked'); // Debugging line
     currentAction = ACTIONS.FORCE_RESTART;
-    openConfirmationModal('Are you sure you want to restart the node? This action may interrupt ongoing processes.');
+    openModal(ACTIONS.FORCE_RESTART, {
+        message: 'Are you sure you want to restart the node? This action may interrupt ongoing processes.',
+        showInput: false
+    });
 });
+
 
 eHTML.RevalidateBtn.addEventListener('click', () => {
     currentAction = ACTIONS.REVALIDATE;
-    openConfirmationModal('Are you sure you want to revalidate the blocks? This may take some time.');
+    openModal(ACTIONS.REVALIDATE, {
+        message: 'Are you sure you want to revalidate the blocks? This may take some time.',
+        showInput: false
+    });
 });
 
 eHTML.resetInfoBtn.addEventListener('click', () => {
-    currentAction = ACTIONS.RESET_WALLET; 
-    openConfirmationModal('Are you sure you want to reset the wallet? This action cannot be undone.');
+    currentAction = ACTIONS.RESET_WALLET;
+    openModal(ACTIONS.RESET_WALLET, {
+        message: 'Are you sure you want to reset the wallet? Please enter your private key below.',
+        inputLabel: 'Private Key:',
+        inputType: 'password',
+        showInput: true,
+        showToggle: true
+    });
 });
 
 eHTML.eraseChainDataBtn.addEventListener('click', () => {
     currentAction = ACTIONS.ERASE_CHAIN_DATA;
-    openConfirmationModal('Are you sure you want to erase the chain data? This action cannot be undone.');
+    openModal(ACTIONS.ERASE_CHAIN_DATA, {
+        message: 'Are you sure you want to erase the chain data? This action cannot be undone.',
+        showInput: false
+    });
 });
 
 eHTML.hardResetBtn.addEventListener('click', () => {
     currentAction = ACTIONS.HARD_RESET;
-    openConfirmationModal('Are you sure you want to perform a hard reset? This will reset all data and resync the chain.');
+    openModal(ACTIONS.HARD_RESET, {
+        message: 'Are you sure you want to perform a hard reset? This will reset all data and resync the chain.',
+        showInput: false
+    });
 });
 
 eHTML.updateGitBtn.addEventListener('click', () => {
     currentAction = ACTIONS.UPDATE_GIT;
-    openConfirmationModal('Do you want to update the client using Git?');
+    openModal(ACTIONS.UPDATE_GIT, {
+        message: 'Do you want to update the client using Git?',
+        showInput: false
+    });
+});
+
+eHTML.modals.unifiedModal.cancelBtn.addEventListener('click', () => {
+    console.log('Cancel button clicked');
+    currentAction = null;
+    closeModal();
 });
 
 
-//#endregion
-
-//#region - UX FUNCTIONS
-function openModal(modalName = 'setup') {
+// Function to open unified modal
+function openModal(action, options) {
+    if (modalOpen) { return; }
     modalOpen = true;
+    currentAction = action;
+
     const modals = eHTML.modals;
-    if (!modals.wrap.classList.contains('fold')) { return; }
+    const modal = modals.unifiedModal;
 
-    modals.wrap.classList.remove('hidden');
-    modals.wrap.classList.remove('fold');
+    // Set the message
+    modal.message.textContent = options.message || 'Are you sure?';
 
-    for (let modalKey in modals) {
-        if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
-        const modalWrap = modals[modalKey].wrap;
-        modalWrap.classList.add('hidden');
-        if (modalKey === modalName) { modalWrap.classList.remove('hidden'); }
-    }
+    // Handle dynamic input
+    if (options.showInput) {
+        modal.inputSection.style.display = 'block';
+        modal.inputLabel.textContent = options.inputLabel || 'Input:';
+        modal.input.type = options.inputType || 'text';
+        modal.input.value = ''; // Clear previous value
 
-    const modalsWrap = eHTML.modals.wrap;
-    modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
-    modalsWrap.style.opacity = 0;
-    modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
-
-    anime({
-        targets: modalsWrap,
-        scaleX: 1,
-        scaleY: 1,
-        opacity: 1,
-        duration: 600,
-        easing: 'easeOutQuad',
-        complete: () => {
-            if (modalName === 'setup') { eHTML.modals.setup.privateKeyInput.focus(); }
-            if (modalName === 'resetInfo') { eHTML.modals.resetInfoModal.confirmBtn.focus(); }
+        // Set placeholder dynamically
+        if (options.inputPlaceholder) {
+            modal.input.placeholder = options.inputPlaceholder;
+        } else {
+            // Default placeholder based on input type
+            modal.input.placeholder = options.inputType === 'password' ? 'Enter your private key' : '';
         }
-    });
-    anime({
-        targets: modalsWrap,
-        clipPath: 'circle(100% at 50% 50%)',
-        delay: 200,
-        duration: 800,
-        easing: 'easeOutQuad',
-    });
-}
 
-function openConfirmationModal(message) {
-    modalOpen = true;
-    const modals = eHTML.modals;
-    if (!modals.wrap.classList.contains('fold')) { return; }
-
-    // Set the confirmation message
-    const confirmationMessage = document.getElementById('confirmationMessage');
-    if (confirmationMessage) {
-        confirmationMessage.textContent = message;
+        if (options.inputType === 'password') {
+            modal.toggleInputBtn.style.display = 'inline';
+            modal.input.type = 'password';
+            modal.toggleInputBtn.textContent = 'Show';
+        } else {
+            modal.toggleInputBtn.style.display = 'none';
+        }
+    } else {
+        modal.inputSection.style.display = 'none';
+        modal.input.value = '';
     }
 
     // Show the modal
-    modals.wrap.classList.remove('hidden');
-    modals.wrap.classList.remove('fold');
+    modals.wrap.classList.remove('hidden', 'fold'); // Remove both classes
+    modal.wrap.classList.remove('hidden'); // Ensure modal is visible
 
-    for (let modalKey in modals) {
-        if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
-        const modalWrap = modals[modalKey].wrap;
-        modalWrap.classList.add('hidden');
-        if (modalKey === 'resetInfoModal') { modalWrap.classList.remove('hidden'); }
-    }
+    // Initialize animation properties
+    modals.wrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
+    modals.wrap.style.opacity = 0;
+    modals.wrap.style.clipPath = 'circle(6% at 50% 50%)';
 
-    const modalsWrap = eHTML.modals.wrap;
-    modalsWrap.style.transform = 'scaleX(0) scaleY(0) skewX(0deg)';
-    modalsWrap.style.opacity = 0;
-    modalsWrap.style.clipPath = 'circle(6% at 50% 50%)';
-
+    // Animate the modal appearance
     anime({
-        targets: modalsWrap,
+        targets: modals.wrap,
         scaleX: 1,
         scaleY: 1,
         opacity: 1,
         duration: 600,
         easing: 'easeOutQuad',
         complete: () => {
-            document.getElementById('confirmResetBtn').focus();
+            if (options.showInput) {
+                modal.input.focus();
+                console.log('Focused on input field.');
+            } else {
+                modal.confirmBtn.focus();
+                console.log('Focused on confirm button.');
+            }
         }
     });
     anime({
-        targets: modalsWrap,
+        targets: modals.wrap,
         clipPath: 'circle(100% at 50% 50%)',
         delay: 200,
         duration: 800,
@@ -528,54 +604,62 @@ function openConfirmationModal(message) {
     });
 }
 
+
+
+// Function to close unified modal
 function closeModal() {
+    if (!modalOpen) { return false; }
     modalOpen = false;
-	const modalsWrap = eHTML.modals.wrap;
-	if (modalsWrap.classList.contains('fold')) { return false; }
-	modalsWrap.classList.add('fold');
+    const modals = eHTML.modals;
+    const modal = modals.unifiedModal;
+    const modalsWrap = modals.wrap;
 
-	anime({
-		targets: modalsWrap,
-		clipPath: 'circle(6% at 50% 50%)',
-		duration: 600,
-		easing: 'easeOutQuad',
-	});
-	anime({
-		targets: modalsWrap,
-		scaleX: 0,
-		scaleY: 0,
-		opacity: 0,
-		duration: 800,
-		easing: 'easeOutQuad',
-		complete: () => {
-			if (!modalsWrap.classList.contains('fold')) { return; }
+    if (modalsWrap.classList.contains('fold')) { return false; }
+    modalsWrap.classList.add('fold');
 
-			modalsWrap.classList.add('hidden');
-			const modals = eHTML.modals;
-			for (let modalKey in modals) {
-				if (modalKey === 'wrap' || modalKey === 'modalsWrapBackground') { continue; }
-				const modalWrap = modals[modalKey].wrap;
-				modalWrap.classList.add('hidden');
-			}
-		}
-	});
+    anime({
+        targets: modalsWrap,
+        clipPath: 'circle(6% at 50% 50%)',
+        duration: 600,
+        easing: 'easeOutQuad',
+    });
+    anime({
+        targets: modals.wrap,
+        scaleX: 0,
+        scaleY: 0,
+        opacity: 0,
+        duration: 800,
+        easing: 'easeOutQuad',
+        complete: () => {
+            if (!modalsWrap.classList.contains('fold')) { return; }
+
+            modals.wrap.classList.add('hidden');
+            modal.input.value = '';
+            modal.inputSection.style.display = 'none';
+            modalsWrap.classList.remove('fold'); // Reset for next use
+        }
+    });
 }
-//#endregion
 
-//#region FUNCTIONS -------------------------------------------------------
-function formatInputValueAsCurrency(input) {
-    const cleanedValue = input.value.replace(",","").replace(".","");
-    const intValue = parseInt(cleanedValue);
-    if (isNaN(intValue)) { input.value = ''; return; }
-    input.value = utils.convert.number.formatNumberAsCurrency(intValue);
+function togglePasswordVisibility(inputElement, toggleButton) {
+    if (inputElement.type === 'password') {
+        inputElement.type = 'text';
+        toggleButton.textContent = 'Hide';
+    } else {
+        inputElement.type = 'password';
+        toggleButton.textContent = 'Show';
+    }
 }
 function adjustInputValue(targetInput, delta, min = 1, max = 16) {
     const currentValue = parseInt(targetInput.value);
-    if (delta < 0) {
-        targetInput.value = Math.max(currentValue + delta, min);
+    if (isNaN(currentValue)) {
+        targetInput.value = min;
     } else {
-        targetInput.value = Math.min(currentValue + delta, max);
+        if (delta < 0) {
+            targetInput.value = Math.max(currentValue + delta, min);
+        } else {
+            targetInput.value = Math.min(currentValue + delta, max);
+        }
     }
     targetInput.dispatchEvent(new Event('change'));
 }
-//#endregion --------------------------------------------------------------

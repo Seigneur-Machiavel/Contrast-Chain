@@ -196,6 +196,7 @@ class P2PNetwork extends EventEmitter {
     #handlePeerConnect = (event) => {
         const peerId = event.detail.toString();
         this.logger.debug({ peerId }, 'Peer connected');
+        this.reputationManager.applyPositive({peerId:peerId},ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE);
 
         // Retrieve multiaddrs of the connected peer
         const connections = this.p2pNode.getConnections(peerId);
