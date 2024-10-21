@@ -70,33 +70,32 @@ input::-webkit-inner-spin-button {
 
 /* Heading Styles */
 h1 {
-    font-size: 1.5rem; /* Reduced from default */
+    font-size: 1.5rem;
     margin: 10px 0;
     font-weight: 600;
 }
 
 h2 {
-    font-size: 1.25rem; /* Added for consistency */
+    font-size: 1.25rem;
     margin: 10px 0;
     font-weight: 600;
 }
 
 h3 {
-    font-size: 1rem; /* Reduced from default */
+    font-size: 1rem; 
     margin: 8px 0;
     font-weight: 600;
 }
 
-/* Specific Heading Adjustments */
 .container.validator h1,
 .container.miner h1,
 .global-info h1 {
-    font-size: 1.5rem; /* Uniform size within these containers */
+    font-size: 1.5rem; 
 }
 
 .spacedText h3,
 #topBar h3 {
-    font-size: 1rem; /* Uniform size for h3 within spacedText and topBar */
+    font-size: 1rem; 
 }
 
 
@@ -117,7 +116,7 @@ button {
 }
 
 button:hover {
-    background: #6fa8dc; /* Lighter shade on hover */
+    background: #6fa8dc; 
 }
 
 /* Specific Button Classes */
@@ -134,7 +133,7 @@ button:hover {
 .editButton {
     cursor: pointer;
     height: fit-content;
-    font-size: 18px; /* Reduced from 22px */
+    font-size: 18px; 
     margin-left: 10px;
 }
 
@@ -154,13 +153,13 @@ button:hover {
 }
 
 #toggleModalInput:hover {
-    background: #6fa8dc; /* Lighter shade on hover */
+    background: #6fa8dc;
 }
 
 
 /* Modal Confirmation and Cancel Buttons */
 #modalConfirmBtn {
-    background: #28a745; /* Green for confirm */
+    background: #28a745;
     border: none;
 }
 
@@ -169,7 +168,7 @@ button:hover {
 }
 
 #modalCancelBtn {
-    background: #dc3545; /* Red for cancel */
+    background: #dc3545; 
     border: none;
 }
 
@@ -345,7 +344,7 @@ input[type="text"] {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px; /* Adds 20px spacing between input and buttons */
+    gap: 20px; 
 }
 
 
@@ -363,7 +362,7 @@ input[type="text"] {
     background: var(--input-bg);
     color: var(--foreground);
     font-size: 1rem;
-    margin-bottom: 20px; /* Adds 20px space below the input */
+    margin-bottom: 20px;
 }
 
 
@@ -463,7 +462,7 @@ input[type="text"] {
 }
 
 .disconnect-btn {
-    background-color: #e74c3c; /* Red */
+    background-color: #e74c3c;
     color: white;
 }
 
@@ -472,7 +471,7 @@ input[type="text"] {
 }
 
 .ask-sync-btn {
-    background-color: #3498db; /* Blue */
+    background-color: #3498db;
     color: white;
 }
 

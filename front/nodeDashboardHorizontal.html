@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contrast Node Dashboard</title>
+    <!-- External Libraries -->
+    <script crossorigin src="https://unpkg.com/@msgpack/msgpack"></script>
+    <script src="../externalLibs/anime.min.js"></script>
+    <script src="./front/nodeDashboardScript.mjs" type="module"></script>
+    <link rel="stylesheet" href="./front/nodeDashboard.css">
+</head>
+
+<body>
+    <!-- Header Section -->
+    <header id="topBar">
+        <h1>Contrast Node v1.0</h1>
+        <div class="adminPanelContainer">
+            <button id="toggleAdminPanel" class="toggleAdminPanelButton">Show Admin Panel</button>
+            <div class="btnWrap hidden" aria-hidden="true">
+                <h3>Roles: <span id="roles"></span></h3>
+                <div>
+                    <button id="forceRestart">Restart</button>
+                    <button id="Revalidate">Revalidate</button>
+                    <button id="resetInfo">Reset Wallet Data</button>
+                    <button id="hardReset">Hard Reset (Git)</button>
+                    <button id="updateGit">Update (Git)</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main id="dashboard">
+        <div class="dashboard-inner">
+
+            <!-- Validator Section -->
+            <section class="container validator" aria-labelledby="validatorTitle">
+                <header class="spacedText">
+                    <h1 id="validatorTitle">Validator</h1>
+                    <h3 class="heightText">Height: <span id="validatorHeight">0</span></h3>
+                </header>
+                <div class="spacedText">
+                    <h3>Address:</h3>
+                    <h3 id="validatorAddress"></h3>
+                </div>
+                <div class="spacedText">
+                    <h3>Reward Address:</h3>
+                    <div class="address-edit">
+                        <h3 id="validatorRewardAddress"></h3>
+                        <button id="validatorAddressEditBtn" class="editButton" aria-label="Edit Reward Address">✎</button>
+                    </div>
+                </div>
+                <div class="spacedText">
+                    <h3>Balance:</h3>
+                    <h3 id="validatorBalance">0.000000</h3>
+                </div>
+                <div class="spacedText">
+                    <h3>Staked:</h3>
+                    <h3 id="staked">0.000000</h3>
+                </div>
+                <div class="spacedText">
+                    <h3>Staking:</h3>
+                    <div id="stakeInputWrap" class="stake-input-wrap">
+                        <input type="number" class="amountInput" value="1.000000" min="0" step="0.000001" aria-label="Stake Amount">
+                        <button>Stake</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Miner Section -->
+            <section class="container miner" aria-labelledby="minerTitle">
+                <header class="spacedText">
+                    <h1 id="minerTitle">Miner</h1>
+                    <h3 class="heightText">Height: <span id="minerHeight">0</span></h3>
+                </header>
+                <div class="spacedText">
+                    <h3>Address:</h3>
+                    <div class="address-edit">
+                        <h3 id="minerAddress"></h3>
+                        <button id="minerAddressEditBtn" class="editButton" aria-label="Edit Miner Address">✎</button>
+                    </div>
+                </div>
+                <div class="spacedText">
+                    <h3>Balance:</h3>
+                    <h3 id="minerBalance">0.000000</h3>
+                </div>
+                <div class="spacedText">
+                    <h3>HashRate:</h3>
+                    <h3><span id="hashRate" value="0"></span> H/s</h3>
+                </div>
+                <div class="spacedText">
+                    <h3>Threads:</h3>
+                    <div id="minerThreadsIncrementalInput" class="incrementalInput">
+                        <button aria-label="Decrease Threads">-</button>
+                        <input type="number" value="1" min="1" max="16" aria-label="Number of Threads">
+                        <button aria-label="Increase Threads">+</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Global Information Section -->
+            <section class="container global-info" aria-labelledby="globalInfoTitle">
+                <header class="spacedText">
+                    <h1 id="globalInfoTitle">Node Information</h1>
+                </header>
+
+                <div class="spacedText">
+                    <h3>Client Version:</h3>
+                    <h3 id="clientVersion">v0.1</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Node State:</h3>
+                    <h3 id="nodeState">Sync/Idle/Digest</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Last Block Info:</h3>
+                    <h3 id="lastBlockInfo">N/A</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Tx in Mempool:</h3>
+                    <h3 id="txInMempool">0</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Average Block Time:</h3>
+                    <h3 id="averageBlockTime">0 seconds</h3>
+                </div>
+
+                <!-- Network Section -->
+                <header class="spacedText">
+                    <h1>Network</h1>
+                </header>
+
+                <div class="spacedText">
+                    <h3>Peer ID:</h3>
+                    <h3 id="peerId">N/A</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Peers Connected:</h3>
+                    <h3 id="peersConnected">0</h3>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Connected Peers:</h3>
+                    <ul id="peersConnectedList" class="network-list" aria-label="Connected Peers">
+                        <!-- List Items -->
+                    </ul>
+                </div>
+
+                <div class="spacedText">
+                    <h3>Reputation Scores:</h3>
+                    <ul id="repScoreList" class="network-list" aria-label="Reputation Scores">
+                        <!-- List Items -->
+                    </ul>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- Modals -->
+    <div class="modalsWrap hidden fold" aria-hidden="true">
+        <div class="modalsWrapBackground" tabindex="-1"></div>
+
+        <!-- Unified Modal -->
+        <div class="modalWrap hidden" id="unifiedModalWrap" role="dialog" aria-modal="true" aria-labelledby="modalMessage">
+            <div class="modal">
+                <form id="unifiedModalForm">
+                    <div class="spacedText">
+                        <p id="modalMessage">Are you sure?</p>
+                    </div>
+                    <!-- Dynamic Input Section -->
+                    <div class="spacedText" id="modalInputSection" style="display: none;">
+                        <label for="modalInput" id="modalInputLabel">Input:</label>
+                        <div id="modalInputWrap">
+                            <input type="password" id="modalInput" placeholder="" aria-labelledby="modalInputLabel">
+                            <button type="button" id="toggleModalInput" aria-label="Toggle Input Visibility">Show</button>
+                        </div>
+                    </div>
+                    <div class="spacedText">
+                        <button type="button" id="modalCancelBtn">Cancel</button>
+                        <button type="button" id="modalConfirmBtn">Confirm</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</body>
+
+</html>

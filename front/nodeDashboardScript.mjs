@@ -482,7 +482,6 @@ eHTML.minerThreads.incrementBtn.addEventListener('click', () => adjustInputValue
 
 // Admin Panel Toggle Button
 eHTML.toggleAdminPanelBtn.addEventListener('click', toggleAdminPanel);
-
 function toggleAdminPanel() {
     const isHidden = eHTML.adminPanelButtons.classList.contains('hidden');
 
@@ -490,32 +489,53 @@ function toggleAdminPanel() {
         // Show the panel
         console.log('toggleAdminPanelBtn clicked - Show');
         eHTML.adminPanelButtons.classList.remove('hidden');
+        // Ensure the element is visible and has a maxHeight of 0 for the animation to start
         eHTML.adminPanelButtons.style.maxHeight = '0px';
+        // Force a reflow to apply the maxHeight before animating
+        eHTML.adminPanelButtons.offsetHeight; // This forces the browser to recognize the change
+
+        // Get the full height of the panel
+        const fullHeight = eHTML.adminPanelButtons.scrollHeight + 'px';
+
         anime({
             targets: eHTML.adminPanelButtons,
-            maxHeight: ['0px', '200px'], // adjust as needed
-            duration: 3000,
-            easing: 'easeOutQuart',
+            maxHeight: [0, fullHeight],
+            duration: 200,
+            easing: 'easeInOutQuad',
             begin: () => {
                 eHTML.toggleAdminPanelBtn.textContent = 'Hide Admin Panel';
+                eHTML.adminPanelButtons.style.overflow = 'hidden'; // Ensure overflow is hidden during animation
+            },
+            complete: () => {
+                // Optionally, remove the maxHeight to allow the panel to adjust dynamically if content changes
+                eHTML.adminPanelButtons.style.maxHeight = 'none';
             }
         });
     } else {
         // Hide the panel
         console.log('toggleAdminPanelBtn clicked - Hide');
+        // Get the current height to animate from
+        const currentHeight = eHTML.adminPanelButtons.scrollHeight;
+
         anime({
             targets: eHTML.adminPanelButtons,
-            maxHeight: ['200px', '0px'], // adjust as needed
-            duration: 1000,
-            easing: 'easeOutQuart',
+            maxHeight: [currentHeight + 'px', 0],
+            duration: 200,
+            easing: 'easeInOutQuad',
+            begin: () => {
+                eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
+                eHTML.adminPanelButtons.style.overflow = 'hidden'; // Ensure overflow is hidden during animation
+            },
             complete: () => {
                 eHTML.adminPanelButtons.classList.add('hidden');
                 eHTML.adminPanelButtons.style.maxHeight = '0px';
-                eHTML.toggleAdminPanelBtn.textContent = 'Show Admin Panel';
+                // Optionally, reset overflow
+                eHTML.adminPanelButtons.style.overflow = '';
             }
         });
     }
 }
+
 
 // Admin Buttons Event Listeners
 eHTML.forceRestartBtn.addEventListener('click', () => {
@@ -632,7 +652,7 @@ function openModal(action, options) {
         scaleX: 1,
         scaleY: 1,
         opacity: 1,
-        duration: 600,
+        duration: 1000,
         easing: 'easeOutQuad',
         complete: () => {
             if (options.showInput) {
@@ -652,7 +672,6 @@ function openModal(action, options) {
         easing: 'easeOutQuad',
     });
 }
-
 
 
 // Function to close unified modal
