@@ -75,17 +75,7 @@ export class SyncHandler {
             }
         } catch (err) {
             this.logger.error({ error: err.message }, 'Stream error occurred');
-        } finally {
-            if (stream) {
-                try {
-                    stream.close();
-                } catch (closeErr) {
-                    this.logger.error({ error: closeErr.message }, 'Failed to close stream');
-                }
-            } else {
-                this.logger.warn('Stream is undefined; cannot close stream');
-            }
-        }
+        } 
     }
 
     /** Handles incoming messages based on their type.
