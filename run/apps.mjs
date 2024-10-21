@@ -180,6 +180,14 @@ export class DashboardWsApp {
     }
     #onConnection(ws, req) {
         const clientIp = req.socket.remoteAddress === '::1' ? 'localhost' : req.socket.remoteAddress;
+
+                // Allow only localhost connections
+        if (clientIp !== '127.0.0.1' && clientIp !== '::1') {
+            console.warn(`[DASHBOARD] Connection attempt from unauthorized IP: ${clientIp}`);
+            ws.close(1008, 'Unauthorized'); // 1008: Policy Violation
+            return;
+        }
+
         console.log(`[DASHBOARD] ${this.readableNow()} Client connected: ${clientIp}`);
         ws.on('close', function close() { console.log('Connection closed'); });
 
