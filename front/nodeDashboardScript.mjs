@@ -236,10 +236,34 @@ function renderPeers(peers) {
 
     peers.forEach(peerId => {
         const li = document.createElement('li');
-        li.textContent = peerId;
+        li.classList.add('peer-item'); // Optional: Add a class for styling
+
+        // Create a span to hold the peer ID
+        const peerSpan = document.createElement('span');
+        peerSpan.textContent = peerId;
+        peerSpan.classList.add('peer-id'); // Optional: Add a class for styling
+
+        // Create Disconnect Button
+        const disconnectBtn = document.createElement('button');
+        disconnectBtn.textContent = 'Disconnect';
+        disconnectBtn.classList.add('disconnect-btn'); // Add class for styling
+        disconnectBtn.dataset.peerId = peerId; // Store peerId for reference
+
+        // Create Ask Sync Button
+        const askSyncBtn = document.createElement('button');
+        askSyncBtn.textContent = 'Ask Sync';
+        askSyncBtn.classList.add('ask-sync-btn'); // Add class for styling
+        askSyncBtn.dataset.peerId = peerId; // Store peerId for reference
+
+        // Append elements to the list item
+        li.appendChild(peerSpan);
+        li.appendChild(disconnectBtn);
+        li.appendChild(askSyncBtn);
+
         eHTML.peersConnectedList.appendChild(li);
     });
 }
+
 
 function renderScores(scores) {
     eHTML.repScoresList.innerHTML = ''; // Clear existing list
