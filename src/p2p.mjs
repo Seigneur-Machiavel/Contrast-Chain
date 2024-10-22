@@ -170,6 +170,8 @@ class P2PNetwork extends EventEmitter {
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
                 const ma = multiaddr(addr);
+                const isBanned = this.reputationManager.isPeerBanned({ip: ma.toString()});
+                this.logger.info({ component: 'P2PNetwork bootstrap', bootstrapNode: addr, isBanned }, 'Connecting to bootstrap node');
                 await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
                 //await this.p2pNode.components.connectionManager.openConnection(ma);
                 this.logger.info({ component: 'P2PNetwork', bootstrapNode: addr }, 'Connected to bootstrap node');
@@ -183,34 +185,42 @@ class P2PNetwork extends EventEmitter {
     #setupEventListeners() {
         this.p2pNode.addEventListener('peer:connect', this.#handlePeerConnect);
         this.p2pNode.addEventListener('peer:disconnect', this.#handlePeerDisconnect);
-        this.p2pNode.addEventListener('peer:discovery', async (event) => {
-
-            const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
-            this.logger.info({ peerId }, 'Peer discovered');
-            const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
-            const ma = peerId.multiaddrs ?? peerInfo.multiaddrs;
-            if (!ma) {
-                this.logger.error({ component: 'P2PNetwork', peerId }, 'Failed to find multiaddrs for peer');
-                return;
-            }
-            try 
-            {
-            await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
-            }
-            catch (error) {
-                this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to dial peer');
-            }
-
-        });
+        this.p2pNode.addEventListener('peer:discovery', this.#handlePeerDiscovery);
         this.p2pNode.services.pubsub.addEventListener('message', this.#handlePubsubMessage);
     }
+
+    #handlePeerDiscovery = async (event) => {
+        const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
+        const isBanned = this.reputationManager.isPeerBanned({peerId :event.detail.id});
+        this.logger.info({ peerId, isBanned }, 'Peer discovered');
+
+        const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
+        const ma = peerId.multiaddrs ?? peerInfo.multiaddrs;
+        if (!ma) {
+            this.logger.error({ component: 'P2PNetwork', peerId }, 'Failed to find multiaddrs for peer');
+            return;
+        }
+        try {
+            const isBanned = this.reputationManager.isPeerBanned({ip: ma.toString()});
+            this.logger.info({ ma, isBanned }, 'Dialing after discovery');
+            await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
+        }
+        catch (error) {
+            this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to dial peer');
+        }
+    };
 
     /** @param {CustomEvent} event */
     #handlePeerConnect = (event) => {
         const peerId = event.detail.toString();
         this.logger.debug({ peerId }, 'Peer connected');
-        this.reputationManager.applyPositive({peerId:peerId},ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE);
 
+        const isBanned = this.reputationManager.isPeerBanned({peerId});
+        if (isBanned) {
+            this.logger.warn({ peerId }, 'Peer is banned, closing connection');
+            this.closeConnection(peerId);
+            return;
+        }
         // Retrieve multiaddrs of the connected peer
         const connections = this.p2pNode.getConnections(peerId);
         let peerInfo = { peerId, address: null };
@@ -258,6 +268,8 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
+        const isBanned = this.reputationManager.isPeerBanned({peerId: from});
+        this.logger.debug({ component: 'P2PNetwork', topic, from, isBanned }, 'Received pubsub message');
         // check if binary
         if (!(data instanceof Uint8Array)) { console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
         const byteLength = data.byteLength;
@@ -402,7 +414,7 @@ class P2PNetwork extends EventEmitter {
             return stream;
         } catch (error) {
             this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to acquire stream');
-            return null;
+            throw error;
         }
     }
     /**
