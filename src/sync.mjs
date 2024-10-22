@@ -240,6 +240,7 @@ export class SyncHandler {
             if (response === undefined) { return false; }
             if (response.status !== 'success') { return false; }
             if (typeof response.currentHeight !== 'number') { return false; }
+            this.logger.debug({ peerMultiaddr, currentHeight: response.currentHeight }, 'Got peer status');
             return response;
         }
         catch (error) {
