@@ -187,7 +187,47 @@ export class SyncHandler {
         console.log(`[SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight} compared to highestPeerHeight: ${highestPeerHeight}`);
         return true;
     }
-
+    // TODO: unify syncWithPeer and syncWithKnownPeers
+    async syncWithPeer(peerId) {
+        this.node.blockchainStats.state = "syncing";
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+        if (this.node.p2pNetwork.subscriptions.size > 0) {
+            console.log(`[SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics`);
+            for (const topic of uniqueTopics) { await this.node.p2pNetwork.unsubscribe(topic); }
+        }
+        this.isSyncing = true;
+        this.logger.info(`[SYNC] Starting syncWithPeer at #${this.node.blockchain.currentHeight}`);
+        const peerData = this.node.p2pNetwork.peers.get(peerId);
+        if (!peerData) { return false; }
+        const { address } = peerData;
+        const ma = multiaddr(address);
+        const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma);
+        if (!peerStatus || !peerStatus.currentHeight) { return false; }
+        const peerHeight = peerStatus.currentHeight;
+        if (peerHeight <= this.node.blockchain.currentHeight) {
+            this.logger.debug(`[SYNC] Already at the highest height, no need to sync`);
+            this.isSyncing = false;
+            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+            return true;
+        }
+        console.info(`[SYNC] Peer height: ${peerHeight}, current height: ${this.node.blockchain.currentHeight}`);
+        try {
+            const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, peerHeight);
+            this.logger.info({ peerId }, 'Successfully synced with peer');
+            this.isSyncing = false;
+            if (!synchronized) { return false; }
+            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+            return true;
+        } catch (error) {
+            await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
+            if (error instanceof SyncRestartError) {
+                this.logger.error({ error: error.message }, 'Sync restart error occurred');
+                await this.handleSyncFailure();
+                return false;
+            }
+            return false;
+        }
+    }
     /** Gets the status of a peer.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer.
