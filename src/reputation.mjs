@@ -21,6 +21,10 @@ class ReputationManager extends EventEmitter {
             cleanupInterval: 60 * 60 * 1000, // 1 hour
             offenseScoreMap: {},
             maxScore: 100,
+             // Spam Detection Configurations
+             spamMaxActions: 200, // Maximum allowed actions within the time window
+             spamTimeWindow: 60 * 1000, // Time window in milliseconds (e.g., 1 minute)
+             spamCleanupInterval: 5 * 60 * 1000, // Interval to clean up old actions (e.g., 5 minutes)
         };
 
         this.options = { ...defaultOptions, ...options };
@@ -79,6 +83,16 @@ class ReputationManager extends EventEmitter {
         );
         // Periodically clean up expired temporary bans
         this.banCleanupInterval = setInterval(() => this.cleanupExpiredBans(), this.options.cleanupInterval);
+        
+        // Initialize action tracking for spam detection
+        /** @type {Map<string, Array<number>>} */
+        this.actionTimestamps = new Map(); // Map of identifier -> array of action timestamps
+
+        this.spamCleanupInterval = setInterval(
+            () => this.cleanupOldActions(),
+            this.options.spamCleanupInterval
+        );
+   
     }
 
     static OFFENSE_TYPES = {
@@ -448,6 +462,72 @@ class ReputationManager extends EventEmitter {
 
         return scoresList;
     }
-}
+    /**
+     * Record an action performed by a peer for spam detection.
+     * If the peer exceeds the maximum number of allowed actions within the time window,
+     * apply a MESSAGE_SPAMMING offense.
+     * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
+     */
+    recordAction(peer) {
+        // Update associations
+        this.updateAssociations(peer);
 
+        const identifiers = this.getAssociatedIdentifiers(peer);
+
+        if (identifiers.size === 0) {
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
+        }
+
+        const now = Date.now();
+        const windowStart = now - this.options.spamTimeWindow;
+
+        for (const identifier of identifiers) {
+            if (!this.actionTimestamps.has(identifier)) {
+                this.actionTimestamps.set(identifier, []);
+            }
+
+            const timestamps = this.actionTimestamps.get(identifier);
+
+            // Add current timestamp
+            timestamps.push(now);
+
+            // Remove timestamps outside the current window
+            while (timestamps.length > 0 && timestamps[0] < windowStart) {
+                timestamps.shift();
+            }
+
+            // Check if the number of actions exceeds the maximum allowed
+            if (timestamps.length > this.options.spamMaxActions) {
+                // Apply MESSAGE_SPAMMING offense
+                this.applyOffense(peer, ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING);
+
+                // Optionally, you can clear the timestamps to avoid repeated offenses
+                // timestamps.length = 0;
+
+                // Emit an event for spam detection
+                this.emit('spamDetected', { peer, identifier, actionCount: timestamps.length });
+            }
+        }
+    }
+
+    /**
+     * Periodically clean up old action timestamps to prevent memory leaks.
+     */
+    cleanupOldActions() {
+        const now = Date.now();
+        const windowStart = now - this.options.spamTimeWindow;
+
+        for (const [identifier, timestamps] of this.actionTimestamps.entries()) {
+            // Remove timestamps outside the current window
+            while (timestamps.length > 0 && timestamps[0] < windowStart) {
+                timestamps.shift();
+            }
+
+            // If no timestamps remain, remove the identifier from the map
+            if (timestamps.length === 0) {
+                this.actionTimestamps.delete(identifier);
+            }
+        }
+    }
+}
 export default ReputationManager;
