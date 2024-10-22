@@ -11,7 +11,7 @@ let txsTaskDoneThisBlock = {};
 const network = 'mainnet'; // 'local' | 'testnet' | 'mainnet'
 const port = 27260; //? 27260
 const testParams = {
-    privKey: "dcd47e63a8bf172af0845ca0856a57d7264e64aeab657ecc69ccf3045d6c5cb3",
+    privKey: "ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27",
     unsafeSpamMode: false,
     initListenAddress: network === 'local' ? '/ip4/0.0.0.0/tcp/0' : `/ip4/0.0.0.0/tcp/${port}`,
     useDevArgon2: false, // true => 100txs processProposal: ~7sec | false => 100txs processProposal: ~5.8sec

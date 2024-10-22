@@ -489,10 +489,11 @@ export class ObserverWsApp {
                     if (data === undefined) { console.error('data undefined'); return; }
                     const gaedParams = {
                         address: typeof data === 'string' ? data : data.address,
-                        from: typeof data === 'object' ? data.from : Math.max(this.node.blockchain.currentHeight - 90, 0),
+                        //from: typeof data === 'object' ? data.from : Math.max(this.node.blockchain.currentHeight - 90, 0),
+                        from: typeof data === 'object' ? data.from : 0,
                         to: typeof data === 'object' ? data.to || this.node.blockchain.currentHeight : this.node.blockchain.currentHeight,
                     }
-                    if (!gaedParams.from || gaedParams.from > gaedParams.to) { gaedParams.from = Math.max(gaedParams.to - 90, 0); }
+                    //if (!gaedParams.from || gaedParams.from > gaedParams.to) { gaedParams.from = Math.max(gaedParams.to - 90, 0); }
 
                     const { addressUTXOs, addressTxsReferences } = await this.node.getAddressExhaustiveData(gaedParams.address, gaedParams.from, gaedParams.to);
                     ws.send(JSON.stringify({ type: 'address_exhaustive_data_requested', data: { address: gaedParams.address, addressUTXOs, addressTxsReferences } }));

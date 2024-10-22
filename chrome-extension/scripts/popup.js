@@ -563,19 +563,6 @@ function newAddressBtnLoadingToggle() {
         });
     }
 }
-/*function updateActiveAddressTxHistory() { // DEPRECATED
-    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
-    if (!explorerOpenned) { return; }
-
-    const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
-    eHTML.txHistoryAddress.innerText = activeAddress;
-
-    chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', activeAddress });
-    if (!addressesExhaustiveData[activeAddress]) { return; }
-    
-    const addressExhaustiveData = addressesExhaustiveData[activeAddress];
-    fillTxHistoryWithTxsReferencesElement(addressExhaustiveData);
-}*/
 /** @param {AddressExhaustiveData} addressExhaustiveData */
 function fillTxHistoryWithActiveAddressData() {
     const txHistoryTable = eHTML.txHistoryTable;
@@ -584,6 +571,8 @@ function fillTxHistoryWithActiveAddressData() {
     for (let i = 0; i < txHistoryRows.length; i++) { txHistoryRows[i].remove(); }
 
     const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
+    eHTML.txHistoryAddress.innerText = activeAddress;
+
     const addressExhaustiveData = addressesExhaustiveData[activeAddress];
     if (!addressExhaustiveData) { return; }
     
@@ -839,7 +828,7 @@ function updateAddressExhaustiveDataFromNode(address) {
         const highestKnownUTXOsHeight = addressesExhaustiveData[address].highestKnownUTXOsHeight();
         from = Math.min(highestKnownTxsHeight, highestKnownUTXOsHeight);
     }
-
+    console.log(`Updating ${address} from: ${from}`);
     chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', address, from });
 }
 //#endregion
@@ -997,7 +986,8 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (activeWallet.accounts[activeAddressPrefix][0]) {
         for (let i = 0; i < activeWallet.accounts[activeAddressPrefix].length; i++) {
             const address = activeWallet.accounts[activeAddressPrefix][i].address;
-            chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', address });
+            updateAddressExhaustiveDataFromNode(address);
+            //chrome.runtime.sendMessage({action: 'get_address_exhaustive_data', address });
             chrome.runtime.sendMessage({action: 'subscribe_balance_update', address });
         }
     }
