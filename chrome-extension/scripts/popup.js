@@ -8,13 +8,13 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { Wallet } = require("../contrast/src/wallet.mjs");
     const utils = require("../contrast/src/utils.mjs").default;
     const { Account } = require("../contrast/src/account.mjs");
-    const { Transaction, Transaction_Builder } = require("./contrast/src/transaction.mjs");
+    const { Transaction, Transaction_Builder } = require("../contrast/src/transaction.mjs");
 }
 
 /**
-* @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
 * @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
+* @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
 */
 
 /** @type {BlockExplorerWidget} */
@@ -564,11 +564,10 @@ function newAddressBtnLoadingToggle() {
     }
 }
 /** @param {AddressExhaustiveData} addressExhaustiveData */
-function fillTxHistoryWithActiveAddressData() {
+function fillTxHistoryWithActiveAddressData(maxTxs = 10) {
     const txHistoryTable = eHTML.txHistoryTable;
     const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
-    const txHistoryRows = tbody.getElementsByTagName('tr');
-    for (let i = 0; i < txHistoryRows.length; i++) { txHistoryRows[i].remove(); }
+    tbody.innerHTML = '';
 
     const activeAddress = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]].address;
     eHTML.txHistoryAddress.innerText = activeAddress;
@@ -578,14 +577,43 @@ function fillTxHistoryWithActiveAddressData() {
     
     // FILLING THE ADDRESS TXS HISTORY
     const txsReferences = addressExhaustiveData.addressTxsReferences || [];
-    for (const txReference of txsReferences) {
-        const transaction = blockExplorerWidget.transactionsByReference[txReference];
+    //for (const txReference of txsReferences) {
+    let shownTxs = 0;
+    let shownTxsReferences = [];
+    for (let i = txsReferences.length; i > 0; i--) {
+        const txReference = txsReferences[i - 1];
         const row = createHtmlElement('tr', undefined, ['w-addressTxDate'], tbody);
         const amountText = createHtmlElement('td', undefined, ['w-addressTxAmount'], row);
-        amountText.textContent = transaction ? utils.convert.number.formatNumberAsCurrencyChange(transaction.balanceChange) : '...';
+        amountText.textContent = '...';
         const feeText = createHtmlElement('td', undefined, ['w-addressTxFee'], row);
-        feeText.textContent = transaction ? utils.convert.number.formatNumberAsCurrency(transaction.fee) : '...';
+        feeText.textContent = '...';
         createHtmlElement('td', undefined, ['w-addressTxReference'], row).textContent = txReference;
+
+        shownTxsReferences.push(txReference);
+        
+        shownTxs++;
+        console.log(`shownTxs: ${shownTxs} / ${maxTxs}`);
+        if (shownTxs >= maxTxs) { break; }
+    }
+    
+    for (const txReference of shownTxsReferences) {
+        chrome.runtime.sendMessage({ action: "get_transaction_with_balanceChange_by_reference", txReference, address: activeAddress });
+    }
+}
+/** @param {TransactionWithDetails} txWithDetails */
+function fillInfoOfTxInHistory(txWithDetails) {
+    const txRef = txWithDetails.txReference;
+
+    const txHistoryTable = eHTML.txHistoryTable;
+    const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
+    for (const txRow of tbody.getElementsByTagName('tr')) {
+        if (txRow.getElementsByTagName('td')[2].textContent !== txRef) { continue; }
+
+        const amountText = txRow.getElementsByClassName('w-addressTxAmount')[0];
+        amountText.textContent = utils.convert.number.formatNumberAsCurrencyChange(txWithDetails.balanceChange);
+        const feeText = txRow.getElementsByClassName('w-addressTxFee')[0];
+        feeText.textContent = utils.convert.number.formatNumberAsCurrency(txWithDetails.fee);
+        break;
     }
 }
 function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
@@ -1351,6 +1379,13 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     let targetAccountIndex;
     let targetAccount;
     switch (request.action) {
+        case 'transaction_requested':
+            /** @type {TransactionWithDetails} */
+            const txWithDetails = request.transactionWithDetails;
+            console.log(`[POPUP] received transaction_requested: ${JSON.stringify(txWithDetails)}`);
+
+            fillInfoOfTxInHistory(txWithDetails);
+            break;
         case 'address_exhaustive_data_requested':
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             //console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);

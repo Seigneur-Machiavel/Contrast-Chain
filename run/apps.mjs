@@ -524,7 +524,7 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
                     break;
                 default:
-                    ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
+                    ws.send(JSON.stringify({ type: 'error', data: `unknown message type: ${parsedMessage.type}` }));
                     break;
             }
         } catch (error) {

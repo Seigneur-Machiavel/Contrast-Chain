@@ -292,11 +292,11 @@ export class Blockchain {
                 addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexEnd);
             }
 
-            for (const [address, newTxReference] of Object.entries(transactionsReferencesSortedByAddress)) {
+            for (const [address, newTxsReferences] of Object.entries(transactionsReferencesSortedByAddress)) {
                 if (!actualizedAddressesTxsRefs[address]) {
                     actualizedAddressesTxsRefs[address] = await addressesTransactionsPromises[address];
                 }
-                const concatenated = actualizedAddressesTxsRefs[address].concat(newTxReference);
+                const concatenated = actualizedAddressesTxsRefs[address].concat(newTxsReferences);
                 actualizedAddressesTxsRefs[address] = concatenated;
             }
         }
@@ -359,7 +359,7 @@ export class Blockchain {
             break;
         }
 
-        return txsRefs;
+        return finalTxsRefs;
     }
     /** Retrieves a range of blocks from disk by height.
      * @param {number} fromHeight - The starting height of the range.

@@ -2,6 +2,11 @@ import argon2 from './argon2-ES6.min.mjs';
 import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
 import { cryptoLight } from './cryptoLight.js';
 
+/**
+* @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
+* @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
+*/
+
 cryptoLight.argon2 = argon2;
 
 let pow = new Pow(argon2, "http://localhost:4340");
@@ -21,6 +26,26 @@ const SETTINGS = {
 const subscriptions = {
     /** @type {Object<string, boolean>} */
     balanceUpdates: {}
+}
+
+/** @type {Object<string, TransactionWithDetails>} */
+const transactionsByReference = {};
+/** @param {string} txReference @param {string} address - optional */
+async function getTransactionFromMemoryOrSendRequest(txReference, address = undefined) {
+    let comply = true;
+    const fromMemory = transactionsByReference[txReference];
+    if (fromMemory && address) { comply = fromMemory.balanceChange !== undefined; }
+    if (fromMemory && comply) { return fromMemory; }
+
+    await readyWS();
+    console.log(`requesting tx data: ${txReference}`);
+    if (address) {
+        ws.send(JSON.stringify({ type: 'get_transaction_with_balanceChange_by_reference', data: { txReference, address } }));
+    } else {
+        ws.send(JSON.stringify({ type: 'get_transaction_by_reference', data: txReference }));
+    }
+    
+    return 'request sent';
 }
 
 /** @type {WebSocket} */
@@ -76,23 +101,21 @@ function connectWS() {
                 });
                 break;
             case 'transaction_requested':
-                // { transaction, balanceChange, txReference }
-                const transactionWithBalanceChange = data.transaction;
-                transactionWithBalanceChange.balanceChange = data.balanceChange;
-                chrome.runtime.sendMessage({action: 'transaction_requested', transaction: transactionWithBalanceChange});
-                //blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithBalanceChange;
-                // set html
-                //blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange);
+                // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
+                /** @type {TransactionWithDetails} */
+                const transactionWithDetails = data.transaction;
+                transactionWithDetails.balanceChange = data.balanceChange;
+                transactionWithDetails.inAmount = data.inAmount;
+                transactionWithDetails.outAmount = data.outAmount;
+                transactionWithDetails.fee = data.fee;
+                transactionWithDetails.txReference = data.txReference;
+                transactionsByReference[data.txReference] = transactionWithDetails;
+
+                chrome.runtime.sendMessage({ action: 'transaction_requested', transactionWithDetails });
                 break;
             case 'transaction_broadcast_result':
                 console.log('[BACKGROUND] transaction_broadcast_result:', data);
                 chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
-                /*if (!blockExplorerWidget) { return; }
-                if (data.success) {
-                    blockExplorerWidget.fillTransactionRow(data.txReference, 'success');
-                } else {
-                    blockExplorerWidget.fillTransactionRow(data.txReference, 'error');
-                }*/
                 break;
             case 'subscribed_balance_update':
                 subscriptions.balanceUpdates[data] = true;
@@ -108,8 +131,7 @@ function connectWS() {
             case 'current_height':
                 break;
             default:
-                console.log(`[BACKGROUND] Unknown message type, message:`);
-                console.log(message);
+                console.log(`[BACKGROUND] Unknown message type: ${message.type}`);
                 break;
         }
     }
@@ -140,6 +162,13 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     if (!sanitizer.sanitize(request)) { console.info('data possibly corrupted!'); return; }
     
     switch (request.action) {
+        case 'get_transaction_with_balanceChange_by_reference':
+            console.log(`[BACKGROUND] get_transaction_with_balanceChange_by_reference: ${request.txReference}, from: ${request.address}`);
+            const transactionWithDetails = await getTransactionFromMemoryOrSendRequest(request.txReference, request.address);
+            if (transactionWithDetails === 'request sent') { return; }
+
+            chrome.runtime.sendMessage({ action: 'transaction_requested', transactionWithDetails });
+            break;
         case 'get_address_exhaustive_data':
             //console.log(`[BACKGROUND] get_address_exhaustive_data: ${request.address}, from: ${request.from}, to: ${request.to}`);
             const gaedParams = {

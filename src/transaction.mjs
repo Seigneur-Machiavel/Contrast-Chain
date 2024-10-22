@@ -116,6 +116,52 @@ export const Transaction = (inputs, outputs, id = '', witnesses = [], version = 
         outputs
     };
 }
+
+/**
+ * @typedef {Object} TransactionWithDetails
+ * @property {string} id
+ * @property {string[]} witnesses
+ * @property {number} version
+ * @property {TxInput[]} inputs
+ * @property {TxOutput[]} outputs
+ * @property {number | undefined} feePerByte - only in mempool
+ * @property {number | undefined} byteWeight - only in mempool
+ * @property {number} balanceChange
+ * @property {number} inAmount
+ * @property {number} outAmount
+ * @property {number} fee
+ * @property {string} txReference
+ */
+/** Transaction with details data structure
+ * @param {TxInput[]} inputs
+ * @param {TxOutput[]} outputs
+ * @param {string} id
+ * @param {string[]} witnesses
+ * @param {number} version
+ * @param {number} balanceChange
+ * @param {number} inAmount
+ * @param {number} outAmount
+ * @param {number} fee
+ * @param {string} txReference
+ * @returns {TransactionWithDetails}
+ */
+export const TransactionWithDetails = (txWithDetails) => {
+    return {
+        id: txWithDetails.id,
+        witnesses: txWithDetails.witnesses,
+        version: txWithDetails.version,
+        inputs: txWithDetails.inputs,
+        outputs: txWithDetails.outputs,
+        feePerByte: txWithDetails.feePerByte,
+        byteWeight: txWithDetails.byteWeight,
+        balanceChange: txWithDetails.balanceChange,
+        inAmount: txWithDetails.inAmount,
+        outAmount: txWithDetails.outAmount,
+        fee: txWithDetails.fee,
+        txReference: txWithDetails.txReference
+    };
+}
+
 export class Transaction_Builder {
     /** @param {UTXO[]} utxos */
     static checkMalformedAnchorsInUtxosArray(utxos) {

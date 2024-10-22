@@ -322,19 +322,22 @@ export class BlockUtils {
         /** @type {Object<string, string[]>} */
         const txRefsRelatedToAddress = {};
         for (const Tx of blockData.Txs) {
-            const addressesRelatedToTx = [];
+            //const addressesRelatedToTx = [];
+            const addressesRelatedToTx = {};
             for (const witness of Tx.witnesses) {
                 const pubKey = witness.split(':')[1];
                 const address = blockPubKeysAddresses[pubKey];
-                addressesRelatedToTx.push(address); // witness can't be a duplicate
+                if (addressesRelatedToTx[address]) { continue; } // no duplicates
+                addressesRelatedToTx[address] = true;
             }
 
             for (const output of Tx.outputs) {
-                if (addressesRelatedToTx.includes(output.address)) { continue; } // no duplicates
-                addressesRelatedToTx.push(output.address);
+                if (addressesRelatedToTx[output.address]) { continue; } // no duplicates
+                addressesRelatedToTx[output.address] = true;
             }
             
-            for (const address of addressesRelatedToTx) {
+            //for (const address of addressesRelatedToTx) {
+            for (const address of Object.keys(addressesRelatedToTx)) {
                 if (!txRefsRelatedToAddress[address]) { txRefsRelatedToAddress[address] = []; }
                 txRefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
             }
