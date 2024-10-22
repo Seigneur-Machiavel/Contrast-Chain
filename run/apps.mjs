@@ -349,6 +349,16 @@ export class DashboardWsApp {
                 ws.send(JSON.stringify({ type: 'transaction_broadcasted', data: { broadcasted, pushedInLocalMempool } }));
                 console.log('Transaction sent');
                 break;
+
+            case 'disconnect_peer':
+                console.log(`Disconnecting peer ${data}`);
+                this.node.p2pNetwork.closeConnection(data);
+
+            case 'ask_sync_peer':
+                console.log(`Asking peer ${data} to sync`);
+                this.node.syncHandler.syncWithPeer(data);
+                break;
+
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                 break;
