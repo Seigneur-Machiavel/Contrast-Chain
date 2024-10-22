@@ -142,7 +142,7 @@ export class SyncHandler {
         }
 
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
-            this.logger.debug(`[SYNC] Already at the highest height, no need to sync`);
+            this.logger.debug(`[SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
             this.isSyncing = false;
             await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
             return true;
@@ -233,11 +233,18 @@ export class SyncHandler {
      * @param {string} peerMultiaddr - The multiaddress of the peer.
      * @returns {Promise<Object>} The peer's status. */
     async #getPeerStatus(p2pNetwork, peerMultiaddr) {
+        this.logger.debug({ peerMultiaddr }, 'Getting peer status');
         const peerStatusMessage = { type: 'getStatus' };
-        const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
-        if (response.status !== 'success') { return false; }
-        if (typeof response.currentHeight !== 'number') { return false; }
-        return response;
+        try {
+            const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
+            if (response.status !== 'success') { return false; }
+            if (typeof response.currentHeight !== 'number') { return false; }
+            return response;
+        }
+        catch (error) {
+            this.logger.error({ error: error.message }, 'Failed to get peer status');
+            return false;
+        }
     }
      /** Retrieves the statuses of all peers in parallel.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
