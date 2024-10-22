@@ -237,6 +237,7 @@ export class SyncHandler {
         const peerStatusMessage = { type: 'getStatus' };
         try {
             const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
+            if (response === undefined) { return false; }
             if (response.status !== 'success') { return false; }
             if (typeof response.currentHeight !== 'number') { return false; }
             return response;
