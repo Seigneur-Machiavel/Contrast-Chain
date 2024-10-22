@@ -367,7 +367,6 @@ class P2PNetwork extends EventEmitter {
                     this.logger.error({ component: 'P2PNetwork', peerId, error: closeErr.message }, 'Failed to close stream after error');
                 }
             }
-            throw error;
         }
     }
 
@@ -403,7 +402,7 @@ class P2PNetwork extends EventEmitter {
             return stream;
         } catch (error) {
             this.logger.error({ component: 'P2PNetwork', peerId, error: error.message }, 'Failed to acquire stream');
-            throw error;
+            return null;
         }
     }
     /**
@@ -498,6 +497,11 @@ class P2PNetwork extends EventEmitter {
         this.peers.set(peerId, updatedPeer);
         this.logger.debug({ component: 'P2PNetwork', peerId }, 'Peer updated');
         this.emit('peer:updated', peerId, data);
+    }
+
+    closeConnection(peerId) {
+        console.log(`Closing connections to ${peerId}`);
+        this.p2pNode.components.connectionManager.closeConnections(peerId);
     }
 
     /** @returns {string[]} */

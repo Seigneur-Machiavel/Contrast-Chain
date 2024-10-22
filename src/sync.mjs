@@ -100,6 +100,47 @@ export class SyncHandler {
                 throw new Error('Invalid request type');
         }
     }
+    // TODO: unify syncWithPeer and syncWithKnownPeers
+    async syncWithPeer(peerId) {
+        this.node.blockchainStats.state = "syncing";
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+        if (this.node.p2pNetwork.subscriptions.size > 0) {
+            console.log(`[SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics`);
+            for (const topic of uniqueTopics) { await this.node.p2pNetwork.unsubscribe(topic); }
+        }
+        this.isSyncing = true;
+        this.logger.info(`[SYNC] Starting syncWithPeer at #${this.node.blockchain.currentHeight}`);
+        const peerData = this.node.p2pNetwork.peers.get(peerId);
+        if (!peerData) { return false; }
+        const { address } = peerData;
+        const ma = multiaddr(address);
+        const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma);
+        if (!peerStatus || !peerStatus.currentHeight) { return false; }
+        const peerHeight = peerStatus.currentHeight;
+        if (peerHeight <= this.node.blockchain.currentHeight) {
+            this.logger.debug(`[SYNC] Already at the highest height, no need to sync`);
+            this.isSyncing = false;
+            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+            return true;
+        }
+        console.info(`[SYNC] Peer height: ${peerHeight}, current height: ${this.node.blockchain.currentHeight}`);
+        try {
+            const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, peerHeight);
+            this.logger.info({ peerId }, 'Successfully synced with peer');
+            this.isSyncing = false;
+            if (!synchronized) { return false; }
+            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+            return true;
+        } catch (error) {
+            await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
+            if (error instanceof SyncRestartError) {
+                this.logger.error({ error: error.message }, 'Sync restart error occurred');
+                await this.handleSyncFailure();
+                return false;
+            }
+            return false;
+        }
+    }
 
     /** Synchronizes with known peers by first fetching their statuses and then syncing with the peer that has the highest block height. */
     async syncWithKnownPeers() {
@@ -155,7 +196,6 @@ export class SyncHandler {
                 break; // Sync successful, break out of loop
             } catch (error) {
                 //continue;
-
                 await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
                 if (error instanceof SyncRestartError) {
                     this.logger.error({ error: error.message }, 'Sync restart error occurred');
@@ -185,6 +225,7 @@ export class SyncHandler {
     async #getPeerStatus(p2pNetwork, peerMultiaddr) {
         const peerStatusMessage = { type: 'getStatus' };
         const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
+        if (!response) { return false; }
         if (response.status !== 'success') { return false; }
         if (typeof response.currentHeight !== 'number') { return false; }
         return response;
@@ -327,7 +368,7 @@ export class SyncHandler {
      * @returns {Promise<Array>} An array of blocks. */
      async #requestBlocksFromPeer(p2pNetwork, peerMultiaddr, startIndex, endIndex) {
         const message = { type: 'getBlocks', startIndex, endIndex };
-        this.logger.debug({ startIndex, endIndex }, 'Requesting blocks from peer');
+        this.logger.debug({ startIndex, endIndex, peerMultiaddr }, 'Requesting blocks from peer');
 
         let response;
         try {
