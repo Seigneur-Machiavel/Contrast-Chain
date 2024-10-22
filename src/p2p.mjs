@@ -444,6 +444,17 @@ class P2PNetwork extends EventEmitter {
             this.logger.error({ component: 'P2PNetwork', error: error.message }, 'Error during sendOverStream');
             throw error;
         }
+        finally {
+            if (stream) {
+                try {
+                    stream.close();
+                } catch (closeErr) {
+                    this.logger.error({ error: closeErr.message }, 'Failed to close stream');
+                }
+            } else {
+                this.logger.warn('Stream is undefined; cannot close stream');
+            }
+        }
     }
     /** @param {string} topic @param {Function} [callback] */
     async subscribe(topic, callback) {
