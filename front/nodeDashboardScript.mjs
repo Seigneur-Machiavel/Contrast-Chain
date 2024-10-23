@@ -177,6 +177,7 @@ const eHTML = {
     updateGitBtn: document.getElementById('updateGit'),
     nodeState: document.getElementById('nodeState'),
     repScoresList: document.getElementById('repScoreList'),
+    peersHeightList: document.getElementById('peersHeightList'),
 }
 
 // Function to display node information
@@ -217,6 +218,8 @@ function displayNodeInfo(data) {
         console.warn('peerIds is not an array:', data.peerIds);
         eHTML.peersConnectedList.innerHTML = '<li>No peers available.</li>';
     }
+
+    renderPeersHeight(data.peerHeights);
 
     if (data.repScores) {
         renderScores(data.repScores);
@@ -261,6 +264,36 @@ function renderPeers(peers) {
 
         eHTML.peersConnectedList.appendChild(li);
     });
+}
+
+function renderPeersHeight (peers) {
+    eHTML.peersHeightList.innerHTML = ''; // Clear existing list
+
+    if (Object.keys(peers).length === 0) {
+        const li = document.createElement('li');
+        li.textContent = 'No peer heights available.';
+        eHTML.peersHeightList.appendChild(li);
+        return;
+    }
+
+    for (const [peerId, height] of Object.entries(peers)) {
+        const li = document.createElement('li');
+        li.classList.add('peer-height-item');
+
+        const peerSpan = document.createElement('span');
+        peerSpan.textContent = `${peerId}: `;
+        peerSpan.classList.add('peer-id');
+
+        const heightSpan = document.createElement('span');
+        heightSpan.textContent = height;
+        heightSpan.classList.add('peer-height');
+
+        li.appendChild(peerSpan);
+        li.appendChild(heightSpan);
+
+        eHTML.peersHeightList.appendChild(li);
+    }
+
 }
 
 

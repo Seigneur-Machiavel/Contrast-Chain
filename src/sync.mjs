@@ -32,6 +32,7 @@ export class SyncHandler {
             },
         });
         this.isSyncing = false;
+        this.peerHeights = new Map();
     }
     /** @type {Node} */
     get node() {
@@ -159,7 +160,7 @@ export class SyncHandler {
             const ma = multiaddr(address);
             this.logger.info({ peerId, currentHeight }, 'Attempting to sync with peer');
             try {
-                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight);
+                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight , peerId);
                 this.logger.info({ peerId }, 'Successfully synced with peer');
                 this.isSyncing = false;
                 
@@ -204,7 +205,7 @@ export class SyncHandler {
         if (!peerData) { return false; }
         const { address } = peerData;
         const ma = multiaddr(address);
-        const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma);
+        const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma, peerId);
         if (!peerStatus || !peerStatus.currentHeight) { return false; }
         const peerHeight = peerStatus.currentHeight;
         if (peerHeight <= this.node.blockchain.currentHeight) {
@@ -215,7 +216,7 @@ export class SyncHandler {
         }
         console.info(`[SYNC] Peer height: ${peerHeight}, current height: ${this.node.blockchain.currentHeight}`);
         try {
-            const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, peerHeight);
+            const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, peerHeight, peerId);
             this.logger.info({ peerId }, 'Successfully synced with peer');
             this.isSyncing = false;
             if (!synchronized) { return false; }
@@ -235,7 +236,7 @@ export class SyncHandler {
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer.
      * @returns {Promise<Object>} The peer's status. */
-    async #getPeerStatus(p2pNetwork, peerMultiaddr) {
+    async #getPeerStatus(p2pNetwork, peerMultiaddr, peerId) {
         this.logger.debug({ peerMultiaddr }, 'Getting peer status');
         const peerStatusMessage = { type: 'getStatus' };
         try {
@@ -243,6 +244,7 @@ export class SyncHandler {
             if (response === undefined) { return false; }
             if (response.status !== 'success') { return false; }
             if (typeof response.currentHeight !== 'number') { return false; }
+            this.peerHeights.set(peerId, response.currentHeight);
             this.logger.debug({ peerMultiaddr, currentHeight: response.currentHeight }, 'Got peer status');
             return response;
         }
@@ -272,7 +274,7 @@ export class SyncHandler {
                 this.logger.error({ address, error: err.message }, 'Invalid multiaddr for peer');
                 continue; // Skip this peer
             }
-            statusPromises.push(this.#getPeerStatus(p2pNetwork, ma));
+            statusPromises.push(this.#getPeerStatus(p2pNetwork, ma , peerId));
             peersRelatedToPromises.push({ peerId, address });
         }
 
@@ -324,9 +326,9 @@ export class SyncHandler {
     /**
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
-    async #updatedPeerHeight(p2pNetwork, peerMultiaddr) {
+    async #updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId) {
         try {
-            const peerStatus = await this.#getPeerStatus(p2pNetwork, peerMultiaddr);
+            const peerStatus = await this.#getPeerStatus(p2pNetwork, peerMultiaddr, peerId);
             if (!peerStatus || !peerStatus.currentHeight) { console.log(`[SYNC] Failed to get peer height`); }
             return peerStatus.currentHeight;       
         } catch (error) {
@@ -337,9 +339,9 @@ export class SyncHandler {
     /** Synchronizes missing blocks from a peer efficiently.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
-    async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight) {
+    async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight, peerId) {
         this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
-        let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr);
+        let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
         if (!peerHeight) { console.log(`[SYNC] (#getMissingBlocks) Failed to get peer height`); }
         
         let desiredBlock = this.node.blockchain.currentHeight + 1;
@@ -405,5 +407,14 @@ export class SyncHandler {
             this.logger.warn({ status: response.status }, 'Failed to get blocks from peer');
             throw new Error('Failed to get blocks from peer');
         }
+    }
+
+    getPeerHeight(peerId) {
+        return this.peerHeights.get(peerId) ?? 0;
+    }
+
+    getAllPeerHeights() {
+        // return as Object
+        return Object.fromEntries(this.peerHeights);
     }
 }
