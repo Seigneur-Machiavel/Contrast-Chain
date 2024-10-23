@@ -1,6 +1,6 @@
 // EXPLORER SETTINGS INJECTIONS
 window.explorerDOMAIN = 'pinkparrot.science'; // 'pinkparrot.observer';
-window.explorerPORT = false; // "27270";
+window.explorerPORT = "27270";
 window.explorerLOCAL = false;
 window.explorerROLES = ['blockExplorer'];
 window.explorerMagnetImgPath = '../img/C_magnet.png';

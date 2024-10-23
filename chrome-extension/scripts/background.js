@@ -15,11 +15,11 @@ const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
     WS_PROTOCOL: "ws", // ws or wss
     DOMAIN: 'pinkparrot.science', // 'pinkparrot.observer',
-    PORT: false, // "27270", no port using domain
+    PORT: 27270, // "27270", no port using domain
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
 
-    LOCAL: true,
+    LOCAL: false,
     RECONNECT_INTERVAL: 5000,
     GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
