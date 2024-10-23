@@ -43,30 +43,18 @@ class ReputationManager extends EventEmitter {
         // Define score decrements for each offense
         this.offenseScoreMap = {
             // Major Faults
-            [ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION]: 10,
+            [ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION]: 15,
+            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 15,
             [ReputationManager.OFFENSE_TYPES.LOW_LEGITIMACY_BLOCK_SUBMISSION]: 7,
-            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 5,
-            [ReputationManager.OFFENSE_TYPES.DOUBLE_SIGNING]: 20,
-            [ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK]: 15,
             [ReputationManager.OFFENSE_TYPES.INVALID_TRANSACTION_PROPAGATION]: 8,
-            [ReputationManager.OFFENSE_TYPES.CONSENSUS_MANIPULATION]: 25,
-            [ReputationManager.OFFENSE_TYPES.DOS_ATTACK]: 30,
-
             // Minor Faults
-            [ReputationManager.OFFENSE_TYPES.FREQUENT_RESYNC_REQUESTS]: 3,
-            [ReputationManager.OFFENSE_TYPES.EXCESSIVE_BLOCK_INDEXING]: 2,
             [ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS]: 1,
-            [ReputationManager.OFFENSE_TYPES.LOW_RESOURCE_UTILIZATION]: 1,
-            [ReputationManager.OFFENSE_TYPES.TRANSIENT_CONNECTIVITY_ISSUES]: 2,
         };
 
         // Define score increments for each positive action
         this.positiveScoreMap = {
             // Positive Actions
             [ReputationManager.POSITIVE_ACTIONS.VALID_BLOCK_SUBMISSION]: 10,
-            [ReputationManager.POSITIVE_ACTIONS.ACTIVE_PARTICIPATION]: 5,
-            [ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE]: 7,
-            [ReputationManager.POSITIVE_ACTIONS.COMMUNITY_SUPPORT]: 3,
             [ReputationManager.POSITIVE_ACTIONS.NO_OFFENSES]: 2,
         };
 
@@ -100,25 +88,13 @@ class ReputationManager extends EventEmitter {
         INVALID_BLOCK_SUBMISSION: 'Invalid Block Submission',
         LOW_LEGITIMACY_BLOCK_SUBMISSION: 'Low Legitimacy Block Submission',
         MESSAGE_SPAMMING: 'Message Spamming',
-        DOUBLE_SIGNING: 'Double-Signing / Equivocation',
-        SYBIL_ATTACK: 'Sybil Attack',
         INVALID_TRANSACTION_PROPAGATION: 'Invalid Transaction Propagation',
-        CONSENSUS_MANIPULATION: 'Consensus Manipulation',
-        DOS_ATTACK: 'DoS Attack',
-
         // Minor Faults
-        FREQUENT_RESYNC_REQUESTS: 'Frequent Resync Requests',
-        EXCESSIVE_BLOCK_INDEXING: 'Excessive Block Indexing',
         MINOR_PROTOCOL_VIOLATIONS: 'Minor Protocol Violations',
-        LOW_RESOURCE_UTILIZATION: 'Low Resource Utilization',
-        TRANSIENT_CONNECTIVITY_ISSUES: 'Transient Connectivity Issues',
     };
 
     static POSITIVE_ACTIONS = {
         VALID_BLOCK_SUBMISSION: 'Valid Block Submission',
-        ACTIVE_PARTICIPATION: 'Active Participation',
-        RELIABLE_NODE: 'Reliable Node',
-        COMMUNITY_SUPPORT: 'Community Support',
         NO_OFFENSES: 'No Offenses',
     };
     /**
@@ -260,10 +236,6 @@ class ReputationManager extends EventEmitter {
 
         // Check for permanent offenses
         const permanentOffenses = [
-            ReputationManager.OFFENSE_TYPES.DOUBLE_SIGNING,
-            ReputationManager.OFFENSE_TYPES.DOS_ATTACK,
-            ReputationManager.OFFENSE_TYPES.CONSENSUS_MANIPULATION,
-            ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK,
         ];
 
         if (permanentOffenses.includes(offenseType) || score <= this.options.banPermanentScore) {
