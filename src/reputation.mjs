@@ -279,9 +279,9 @@ class ReputationManager extends EventEmitter {
      * @param {boolean} permanent 
      */
     banIdentifier(identifier, permanent = false) {
-        //console.log(`Banning identifier ${identifier} ${permanent ? 'permanently' : 'temporarily'}`);
+        console.log(`Banning identifier ${identifier} ${permanent ? 'permanently' : 'temporarily'}`);
         //log score 
-        //console.log(`Score: ${this.identifierScores.get(identifier)}`);
+        console.log(`Score: ${this.identifierScores.get(identifier)}`);
         const existingBan = this.identifierBans.get(identifier);
         if (!existingBan || (!existingBan.permanent && permanent)) {
             if (permanent) {
@@ -423,7 +423,7 @@ class ReputationManager extends EventEmitter {
                 this.identifierBans.delete(identifier);
                 this.identifierScores.set(identifier, this.options.defaultScore);
                 this.emit('identifierUnbanned', { identifier });
-                //console.log(`Identifier ${identifier} has been unbanned.`);
+                console.log(`Identifier ${identifier} has been unbanned.`);
             }
         }
     }
@@ -443,6 +443,7 @@ class ReputationManager extends EventEmitter {
     async shutdown() {
         clearInterval(this.banCleanupInterval);
         clearInterval(this.associationCleanupInterval);
+        clearInterval(this.spamCleanupInterval);
         this.saveScoresToDisk();
         this.emit('shutdown');
     }
@@ -470,6 +471,7 @@ class ReputationManager extends EventEmitter {
      */
     recordAction(peer) {
         // Update associations
+        console.log({ component: 'ReputationManager', peer }, 'Recording action');
         this.updateAssociations(peer);
 
         const identifiers = this.getAssociatedIdentifiers(peer);

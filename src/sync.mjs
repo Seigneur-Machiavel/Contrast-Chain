@@ -55,7 +55,10 @@ export class SyncHandler {
     /** Handles incoming streams from peers.
      * @param {Object} param0 - The stream object.
      * @param {import('libp2p').Stream} param0.stream - The libp2p stream. */
-    async handleIncomingStream({ stream }) {
+    async handleIncomingStream( lstream ) {
+       const stream = lstream.stream;
+       const peerId = stream.connection.remotePeer.toString();
+       this.node.p2pNetwork.reputationManager.recordAction({peerId});
         try {
             // Decode the stream using lp.decode()
             const source = lp.decode(stream.source);
