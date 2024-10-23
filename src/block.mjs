@@ -336,11 +336,25 @@ export class BlockUtils {
                 addressesRelatedToTx[output.address] = true;
             }
             
-            //for (const address of addressesRelatedToTx) {
             for (const address of Object.keys(addressesRelatedToTx)) {
                 if (!txRefsRelatedToAddress[address]) { txRefsRelatedToAddress[address] = []; }
                 txRefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
             }
+        }
+
+        // CONTROL
+        for (const address in txRefsRelatedToAddress) {
+            const addressTxsRefs = txRefsRelatedToAddress[address];
+            const txsRefsDupiCounter = {};
+            let duplicate = 0;
+            for (let i = 0; i < addressTxsRefs.length; i++) {
+                const txRef = addressTxsRefs[i];
+                if (txsRefsDupiCounter[txRef]) { duplicate++; }
+                
+                txsRefsDupiCounter[txRef] = true;
+            }
+            if (duplicate > 0) {
+                    console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
         }
 
         return txRefsRelatedToAddress;

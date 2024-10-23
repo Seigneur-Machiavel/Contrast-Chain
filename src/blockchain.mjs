@@ -289,13 +289,17 @@ export class Blockchain {
             const addressesTransactionsPromises = {};
             for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
                 if (actualizedAddressesTxsRefs[address]) { continue; } // already loaded
-                addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexEnd);
+                //addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexStart);
+                addressesTransactionsPromises[address] = this.db.get(`${address}-txs`).catch(() => []);
             }
 
             for (const [address, newTxsReferences] of Object.entries(transactionsReferencesSortedByAddress)) {
-                if (!actualizedAddressesTxsRefs[address]) {
-                    actualizedAddressesTxsRefs[address] = await addressesTransactionsPromises[address];
+                if (addressesTransactionsPromises[address]) {
+                    const serialized = await addressesTransactionsPromises[address];
+                    const deserialized = utils.serializerFast.deserialize.txsReferencesArray(serialized);
+                    actualizedAddressesTxsRefs[address] = deserialized;
                 }
+                if (!actualizedAddressesTxsRefs[address]) { actualizedAddressesTxsRefs[address] = []; }
                 const concatenated = actualizedAddressesTxsRefs[address].concat(newTxsReferences);
                 actualizedAddressesTxsRefs[address] = concatenated;
             }
@@ -304,6 +308,18 @@ export class Blockchain {
         const batch = this.db.batch();
         for (const address of Object.keys(actualizedAddressesTxsRefs)) {
             const actualizedAddressTxsRefs = actualizedAddressesTxsRefs[address];
+
+            const txsRefsDupiCounter = {};
+            let duplicate = 0;
+            for (let i = 0; i < actualizedAddressTxsRefs.length; i++) {
+                const txRef = actualizedAddressTxsRefs[i];
+                if (txsRefsDupiCounter[txRef]) { duplicate++; }
+                
+                txsRefsDupiCounter[txRef] = true;
+            }
+            if (duplicate > 0) {
+                 console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
+
             const serialized = utils.serializerFast.serialize.txsReferencesArray(actualizedAddressTxsRefs);
             batch.put(`${address}-txs`, Buffer.from(serialized));
             batch.put('addressesTxsRefsSnapHeight', Buffer.from(utils.fastConverter.numberTo6BytesUint8Array(indexEnd)));
@@ -323,6 +339,17 @@ export class Blockchain {
             txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
         } catch (error) {}; //console.error(error);
 
+        const txsRefsDupiCounter = {};
+        let duplicate = 0;
+        for (let i = 0; i < txsRefs.length; i++) {
+            const txRef = txsRefs[i];
+            if (txsRefsDupiCounter[txRef]) { duplicate++; }
+            
+            txsRefsDupiCounter[txRef] = true;
+        }
+        if (duplicate > 0) {
+             console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
+
         // complete with the cache
         let index = cacheStartIndex;
         while (index <= to) {
@@ -331,7 +358,7 @@ export class Blockchain {
             index++;
 
             const block = this.cache.blocksByHash.get(blockHash);
-            const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(block, memPool);
+            const transactionsReferencesSortedByAddress = BlockUtils.getFinalizedBlockTransactionsReferencesSortedByAddress(block, memPool.knownPubKeysAddresses);
             if (!transactionsReferencesSortedByAddress[address]) { continue; }
 
             const newTxsReferences = transactionsReferencesSortedByAddress[address];
