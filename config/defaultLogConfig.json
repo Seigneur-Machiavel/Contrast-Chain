@@ -133,39 +133,67 @@
     "content": "luid-8dbfb594 Failed to create stream"
   },
   "luid-b1180a7e": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
-    "line": 252,
+    "line": 256,
     "type": "debug",
     "content": "luid-b1180a7e Received pubsub message"
+  },
+  "luid-42d36d6e": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 260,
+    "type": "warn",
+    "content": "luid-42d36d6e luid-topic-validation Received message on unauthorized topic"
   },
   "luid-db87846b": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 254,
+    "line": 264,
     "type": "error",
     "content": "luid-db87846b Received non-binary data from ${from} dataset: ${data} topic: ${topic}"
+  },
+  "luid-ed4b8d0b": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 271,
+    "type": "error",
+    "content": "luid-ed4b8d0b Transaction size exceeds the maximum allowed size"
   },
   "luid-bb4b664c": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 265,
+    "line": 275,
     "type": "error",
     "content": "luid-bb4b664c Block candidate size exceeds the maximum allowed size"
   },
   "luid-d4e9de17": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 269,
+    "line": 279,
     "type": "error",
     "content": "luid-d4e9de17 Block finalized size exceeds the maximum allowed size"
   },
   "luid-801de822": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 281,
+    "line": 291,
     "type": "error",
     "content": "luid-801de822 Failed to parse pubsub message"
+  },
+  "luid-be3516e1": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 301,
+    "type": "warn",
+    "content": "luid-be3516e1 luid-topic-validation Invalid topic type"
+  },
+  "luid-d0ad52f1": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 306,
+    "type": "warn",
+    "content": "luid-d0ad52f1 luid-topic-validation Topic not allowed"
   },
   "luid-4937c817": {
     "active": true,
@@ -184,28 +212,28 @@
   "luid-f03a471a": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 335,
+    "line": 363,
     "type": "error",
     "content": "luid-f03a471a Failed to parse multiaddr"
   },
   "luid-b2d7c0a9": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 347,
+    "line": 375,
     "type": "error",
     "content": "luid-b2d7c0a9 Failed to send message"
   },
   "luid-c8221f8c": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 356,
+    "line": 384,
     "type": "debug",
     "content": "luid-c8221f8c Closed faulty stream after error"
   },
   "luid-cb6e42b1": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 358,
+    "line": 386,
     "type": "error",
     "content": "luid-cb6e42b1 Failed to close stream after error"
   },
