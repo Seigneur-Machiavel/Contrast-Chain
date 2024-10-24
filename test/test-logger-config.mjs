@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import path from 'path';
 import fs from 'fs/promises';
 import os from 'os';
-import Logger from '../../src/logger.mjs'; // Adjust the path if necessary
+import Logger from '../src/logger.mjs'; // Adjust the path if necessary
 
 // Mocha's describe and it are globally available when running tests with Mocha
 
@@ -19,12 +19,6 @@ describe('Create and Update Default Log Configuration', function () {
     let configFilePath;
     const mockDirName = 'test-mocks';
     let mockDirPath;
-
-    // Sample log calls to be used in test files
-    const sampleLogCalls = [
-        { type: 'info', id: 'INFO0001', message: 'Application has started.' },
-        { type: 'error', id: 'EROR0001', message: 'An unexpected error occurred.' },
-    ];
 
     // Helper function to create sample source files with log calls
     async function createSampleFile(filePath, logCalls) {

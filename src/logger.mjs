@@ -276,7 +276,7 @@ class Logger {
                     }
                     await this.scanFiles(fullPath); // Recursive scan
                 } else if (entry.isFile() && this.isLoggableFile(entry.name)) {
-                    console.log(`Scanning file: ${fullPath}`);
+                    //console.log(`Scanning file: ${fullPath}`);
                     const content = await fsPromises.readFile(fullPath, 'utf-8');
                     const relativePath = path.relative(this.projectRoot, fullPath);
                     this.extractLogCalls(content, relativePath);
@@ -306,14 +306,19 @@ class Logger {
      */
     extractLogCalls(content, fileName) {
         const lines = content.split('\n');
-        // Regex to match logger method calls with different quote types
-        const logPattern = new RegExp(`this\\.logger\\.(log|info|warn|error|debug|trace)\\(\\s*(['"\`])(luid-[0-9a-fA-F]{${this.idLength}})\\s([\\s\\S]*?)\\2\\s*\\)`, 'g');
+        // Updated regex to match logger method calls with optional additional arguments
+        const logPattern = new RegExp(
+            `this\\.logger\\.(log|info|warn|error|debug|trace)\\(\\s*(['"\`])(luid-[0-9a-fA-F]{${this.idLength}})\\s([\\s\\S]*?)\\2\\s*(,\\s*[^)]+)?\\)`,
+            'g'
+        );
         lines.forEach((line, index) => {
             let match;
             while ((match = logPattern.exec(line)) !== null) {
                 const type = match[1];
                 const id = match[3];
                 const messageContent = match[4]; // Preserved without trimming
+                // Additional arguments are in match[5] but are not needed for config
+
                 const fullMessage = id + ' ' + messageContent; // Combine ID and message
 
                 // Validate 'type' before adding to logCalls
@@ -349,7 +354,7 @@ class Logger {
                 // **Newly Added Code to Handle Content Changes**
                 // If the log ID exists but the content has changed, update the content in the config
                 if (this.logConfig[log.id].content !== log.content) {
-                    console.log(`Content change detected for Log ID ${log.id}. Updating configuration.`);
+                    //console.log(`Content change detected for Log ID ${log.id}. Updating configuration.`);
                     this.logConfig[log.id].content = log.content;
                 }
             }
@@ -463,7 +468,7 @@ class Logger {
      */
     dolog(type, message, ...args) {
         if (typeof message !== 'string') {
-            console.error('Logger expects the second argument to be a string message.');
+            console.error('Logger expects the second argument to be a string message. but got:', message);
             return;
         }
 
@@ -508,7 +513,7 @@ class Logger {
             this.writeToFile(type, fullMessage);
         } else {
             // Log is inactive
-            console.warn(`Log ID ${id} is inactive. Message not logged: ${content}`);
+            //console.warn(`Log ID ${id} is inactive. Message not logged: ${content}`);
         }
     }
 
