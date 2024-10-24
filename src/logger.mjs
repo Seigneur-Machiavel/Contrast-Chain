@@ -11,20 +11,22 @@ import crypto from 'crypto';
 
 const colors = {
     reset: '\x1b[0m',
-
-    red: '\x1b[31m',
-    green: '\x1b[32m',
-    yellow: '\x1b[33m',
-    blue: '\x1b[34m',
-    magenta: '\x1b[35m',
-    cyan: '\x1b[36m',
-
-    brightRed: '\x1b[91m',
-    brightGreen: '\x1b[92m',
-    brightYellow: '\x1b[93m',
-    brightBlue: '\x1b[94m',
-    brightMagenta: '\x1b[95m',
-    brightCyan: '\x1b[96m',
+    
+    // Base colors (more muted, like Neovim defaults)
+    red: '\x1b[38;2;234;105;98m',      // Soft red
+    green: '\x1b[38;2;152;187;108m',   // Sage green
+    yellow: '\x1b[38;2;215;153;33m',   // Warm yellow
+    blue: '\x1b[38;2;69;133;136m',     // Muted blue
+    magenta: '\x1b[38;2;177;98;134m',  // Soft purple
+    cyan: '\x1b[38;2;104;157;106m',    // Forest cyan
+    
+    // Bright variants
+    brightRed: '\x1b[38;2;251;73;52m',    // Vibrant red
+    brightGreen: '\x1b[38;2;184;187;38m',  // Lime green
+    brightYellow: '\x1b[38;2;250;189;47m', // Bright yellow
+    brightBlue: '\x1b[38;2;131;165;152m',  // Sky blue
+    brightMagenta: '\x1b[38;2;211;134;155m', // Bright purple
+    brightCyan: '\x1b[38;2;142;192;124m',    // Bright cyan
 };
 
 class Logger {
