@@ -8,6 +8,25 @@ import { createStream } from 'rotating-file-stream'; // Corrected named import
 import { existsSync, mkdirSync } from 'fs';
 import crypto from 'crypto';
 
+
+const colors = {
+    reset: '\x1b[0m',
+
+    red: '\x1b[31m',
+    green: '\x1b[32m',
+    yellow: '\x1b[33m',
+    blue: '\x1b[34m',
+    magenta: '\x1b[35m',
+    cyan: '\x1b[36m',
+
+    brightRed: '\x1b[91m',
+    brightGreen: '\x1b[92m',
+    brightYellow: '\x1b[93m',
+    brightBlue: '\x1b[94m',
+    brightMagenta: '\x1b[95m',
+    brightCyan: '\x1b[96m',
+};
+
 class Logger {
     /**
      * Creates an instance of Logger.
@@ -52,6 +71,23 @@ class Logger {
 
         // Handle process exit for graceful shutdown
         this.handleProcessExit();
+    }
+
+    /**
+     * Get color for log type
+     * @param {string} type - The type of log
+     * @returns {string} - ANSI color code
+     */
+    getColorForType(type) {
+        const colorMap = {
+            debug: colors.cyan,
+            info: colors.white,
+            warn: colors.yellow,
+            error: colors.red,
+            trace: colors.magenta,
+            log: colors.blue
+        };
+        return colorMap[type] || '';
     }
 
     /**
@@ -145,7 +181,113 @@ class Logger {
             this.shutdown();
         });
     }
+    /**
+      * Formats the log message for console output with colors
+      * @param {string} type - Log type (e.g., info, error)
+      * @param {string} message - Log message
+      * @returns {string} - Formatted colored log string
+      */
+    formatConsoleLog(type, message) {
+        const timestamp = new Date().toISOString();
+        const color = this.getColorForType(type);
+        return `${color}[${timestamp}] [${type.toUpperCase()}] ${message}${colors.reset}`;
+    }
 
+    /**
+     * Formats the log message for file output (without colors)
+     * @param {string} type - Log type (e.g., info, error)
+     * @param {string} message - Log message
+     * @returns {string} - Formatted log string
+     */
+    formatFileLog(type, message) {
+        const timestamp = new Date().toISOString();
+        return `[${timestamp}] [${type.toUpperCase()}] ${message}\n`;
+    }
+
+    /**
+     * Writes a log message to the rotating log file
+     * @param {string} type - Log type
+     * @param {string} message - Log message
+     */
+    writeToFile(type, message) {
+        if (this.logStream && !this.logStream.destroyed) {
+            const timestamp = new Date().toISOString();
+            const formattedMessage = `[${timestamp}] [${type.toUpperCase()}] ${message}\n`;
+            this.logStream.write(formattedMessage);
+        } else {
+            console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
+        }
+    }
+
+    /**
+     * Logs data based on the type and configuration
+     * @param {string} type - The type of log (e.g., info, error)
+     * @param {string} message - The message to log (first X characters as ID)
+     * @param {...any} args - Optional additional data objects to log
+     */
+    dolog(type, message, ...args) {
+        if (typeof message !== 'string') {
+            console.error('Logger expects the second argument to be a string message. but got:', message);
+            return;
+        }
+
+        const { id, content } = this.extractIdAndContent(message);
+        if (!id) {
+            console.error(`Log message must start with an ID in the format 'luid-XXXX'.`);
+            return;
+        }
+
+        if (!this.logConfig[id]) {
+            this.logConfig[id] = {
+                active: true,
+                type,
+                content
+            };
+        }
+
+        if (this.logConfig[id].active) {
+            // Base message
+            let consoleMessage = content;
+            let fileMessage = content;
+
+            // Add serialized arguments if any
+            if (args.length > 0) {
+                consoleMessage += ' ' + this.serializeArgs(args, true);  // With colors for console
+                fileMessage += ' ' + this.serializeArgs(args, false);    // Without colors for file
+            }
+
+            // Log to console with colors
+            if (typeof console[type] === 'function') {
+                const color = this.getColorForType(type);
+                const timestamp = new Date().toISOString();
+                const coloredLogMessage = `${color}[${timestamp}] [${type.toUpperCase()}] ${consoleMessage}${colors.reset}`;
+                console[type](coloredLogMessage);
+            } else {
+                console.log(consoleMessage);
+            }
+
+            // Write to file without colors
+            this.writeToFile(type, fileMessage);
+        }
+    }
+    /**
+ * Serializes arguments differently for console and file output
+ * @param {Array} args - Arguments to serialize
+ * @param {boolean} withColors - Whether to include colors in the output
+ * @returns {string} - Serialized arguments
+ */
+    serializeArgs(args, withColors = false) {
+        return args.map(arg => {
+            if (typeof arg === 'object') {
+                return util.inspect(arg, {
+                    depth: null,
+                    colors: withColors,
+                    compact: false
+                });
+            }
+            return String(arg);
+        }).join(' ');
+    }
     /**
      * Formats the log message
      * @param {string} type - Log type (e.g., info, error)
@@ -171,20 +313,6 @@ class Logger {
             message,
         };
         return JSON.stringify(logObject) + '\n';
-    }
-
-    /**
-     * Writes a log message to the rotating log file
-     * @param {string} type - Log type
-     * @param {string} message - Log message
-     */
-    writeToFile(type, message) {
-        if (this.logStream && !this.logStream.destroyed) {
-            const formattedMessage = this.formatLog(type, message);
-            this.logStream.write(formattedMessage);
-        } else {
-            console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
-        }
     }
 
     /**
@@ -457,63 +585,6 @@ class Logger {
         } catch (error) {
             console.error("Error importing log config:", error.message);
             throw error; // Re-throw the error for the caller to handle
-        }
-    }
-
-    /**
-     * Logs data based on the type and configuration
-     * @param {string} type - The type of log (e.g., info, error)
-     * @param {string} message - The message to log (first X characters as ID)
-     * @param {...any} args - Optional additional data objects to log
-     */
-    dolog(type, message, ...args) {
-        if (typeof message !== 'string') {
-            console.error('Logger expects the second argument to be a string message. but got:', message);
-            return;
-        }
-
-        const { id, content } = this.extractIdAndContent(message);
-        if (!id) {
-            console.error(`Log message must start with an ID in the format 'luid-XXXX'.`);
-            return;
-        }
-
-        if (!this.logConfig[id]) {
-            // Initialize config for new ID
-            this.logConfig[id] = {
-                active: true,
-                type,
-                content
-            };
-        }
-
-        if (this.logConfig[id].active) {
-            let fullMessage = content; // Exclude ID from console output
-
-            if (args.length > 0) {
-                // Serialize each additional argument
-                const serializedArgs = args.map(arg => {
-                    if (typeof arg === 'object') {
-                        return util.inspect(arg, { depth: null, colors: false });
-                    }
-                    return String(arg);
-                }).join(' ');
-                fullMessage += ' ' + serializedArgs;
-            }
-
-            // Log to console
-            if (typeof console[type] === 'function') {
-                console[type](fullMessage);
-            } else {
-                console.error(`Invalid log type "${type}". Falling back to console.log. Message: ${fullMessage}`);
-                console.log(fullMessage);
-            }
-
-            // Additionally, write to file
-            this.writeToFile(type, fullMessage);
-        } else {
-            // Log is inactive
-            //console.warn(`Log ID ${id} is inactive. Message not logged: ${content}`);
         }
     }
 
