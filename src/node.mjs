@@ -482,7 +482,7 @@ export class Node {
         blockCandidate.powReward = powReward; // for the miner
 
         if (blockCandidate.Txs.length > 3) { console.info(`(Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
-
+        this.blockchainStats.lastLegitimacy = blockCandidate.legitimacy;
         return blockCandidate;
     }
     /** @param {BlockData} blockData */
