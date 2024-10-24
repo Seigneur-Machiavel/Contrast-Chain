@@ -3,6 +3,7 @@ import utils from './utils.mjs';
 import P2PNetwork from './p2p.mjs';
 import * as lp from 'it-length-prefixed';
 import { multiaddr } from '@multiformats/multiaddr';
+import ReputationManager from './reputation.mjs';
 /**
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
@@ -59,7 +60,7 @@ export class SyncHandler {
     async handleIncomingStream( lstream ) {
        const stream = lstream.stream;
        const peerId = lstream.connection.remotePeer.toString();
-       this.node.p2pNetwork.reputationManager.recordAction({peerId});
+       this.node.p2pNetwork.reputationManager.recordAction({peerId}, ReputationManager.SYNC_INCOMING_STREAM);
         try {
             // Decode the stream using lp.decode()
             const source = lp.decode(stream.source);
@@ -241,11 +242,14 @@ export class SyncHandler {
         const peerStatusMessage = { type: 'getStatus' };
         try {
             const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
+
             if (response === undefined) { return false; }
             if (response.status !== 'success') { return false; }
             if (typeof response.currentHeight !== 'number') { return false; }
+
             this.peerHeights.set(peerId, response.currentHeight);
-            this.logger.debug({ peerMultiaddr, currentHeight: response.currentHeight }, 'Got peer status');
+            this.logger.debug({ peerMultiaddr, currentHeight: response.currentHeight, id:peerId }, 'Got peer status');
+            
             return response;
         }
         catch (error) {
