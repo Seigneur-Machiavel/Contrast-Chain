@@ -33,7 +33,7 @@ class PatternGenerator {
         for (let i = shapeCount; i > 0; i--) {
             const mod = i * 4;
             const size = (i / shapeCount) * maxSize * (.95 + (randoms[mod + 1] * .1));
-            const brightness = Math.floor(100 + (randoms[mod + 2] * 155));
+            const brightness = Math.floor(200 + (randoms[mod + 2] * 55));
             const lineWidth = this.SCALE * (.2 + (randoms[mod + 3] * 1.4));
             const isCircle = randoms[mod + 4] < circleThreshold;
             //console.log('size:', size, 'brightness:', brightness, 'lineWidth:', lineWidth, 'isCircle:', isCircle);

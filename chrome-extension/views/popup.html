@@ -19,7 +19,9 @@
 </head>
 <body>
     <div id="popUpExplorer" class="hidden">
-        <div id="cbe-contrastBlocksWidget"></div>
+        <div class="cbe-contrastBlocksWidgetWrap">
+            <div id="cbe-contrastBlocksWidget"></div>
+        </div>
         <div id="txHistoryWrap" class="cbe-TxHistoryWrap cbe-unfolded">
             <div class="txHistoryHeader">
                 <h2>Transaction history: <span id="txHistoryAddress"></span></h2>
@@ -98,21 +100,23 @@
             </form>
 
             <form id="walletForm" class="hidden">
-                <div id="spendMiniForm" class="miniFold">
-                    <button class="foldBtn"></button>
-                    <p class="textInfo"></p>
-                    <h2>sender: <span class="senderAddress"></span></h2>
-                    <input class="amountInput" type="text" placeholder="Amount to send">
-                    <input type="text" placeholder="Receiver address">
-                    <button class="sendBtn holdBtn"><div>Send</div></button>
-                </div>
-                <div id="stakeMiniForm" class="miniFold">
-                    <p class="textInfo"></p>
-                    <button class="foldBtn"></button>
-                    <h2>sender: <span class="senderAddress"></span></h2>
-                    <input class="amountInput" type="text" placeholder="Amount to stake">
-                    <input type="text" placeholder="Receiver address" style="display: none;">
-                    <button class="stakeBtn holdBtn"><div>Stake</div></button>
+                <div class="miniFormsWrap">
+                    <div id="spendMiniForm" class="miniFold">
+                        <button class="foldBtn"></button>
+                        <p class="textInfo"></p>
+                        <h2>sender: <span class="senderAddress"></span></h2>
+                        <input class="amountInput" type="text" placeholder="Amount to send">
+                        <input type="text" placeholder="Receiver address">
+                        <button class="sendBtn holdBtn"><div>Send</div></button>
+                    </div>
+                    <div id="stakeMiniForm" class="miniFold">
+                        <p class="textInfo"></p>
+                        <button class="foldBtn"></button>
+                        <h2>sender: <span class="senderAddress"></span></h2>
+                        <input class="amountInput" type="text" placeholder="Amount to stake">
+                        <input type="text" placeholder="Receiver address" style="display: none;">
+                        <button class="stakeBtn holdBtn"><div>Stake</div></button>
+                    </div>
                 </div>
                 <h1><span id="spendableBalanceStr">0.00</span>c</h1>
                 <h2 class="stakedBalance">Staked: <span id="stakedStr">0.00</span>c</h2>

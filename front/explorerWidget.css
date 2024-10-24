@@ -7,6 +7,7 @@
     --cbe-color5-default: #f1f3f8;
     --inner-height-default: 140px;
     --wrap-border-radius-default: 20px;
+    --search-menu-width-default: calc(420px - 12px);
 
     --cbe-neumo-color1-default: #ffffff;
     --cbe-neumo-color2-default: #c3c6cf;
@@ -112,7 +113,7 @@
 #cbe-searchMenuBtn:hover #cbe-searchMenu,
 #cbe-searchMenuBtn:focus-within #cbe-searchMenu {
     padding: 6px;
-    width: calc(420px - 12px);
+    width: var(--search-menu-width, var(--search-menu-width-default));
     height: calc(100% - 12px);
     opacity: 1;
 }

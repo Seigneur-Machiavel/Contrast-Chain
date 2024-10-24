@@ -322,7 +322,7 @@ function toggleExplorer() {
             width: `${popUpLargeSizeNumber - popUpMediumSizeNumber}px`,
             duration: 200,
             easing: 'easeInOutQuad',
-            complete: () => { eHTML.popUpExplorer.style.zIndex = '2'; }
+            complete: () => { eHTML.popUpExplorer.style.zIndex = '3'; }
         });
     }
 
@@ -382,15 +382,18 @@ function showFormDependingOnStoredPassword(sanitizedAuthInfo) {
     }
 }
 function textInfo(targetForm, text, timeout = 3000, eraseAnyCurrentTextInfo = false) {
-    const infoElmnt = targetForm.getElementsByClassName('textInfo')[0];
+    const infoElmnts = targetForm.getElementsByClassName('textInfo');
     if (!eraseAnyCurrentTextInfo && currentTextInfo) { return; }
-    currentTextInfo = text;
-    infoElmnt.innerText = text;
 
-    setTimeout(() => {
-        currentTextInfo = null;
-        infoElmnt.innerText = "";
-    }, timeout);
+    for (const infoElmnt of infoElmnts) {
+        currentTextInfo = text;
+        infoElmnt.innerText = text;
+
+        setTimeout(() => {
+            currentTextInfo = null;
+            infoElmnt.innerText = "";
+        }, timeout);
+    }
 }
 function setWaitingForConnectionFormLoading(loading = true) {
     const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
@@ -719,6 +722,34 @@ function aaa(){
     count++;
     requestAnimationFrame(aaa);
 }
+function holdBtnMouseUp(target, duration = 1000) {
+    const initialBackground = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
+
+    return anime({
+        targets: target,
+        background: initialBackground,
+        duration,
+        easing: 'easeInOutQuad',
+        complete: () => {
+            target.style.background = initialBackground;
+        }
+    });
+}
+function holdBtnMouseDown(target, completeFnc, duration = 2000) {
+    const computedStyle = getComputedStyle(target);
+    const bImage = computedStyle.backgroundImage;
+    const perc1 = bImage.split('%')[0].split(' ')[bImage.split('%')[0].split(' ').length - 1];
+    const perc2 = bImage.split('%')[1].split(' ')[bImage.split('%')[1].split(' ').length - 1];
+    target.style.background = `linear-gradient(90deg, var(--background-color1) ${perc1}%, var(--background-color2) ${perc2}%)`;
+
+    return anime({
+        targets: target,
+        background: 'linear-gradient(90deg, var(--background-color1) 100%, var(--background-color2) 102%)',
+        duration,
+        easing: 'easeInOutQuad',
+        complete: () => { completeFnc(); }
+    });
+}
 //#endregion
 
 //#region - FUNCTIONS
@@ -1032,7 +1063,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
 		textInfo(targetForm, text);
 		input.classList.add('wrong');
         cryptoLight.clear();
-        button.innerHTML = 'Unlock';
+        button.innerHTML = 'UNLOCK';
 	}
 
     const authInfoResult = await chrome.storage.local.get(['authInfo']);
@@ -1078,7 +1109,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     }
 
     const res = await cryptoLight.generateKey(passwordReadyUse, salt1Base64, iv1Base64, hash);
-    button.innerHTML = 'Unlock';
+    button.innerHTML = 'UNLOCK';
     button.classList.remove('clicked');
     if (!res) { infoAndWrongAnim('Key derivation failed'); busy.splice(busy.indexOf('loginForm'), 1); return; }
 
@@ -1126,15 +1157,7 @@ document.addEventListener('mouseup', function(e) { // release click
                 animations.deleteDataBtn.pause();
                 textInfo(eHTML.settingsForm, 'Hold the button to confirm');
             }
-            animations.deleteDataBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
-                duration: 1000,
-                easing: 'easeInOutQuad',
-                complete: () => {
-                    e.target.style.background = 'white';
-                }
-            });
+            animations.deleteDataBtn = holdBtnMouseUp(e.target);
             break;
         default:
             break;
@@ -1146,30 +1169,14 @@ document.addEventListener('mouseup', function(e) { // release click
                 animations.sendBtn.pause();
                 textInfo(eHTML.send.miniForm, 'Hold the button to confirm');
             }
-            animations.sendBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)',
-                duration: 1000,
-                easing: 'easeInOutQuad',
-                complete: () => {
-                    e.target.style.background = 'var(--background-color2)';
-                }
-            });
+            animations.sendBtn = holdBtnMouseUp(e.target);
             break;
         case 'stakeBtn holdBtn':
             if (animations.stakeBtn) {
                 animations.stakeBtn.pause();
                 textInfo(eHTML.stake.miniForm, 'Hold the button to confirm');
             }
-            animations.stakeBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)',
-                duration: 1000,
-                easing: 'easeInOutQuad',
-                complete: () => {
-                    e.target.style.background = 'var(--background-color2)';
-                }
-            });
+            animations.stakeBtn = holdBtnMouseUp(e.target);
             break;
         default:
             break;
@@ -1179,16 +1186,10 @@ document.addEventListener('mousedown', function(e) { // hold click
     switch (e.target.id) {
         case 'deleteDataBtn':
             if (animations.deleteDataBtn) { animations.deleteDataBtn.pause(); }
-            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
-            animations.deleteDataBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
-                duration: 1000,
-                easing: 'easeInOutQuad',
-                complete: () => {
-                    resetApplication();
-                    e.target.style.background = 'white';
-                }
+
+            animations.deleteDataBtn = holdBtnMouseDown(e.target, () => {
+                resetApplication();
+                e.target.style.background = 'white';
             });
             break;
         default:
@@ -1200,47 +1201,36 @@ document.addEventListener('mousedown', function(e) { // hold click
             if (eHTML.send.amount.value === '') { textInfo(eHTML.send.miniForm, 'Amount is empty'); return; }
             if (eHTML.send.address.value === '') { textInfo(eHTML.send.miniForm, 'Address is empty'); return; }
             if (animations.sendBtn) { animations.sendBtn.pause(); }
-            e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
-            animations.sendBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, var(--background-color1) 100%, var(--background-color2) 110%)',
-                duration: 2000,
-                easing: 'easeInOutQuad',
-                complete: async () => {
-                    console.log('sendBtn');
-                    amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
-                    console.log('amount:', amount);
-                    // utils.addressUtils.conformityCheck(eHTML.send.address.value);
-                    receiverAddress = eHTML.send.address.value;
-                    senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
-                    const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
-                    if (!createdSignedTx.signedTx) {
-                        console.error('Transaction creation failed', createdSignedTx.error);
-                        //Error: Invalid address length !== 20
-                        let infoText = createdSignedTx.error;
-                        if (createdSignedTx.error.includes('Invalid address')) { infoText = 'Invalid address'; }
-                        textInfo(eHTML.send.miniForm, infoText);
-                        return;
-                    }
-                    
-                    console.log('transaction:', createdSignedTx.signedTx);
-                    chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
-                    e.target.style.background = 'white';
-                    animations.sendBtn = null;
+
+            animations.sendBtn = holdBtnMouseDown(e.target, async () => {
+                console.log('sendBtn');
+                amount = parseInt(eHTML.send.amount.value.replace(",","").replace(".",""));
+                console.log('amount:', amount);
+                // utils.addressUtils.conformityCheck(eHTML.send.address.value);
+                receiverAddress = eHTML.send.address.value;
+                senderAccount = activeWallet.accounts[activeAddressPrefix][activeAccountIndexByPrefix[activeAddressPrefix]];
+                const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
+                if (!createdSignedTx.signedTx) {
+                    console.error('Transaction creation failed', createdSignedTx.error);
+                    //Error: Invalid address length !== 20
+                    let infoText = createdSignedTx.error;
+                    if (createdSignedTx.error.includes('Invalid address')) { infoText = 'Invalid address'; }
+                    textInfo(eHTML.send.miniForm, infoText);
+                    return;
                 }
+                
+                console.log('transaction:', createdSignedTx.signedTx);
+                chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
+                e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
+                animations.sendBtn = null;
             });
             break;
         case 'stakeBtn holdBtn':
             if (eHTML.stake.amount.value === '') { textInfo(eHTML.stake.miniForm, 'Amount is empty'); return; }
             if (animations.stakeBtn) { animations.stakeBtn.pause(); animations.sendBtn = null; }
-            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
-            animations.stakeBtn = anime({
-                targets: e.target,
-                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
-                duration: 1000,
-                easing: 'easeInOutQuad',
-                complete: async () => {
-                    console.log('stakeBtn');
+            
+            animations.stakeBtn = holdBtnMouseDown(e.target, async () => {
+                console.log('stakeBtn');
                     amount = parseInt(eHTML.stake.amount.value.replace(",","").replace(".",""));
                     console.log('amount:', amount);
         
@@ -1261,8 +1251,7 @@ document.addEventListener('mousedown', function(e) { // hold click
         
                     console.log('transaction:', signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
-                    e.target.style.background = 'white';
-                }
+                    e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
             });
             break;
         default:
@@ -1526,7 +1515,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             await addPendingAnchorsRelatedToAddress(request.senderAddress, request.consumedAnchors);
 
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: request.senderAddress });
-            textInfo(eHTML.walletForm, `Transaction sent, ID: ${request.txId}`, 5000, true);
+            textInfo(eHTML.walletForm, `Transaction sent! (id: ${request.txId})`, 5000, true);
             break;
         case 'derivedAccountResult': // DEPRECATED
             console.log('derivedAccountResult:', request.success);
