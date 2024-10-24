@@ -6,9 +6,9 @@
   "action": {
     "default_popup": "views/popup.html",
     "default_icon": {
-      "16": "images/icon16.png",
-      "48": "images/icon48.png",
-      "128": "images/icon128.png"
+      "16": "images/contrast16.png",
+      "48": "images/contrast48.png",
+      "128": "images/contrast128.png"
     }
   },
   "background": {
@@ -22,8 +22,8 @@
     "storage"
   ],
   "icons": {
-    "16": "images/icon16.png",
-    "48": "images/icon48.png",
-    "128": "images/icon128.png"
+    "16": "images/contrast16.png",
+    "48": "images/contrast48.png",
+    "128": "images/contrast128.png"
   }
 }

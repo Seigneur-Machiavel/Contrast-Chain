@@ -77,12 +77,13 @@ export class OpStack {
                         if (error.message.includes('invalid prevHash')) {
                             console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
                         
-                        if (!error.message.includes('!sync!')) { return; }
-
-                        console.error(error.stack);
-                        this.terminate();
-
-                        await this.node.syncHandler.handleSyncFailure();
+                        if (error.message.includes('!sync!')) {
+                            console.error(error.stack);
+                            this.terminate();
+    
+                            await this.node.syncHandler.handleSyncFailure();
+                            return;
+                        }
                     }
                     // reset the timeout for the sync
                     clearTimeout(this.lastConfirmedBlockTimeout);

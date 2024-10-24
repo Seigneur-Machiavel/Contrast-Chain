@@ -1,5 +1,5 @@
 :root {
-    --funky-background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, .7) 258%) padding-box, linear-gradient(165deg, #fb923c 0%, #fb7185 18%, #818cf8 100%) border-box;
+    /*--funky-background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, .7) 258%) padding-box, linear-gradient(165deg, #fb923c 0%, #fb7185 18%, #818cf8 100%) border-box;
     --background-color1: #292a2a;
     --background-color2: rgba(127, 127, 127, .08);
 
@@ -14,6 +14,17 @@
 
     --input-color: #212121;
     --button-color: #ebebeb;
+    
+    */
+
+    --background-color1: white;
+    --background-color2: black;
+    --text-color: black;
+    --text-color2: white;
+    --input-color: black;
+    --primary-color: #f2f8ff;
+    --secondary-color: #b9d9f3;
+
     --invalid-color: indianred;
     --valid-color: cornflowerblue;
     --correct-color: green;
@@ -29,6 +40,11 @@
     --cbe-color5: #f1f3f8;
     --inner-height: 120px;
     --wrap-border-radius: 16px;
+}
+
+@font-face {
+    font-family: 'Contrast'; /* Nom que vous donnez à votre police */
+    src: url('./contrast/front/fonts/vertopal.com_Contrast\ V0.89.ttf') format('truetype'); /* Chemin relatif ou absolu vers le fichier de police */
 }
 
 ::-webkit-scrollbar {
@@ -53,7 +69,7 @@ body {
     margin: 0;
 }
 h1, h2 {
-    color: var(--text-color2);
+    color: var(--text-color1);
 }
 
 #popUpExplorer {
@@ -175,14 +191,15 @@ h1, h2 {
     }
 }
 .appTitle {
-    font-family: "Inter", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;
+    /*font-family: "Inter", "Source Sans Pro", "Helvetica Neue", Arial, sans-serif;*/
+    font-family: 'Contrast', sans-serif;
     text-align: center;
     margin-left: 3%;
     width: 94%;
     border-bottom-style: solid;
-    border-width: 1px;
-    border-color: #ffffff17;
-    filter: drop-shadow(-1px 6px 3px rgba(0, 0, 0, .1));
+    border-width: 3px;
+    border-color: var(--text-color);
+    /*filter: drop-shadow(-1px 6px 3px rgba(0, 0, 0, .1));*/
     transition: color 0.12s ease-in-out;
     /*background: var(--background-color1);*/
 }
@@ -191,7 +208,7 @@ h1, h2 {
 }
 .ml3 {
     font-weight: 600;
-    font-size: 28px;
+    font-size: 26px;
     margin: 10px 0;
 }
 .appTitle .titleSufix {
@@ -219,7 +236,7 @@ input {
     font-size: large;
     text-align: center;
     background-color: var(--input-color);
-    color: var(--text-color);
+    color: var(--text-color2);
 }
 input.wrong {
     border: 2px solid red;
@@ -242,8 +259,10 @@ button {
     border-style: none;
     border-radius: 10px;
     font-size: large;
-    background-color: var(--button-color);
+    /*background-color: var(--button-color);*/
+    background: var(--background-color2);
     transition: transform .08s ease-in-out;
+    color: var(--text-color2);
 
     /*color: var(--text-color);
     padding: 10px 20px;
@@ -262,15 +281,15 @@ button.disabled {
 }
 button.classy {
     border: 1px solid transparent;
-    background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, 1) 258%) padding-box, white;
+    background: linear-gradient(120deg, var(--background-color2) 0%, var(--background-color2) 258%) padding-box, white;
     background-size: .01% 100%;
     background-position: 50% 100%;
-    color: var(--text-color);
+    /*color: var(--text-color);*/
     /*animation: classyBtnHover .6s linear reverse;*/
 }
 button.classy.clicked:not(.disabled) {
     border: 2px solid transparent;
-    background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, 1) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
+    background: linear-gradient(120deg, var(--background-color2) 0%, var(--background-color2) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
     background-size: .01% 100%;
     background-position: 50% 100%;
     animation: classyBtnAnimation .8s linear forwards;
@@ -324,22 +343,27 @@ button.classy.clicked:not(.disabled) {
     height: 56px;
     border-radius: 10px;
     /*color: var(--text-color3);*/
-    color: var(--text-color);
+    /*color: var(--text-color);*/
     font-size: small;
     border-style: none;
     cursor: pointer;
-    transition: background 0.08s ease-in-out, transform 0.12s ease-in-out, box-shadow .04s ease-in-out;
+    transition: background 0.18s ease-in-out, transform 0.12s ease-in-out, box-shadow .04s ease-in-out;
     padding: 0;
     /*background-color: radial-gradient(circle, var(--neumo-color1) 0%, var(--neumo-color2) 85%);*/
-    background: radial-gradient(circle, var(--neumo-color1) 0%, var(--neumo-color2) 85%);
+    /*background: radial-gradient(circle, var(--neumo-color1) 0%, var(--neumo-color2) 85%);*/
     box-shadow: 3px 2px 5px var(--neumo-color1), -2px -2px 4px var(--neumo-color2);
     font-weight: bold;
+    background: var(--background-color1);
+    color: var(--text-color1);
 }
 .buttonBar button:not(.disabled):hover {
     transform: none !important;
     /*color: var(--text-color2);*/
     /*box-shadow: 3px 2px 6px var(--neumo-color1), -2px -2px 5px var(--neumo-color2);*/
     box-shadow: -2px -2px 7px -4px white, 1px 1px 10px -6px var(--primary-color);
+
+    background: var(--background-color2);
+    color: var(--text-color2);
 }
 .buttonBar button.disabled {
     cursor: initial;
@@ -349,13 +373,12 @@ button.classy.clicked:not(.disabled) {
 .buttonBar button img {
     pointer-events: none;
     width: 24px;
-    opacity: .8;
-    filter: drop-shadow(4px 3px .8px rgba(0, 0, 0, .2)) drop-shadow(-3px -1px .6px rgba(255, 255, 255, .06));
+    filter: invert(1) drop-shadow(4px 3px .8px rgba(0, 0, 0, .2)) drop-shadow(-3px -1px .6px rgba(255, 255, 255, .06));
     transform: translateY(5px);
 }
 .buttonBar button:not(.disabled):hover img {
     /*box-shadow: 6px 3px 7px var(--neumo-color1), -5px -3px 8px var(--neumo-color2);*/
-    filter: brightness(1) drop-shadow(-3px -1px .6px rgba(0, 0, 0, .2)) drop-shadow(4px 3px .8px rgba(255, 255, 255, .06));
+    filter:  brightness(1) drop-shadow(-3px -1px .6px rgba(0, 0, 0, .2)) drop-shadow(4px 3px .8px rgba(255, 255, 255, .06));
     transform: skew(-1deg, -.4deg) translateY(4px);
 }
 .btnBackground {
@@ -744,7 +767,7 @@ button.classy.clicked:not(.disabled) {
 #bottomBar button.active {
     cursor: pointer;
 }
-#bottomBar button.active:hover, .buttonBar button:hover {
+#bottomBar button.active:hover {
     background-color: #ffffff17;
 }
 #bottomBar button.active:hover img {
