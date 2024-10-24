@@ -60,7 +60,7 @@ export class SyncHandler {
     async handleIncomingStream( lstream ) {
        const stream = lstream.stream;
        const peerId = lstream.connection.remotePeer.toString();
-       this.node.p2pNetwork.reputationManager.recordAction({peerId}, ReputationManager.SYNC_INCOMING_STREAM);
+       this.node.p2pNetwork.reputationManager.recordAction({peerId}, ReputationManager.GENERAL_ACTIONS.SYNC_INCOMING_STREAM);
         try {
             // Decode the stream using lp.decode()
             const source = lp.decode(stream.source);
