@@ -216,7 +216,7 @@ class P2PNetwork extends EventEmitter {
         this.logger.debug({ peerId }, 'Peer connected');
 
         const isBanned = this.reputationManager.isPeerBanned({peerId});
-        this.reputationManager.recordAction({ peerId });
+        this.reputationManager.recordAction({ peerId }, ReputationManager.GENERAL_ACTIONS.CONNECTION_ESTABLISHED);
 
         if (isBanned) {
             this.logger.warn({ peerId }, 'Peer is banned, closing connection');
@@ -271,7 +271,7 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         const isBanned = this.reputationManager.isPeerBanned({peerId: from});
-        this.reputationManager.recordAction({ peerId : from});
+        this.reputationManager.recordAction({ peerId : from}, ReputationManager.GENERAL_ACTIONS.PUBSUB_RECEIVED + topic);
 
         this.logger.debug({ component: 'P2PNetwork', topic, from, isBanned }, 'Received pubsub message');
         // check if binary

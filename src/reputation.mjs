@@ -97,6 +97,15 @@ class ReputationManager extends EventEmitter {
         VALID_BLOCK_SUBMISSION: 'Valid Block Submission',
         NO_OFFENSES: 'No Offenses',
     };
+
+    static GENERAL_ACTIONS = {
+        CONNECTION_ESTABLISHED: 'Connection Established',
+        CONNECTION_TERMINATED: 'Connection Terminated',
+        PUBSUB_RECEIVED: 'PubSub Received: ',
+        DATA_SENT: 'Data Sent',
+        CUSTOM_EVENT: 'Custom Event',
+        SYNC_INCOMING_STREAM: 'Sync Incoming Stream',
+    };
     /**
      * Load scores and bans from disk when the node starts.
      */
@@ -441,9 +450,9 @@ class ReputationManager extends EventEmitter {
      * apply a MESSAGE_SPAMMING offense.
      * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
      */
-    recordAction(peer) {
+    recordAction(peer, action) {
         // Update associations
-        console.log({ component: 'ReputationManager', peer }, 'Recording action');
+        console.log({ component: 'ReputationManager', peer, action }, 'Recording action');
         this.updateAssociations(peer);
 
         const identifiers = this.getAssociatedIdentifiers(peer);

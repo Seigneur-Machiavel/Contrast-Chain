@@ -178,6 +178,7 @@ const eHTML = {
     nodeState: document.getElementById('nodeState'),
     repScoresList: document.getElementById('repScoreList'),
     peersHeightList: document.getElementById('peersHeightList'),
+    listenAddress: document.getElementById('listenAddress'),
 }
 
 // Function to display node information
@@ -212,6 +213,7 @@ function displayNodeInfo(data) {
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId : 'No Peer ID';
     eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
+    eHTML.listenAddress.textContent = data.listenAddress ? data.listenAddress : 'No Listen Address';
     if (Array.isArray(data.peerIds)) {
         renderPeers(data.peerIds);
     } else {
