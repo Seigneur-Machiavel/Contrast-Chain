@@ -5,28 +5,45 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Log Configuration Tool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/default.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <style>
-        /* Basic Styling */
+        /* Root Variables */
+        :root {
+            --background: #1e1e1e;
+            --foreground: #d4d4d4;
+            --accent: #569cd6;
+            --input-bg: #2d2d2d;
+            --border: #3c3c3c;
+        }
+
+        /* Global Styles */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: "IBM Plex Mono", monospace;
             margin: 0;
             padding: 20px;
-            background-color: #f9f9f9;
-            color: #333;
+            background-color: var(--background);
+            color: var(--foreground);
         }
 
         h1 {
-            color: #444;
+            color: var(--foreground);
             text-align: center;
             margin-bottom: 15px;
-            font-size: 1.8em;
+            font-size: 1.5rem;
+            font-weight: 600;
         }
 
         /* File Input Section */
         .file-input {
             text-align: center;
             margin-bottom: 15px;
+        }
+
+        .file-input input[type="file"] {
+            background: var(--input-bg);
+            color: var(--foreground);
+            border: 1px solid var(--border);
+            padding: 5px;
         }
 
         /* Controls Section */
@@ -42,10 +59,11 @@
         .controls select {
             padding: 5px 8px;
             font-size: 0.9em;
-            border: 1px solid #ccc;
+            border: 1px solid var(--border);
             border-radius: 4px;
             min-width: 140px;
-            background-color: #fff;
+            background-color: var(--input-bg);
+            color: var(--foreground);
         }
 
         /* Categories Styling */
@@ -53,14 +71,17 @@
             margin-bottom: 20px;
             padding: 12px 16px;
             border-radius: 5px;
-            background-color: #fff;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
         }
 
         .category-header {
             display: flex;
             align-items: center;
             margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
         }
 
         .category-header input[type="checkbox"] {
@@ -70,7 +91,7 @@
 
         .category-header label {
             font-size: 1em;
-            color: #555;
+            color: var(--foreground);
             flex-grow: 1;
         }
 
@@ -80,7 +101,7 @@
             align-items: center;
             margin-bottom: 6px;
             padding: 6px 0;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--border);
         }
 
         .log-entry:last-child {
@@ -99,12 +120,12 @@
         }
 
         .log-type {
-            font-weight: bold;
+            font-weight: 500;
             text-transform: uppercase;
             padding: 2px 6px;
             border-radius: 3px;
             display: inline-block;
-            color: #fff;
+            color: var(--foreground);
             font-size: 0.75em;
             margin-right: 8px;
             min-width: 50px;
@@ -115,7 +136,7 @@
             flex: 1;
             font-size: 0.9em;
             word-break: break-word;
-            color: #333;
+            color: var(--foreground);
         }
 
         .log-location {
@@ -124,44 +145,56 @@
             margin-left: 10px;
         }
 
-        /* Styling per Log Type */
+        /* Log Type Colors */
         .log-info {
-            background-color: #17a2b8;
+            background-color: #2563eb;
         }
 
         .log-warn {
-            background-color: #ffc107;
-            color: #333;
+            background-color: #d97706;
         }
 
         .log-error {
-            background-color: #dc3545;
+            background-color: #dc2626;
         }
 
         .log-debug {
-            background-color: #6c757d;
+            background-color: #4b5563;
         }
 
         .log-trace {
-            background-color: #28a745;
+            background-color: #059669;
         }
 
-        /* Buttons Styling */
+        /* Export Button */
         .export-button {
             display: block;
-            margin: 20px auto 0 auto;
+            margin: 20px auto;
             padding: 8px 16px;
-            background-color: #28a745;
-            color: #fff;
-            border: none;
-            border-radius: 18px;
+            background-color: var(--accent);
+            color: var(--foreground);
+            border: 1px solid var(--border);
+            border-radius: 4px;
             font-size: 0.95em;
             cursor: pointer;
+            font-family: 'IBM Plex Mono', monospace;
+            font-weight: 500;
             transition: background-color 0.3s ease;
         }
 
         .export-button:hover {
-            background-color: #218838;
+            background-color: #6fa8dc;
+        }
+
+        /* Code Highlighting */
+        pre {
+            margin: 0;
+            background-color: var(--background);
+            padding: 6px;
+            border-radius: 4px;
+            overflow-x: auto;
+            font-size: 0.85em;
+            border: 1px solid var(--border);
         }
 
         /* Responsive Design */
@@ -173,7 +206,6 @@
 
             .log-entry input[type="checkbox"] {
                 margin-bottom: 4px;
-                margin-top: 0;
             }
 
             .log-details {
@@ -200,16 +232,6 @@
                 margin-left: 0;
                 margin-top: 4px;
             }
-        }
-
-        /* Highlight.js Styling Overrides */
-        pre {
-            margin: 0;
-            background-color: #f1f1f1;
-            padding: 6px;
-            border-radius: 4px;
-            overflow-x: auto;
-            font-size: 0.85em;
         }
     </style>
 </head>
@@ -240,7 +262,6 @@
 
     <div id="logConfig"></div>
     <button id="exportConfig" class="export-button">Export Configuration</button>
-
     <!-- Highlight.js Library for Syntax Highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script>
