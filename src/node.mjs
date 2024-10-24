@@ -16,7 +16,7 @@ import { performance, PerformanceObserver } from 'perf_hooks';
 import { ValidationWorker, ValidationWorker_v2 } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
 import { TimeSynchronizer } from './time.mjs';
-
+import { Logger } from './logger.mjs';
 /**
 * @typedef {import("./account.mjs").Account} Account
 * @typedef {import("./transaction.mjs").Transaction} Transaction
@@ -32,6 +32,7 @@ obs.observe({ entryTypes: ['measure'] });
 export class Node {
     /** @param {Account} account */
     constructor(account, roles = ['validator'], p2pOptions = {}, version = 1) {
+        this.logger = new Logger();
         this.timeSynchronizer = new TimeSynchronizer();
         this.isSyncedWithNTP = false;
         this.restartRequested = false;
@@ -47,7 +48,7 @@ export class Node {
         this.p2pNetwork = new P2PNetwork({
             role: this.roles.join('_'),
             ...p2pOptions
-        }, this.timeSynchronizer);
+        }, this.timeSynchronizer, this.logger);
         this.p2pOptions = p2pOptions;
 
         /** @type {Account} */
@@ -72,7 +73,7 @@ export class Node {
         /** @type {Blockchain} */
         this.blockchain = new Blockchain(this.id);
         /** @type {SyncHandler} */
-        this.syncHandler = new SyncHandler(() => this);
+        this.syncHandler = new SyncHandler(() => this, this.logger);
 
         /** @type {Object<string, WebSocketCallBack>} */
         this.wsCallbacks = {};
@@ -88,6 +89,7 @@ export class Node {
     }
 
     async start(startFromScratch = false) {
+        await this.logger.initializeLogger();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
         this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
@@ -258,6 +260,7 @@ export class Node {
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
         this.blockchainStats.state = "validating block";
+        
         performance.mark('validation start');
         performance.mark('validation height-timestamp-hash');
 
@@ -479,7 +482,7 @@ export class Node {
         blockCandidate.powReward = powReward; // for the miner
 
         if (blockCandidate.Txs.length > 3) { console.info(`(Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
-
+        this.blockchainStats.lastLegitimacy = blockCandidate.legitimacy;
         return blockCandidate;
     }
     /** @param {BlockData} blockData */

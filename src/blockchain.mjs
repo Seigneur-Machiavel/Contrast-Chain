@@ -546,7 +546,7 @@ export class Blockchain {
         }
 
         // Return null if deserialization fails for all strategies.
-        this.logger.error('Unable to deserialize transaction using available strategies');
+        this.logger.error('luid-9f54fbca Unable to deserialize transaction using available strategies');
         return null;
     }
 
