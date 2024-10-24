@@ -39,7 +39,7 @@ class P2PNetwork extends EventEmitter {
         this.p2pNode = null;
         this.peers = new Map();
         this.subscriptions = new Set();
-        this.logger =  logger;
+        this.logger = logger;
 
         // Initialize ReputationManager
         this.reputationManager = new ReputationManager(this.options.reputationOptions);
@@ -82,19 +82,23 @@ class P2PNetwork extends EventEmitter {
         this.reputationManager.on('identifierUnbanned', ({ identifier }) => {
             this.logger.info(`luid-04ed05eb Identifier ${identifier} has been unbanned`, { identifier });
         });
+        
     }
 
     /** @type {string} */
     static SYNC_PROTOCOL = '/blockchain-sync/1.0.0';
-    /** @type {pino.Logger} */
-    static logger = null;
-    /** @returns {pino.Logger} */
+
+    static ALLOWED_TOPICS = new Set([
+        'new_transaction',
+        'new_block_candidate',
+        'new_block_finalized',
+    ]);
 
     async start() {
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
-            this.logger.info('luid-b4d2ba42 P2P network started',{ peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress });
+            this.logger.info('luid-b4d2ba42 P2P network started', { peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress });
 
             this.#setupEventListeners();
             await this.connectToBootstrapNodes();
@@ -106,7 +110,7 @@ class P2PNetwork extends EventEmitter {
     async stop() {
         if (this.p2pNode) {
             await this.p2pNode.stop();
-            this.logger.info('luid-44ec7003 P2P network stopped',{ component: 'P2PNetwork', peerId: this.p2pNode.peerId.toString() });
+            this.logger.info('luid-44ec7003 P2P network stopped', { component: 'P2PNetwork', peerId: this.p2pNode.peerId.toString() });
         }
         // Gracefully shutdown ReputationManager
         await this.reputationManager.shutdown();
@@ -142,17 +146,17 @@ class P2PNetwork extends EventEmitter {
     }
 
     async connectToBootstrapNodes() {
- 
+
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
                 const ma = multiaddr(addr);
-                const isBanned = this.reputationManager.isPeerBanned({ip: ma.toString()});
-                this.logger.info('luid-9167c650 Connecting to bootstrap node',{ component: 'P2PNetwork bootstrap', bootstrapNode: addr, isBanned });
+                const isBanned = this.reputationManager.isPeerBanned({ ip: ma.toString() });
+                this.logger.info('luid-9167c650 Connecting to bootstrap node', { component: 'P2PNetwork bootstrap', bootstrapNode: addr, isBanned });
                 await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
                 //await this.p2pNode.components.connectionManager.openConnection(ma);
                 this.logger.info('luid-deffa2f2 Connected to bootstrap node', { component: 'P2PNetwork', bootstrapNode: addr });
             } catch (err) {
-                this.logger.error('luid-b240757b Failed to connect to bootstrap node',{ component: 'P2PNetwork', bootstrapNode: addr, error: err.message });
+                this.logger.error('luid-b240757b Failed to connect to bootstrap node', { component: 'P2PNetwork', bootstrapNode: addr, error: err.message });
             }
         }));
     }
@@ -167,35 +171,35 @@ class P2PNetwork extends EventEmitter {
 
     #handlePeerDiscovery = async (event) => {
         const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
-        const isBanned = this.reputationManager.isPeerBanned({peerId :event.detail.id});
+        const isBanned = this.reputationManager.isPeerBanned({ peerId: event.detail.id });
         this.logger.info('luid-dd80c851 Peer discovered', { peerId, isBanned });
 
         const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
         const ma = peerId.multiaddrs ?? peerInfo.multiaddrs;
         if (!ma) {
-            this.logger.error('luid-e142f758 Failed to find multiaddrs for peer',{ component: 'P2PNetwork', peerId });
+            this.logger.error('luid-e142f758 Failed to find multiaddrs for peer', { component: 'P2PNetwork', peerId });
             return;
         }
         try {
-            const isBanned = this.reputationManager.isPeerBanned({ip: ma.toString()});
-            this.logger.info('luid-2b00a032 Dialing after discovery',{ ma, isBanned });
+            const isBanned = this.reputationManager.isPeerBanned({ ip: ma.toString() });
+            this.logger.info('luid-2b00a032 Dialing after discovery', { ma, isBanned });
             await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
         }
         catch (error) {
-            this.logger.error('luid-df1fa9c4 Failed to dial peer',{ component: 'P2PNetwork', peerId, error: error.message });
+            this.logger.error('luid-df1fa9c4 Failed to dial peer', { component: 'P2PNetwork', peerId, error: error.message });
         }
     };
 
     /** @param {CustomEvent} event */
     #handlePeerConnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.debug('luid-2878c082 Peer connected',{ peerId });
+        this.logger.debug('luid-2878c082 Peer connected', { peerId });
 
-        const isBanned = this.reputationManager.isPeerBanned({peerId});
+        const isBanned = this.reputationManager.isPeerBanned({ peerId });
         this.reputationManager.recordAction({ peerId }, ReputationManager.GENERAL_ACTIONS.CONNECTION_ESTABLISHED);
 
         if (isBanned) {
-            this.logger.warn('luid-33c7015e Peer is banned, closing connection',{ peerId });
+            this.logger.warn('luid-33c7015e Peer is banned, closing connection', { peerId });
             this.closeConnection(peerId);
             return;
         }
@@ -213,7 +217,7 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePeerDisconnect = (event) => {
         const peerId = event.detail.toString();
-        this.logger.debug('luid-69a1977c Peer disconnected',{ peerId });
+        this.logger.debug('luid-69a1977c Peer disconnected', { peerId });
         this.peers.delete(peerId);
         this.emit('peer:disconnect', peerId);
     };
@@ -225,7 +229,7 @@ class P2PNetwork extends EventEmitter {
             this.updatePeer(peerId.toString(), { status: 'dialed', address: con.remoteAddr.toString() });
             //this.createStream(peerId, P2PNetwork.SYNC_PROTOCOL);
         } catch (error) {
-            this.logger.error('luid-05b05850 Failed to dial peer',{ component: 'P2PNetwork', peerId, error: error.message });
+            this.logger.error('luid-05b05850 Failed to dial peer', { component: 'P2PNetwork', peerId, error: error.message });
             throw error;
         }
     }
@@ -233,7 +237,7 @@ class P2PNetwork extends EventEmitter {
     async createStream(peerId, protocol) {
         try {
             const stream = await this.p2pNode.dialProtocol(peerId, protocol);
-            this.logger.debug('luid-9fd7aa8f Stream created',{ component: 'P2PNetwork', peerId, protocol });
+            this.logger.debug('luid-9fd7aa8f Stream created', { component: 'P2PNetwork', peerId, protocol });
             this.updatePeer(peerId.toString(), { stream });
             return stream;
         } catch (error) {
@@ -246,11 +250,17 @@ class P2PNetwork extends EventEmitter {
     /** @param {CustomEvent} event */
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
-        const isBanned = this.reputationManager.isPeerBanned({peerId: from});
-        this.reputationManager.recordAction({ peerId : from}, ReputationManager.GENERAL_ACTIONS.PUBSUB_RECEIVED + topic);
+        const isBanned = this.reputationManager.isPeerBanned({ peerId: from });
+        this.reputationManager.recordAction({ peerId: from }, ReputationManager.GENERAL_ACTIONS.PUBSUB_RECEIVED + topic);
 
         this.logger.debug('luid-b1180a7e Received pubsub message', { component: 'P2PNetwork', topic, from, isBanned });
-        // check if binary
+        
+        // Validate that the topic is allowed
+        if (!this.validateTopic(topic)) {
+            this.logger.warn('luid-42d36d6e luid-topic-validation Received message on unauthorized topic', { topic, from });
+            return;
+        }
+
         if (!(data instanceof Uint8Array)) { this.logger.error(`luid-db87846b Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }
         const byteLength = data.byteLength;
         try {
@@ -258,15 +268,15 @@ class P2PNetwork extends EventEmitter {
             switch (topic) {
                 case 'new_transaction':
                     // check the size of the tx before parsing it
-                    if (data.byteLength > utils.SETTINGS.maxTransactionSize * 1.02) {'Transaction size exceeds the maximum allowed size' , this.logger.error({ component: 'P2PNetwork', topic, from }); return; }
+                    if (data.byteLength > utils.SETTINGS.maxTransactionSize * 1.02) { this.logger.error('luid-ed4b8d0b Transaction size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializerFast.deserialize.transaction(data);
                     break;
                 case 'new_block_candidate':
-                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-bb4b664c Block candidate size exceeds the maximum allowed size',{ component: 'P2PNetwork', topic, from }); return; }
+                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-bb4b664c Block candidate size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializer.block_candidate.fromBinary_v4(data);
                     break;
                 case 'new_block_finalized':
-                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-d4e9de17 Block finalized size exceeds the maximum allowed size',{ component: 'P2PNetwork', topic, from }); return; }
+                    if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-d4e9de17 Block finalized size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializer.block_finalized.fromBinary_v4(data);
                     break;
                 default:
@@ -278,8 +288,26 @@ class P2PNetwork extends EventEmitter {
             this.emit(topic, message);
 
         } catch (error) {
-            this.logger.error('luid-801de822 Failed to parse pubsub message',{ component: 'P2PNetwork', topic, error: error.message});
+            this.logger.error('luid-801de822 Failed to parse pubsub message', { component: 'P2PNetwork', topic, error: error.message });
         }
+    }
+    /**
+     * Validates a pubsub topic against the allowed topics.
+     * @param {string} topic - The topic to validate.
+     * @returns {boolean} - Returns true if the topic is allowed, otherwise false.
+     */
+    validateTopic(topic) {
+        if (typeof topic !== 'string') {
+            this.logger.warn('luid-be3516e1 luid-topic-validation Invalid topic type', { topic, reason: 'Topic must be a string' });
+            return false;
+        }
+
+        if (!P2PNetwork.ALLOWED_TOPICS.has(topic)) {
+            this.logger.warn('luid-d0ad52f1 luid-topic-validation Topic not allowed', { topic });
+            return false;
+        }
+
+        return true;
     }
 
     /** @param {string} topic @param {any} message - Can be any JavaScript object */
@@ -306,13 +334,13 @@ class P2PNetwork extends EventEmitter {
             }
 
             await this.p2pNode.services.pubsub.publish(topic, serialized);
-            this.logger.debug('luid-4937c817 Broadcast complete',{ component: 'P2PNetwork', topic });
+            this.logger.debug('luid-4937c817 Broadcast complete', { component: 'P2PNetwork', topic });
             return 'success';
         } catch (error) {
             if (error.message === "PublishError.NoPeersSubscribedToTopic") {
                 return error;
             }
-            this.logger.error('luid-8e340d55 Broadcast error',{ component: 'P2PNetwork', topic, error: error.message });
+            this.logger.error('luid-8e340d55 Broadcast error', { component: 'P2PNetwork', topic, error: error.message });
             return error;
         }
     }
@@ -344,7 +372,7 @@ class P2PNetwork extends EventEmitter {
             const response = await this.sendOverStream(stream, message);
             return response;
         } catch (error) {
-            this.logger.error('luid-b2d7c0a9 Failed to send message',{ component: 'P2PNetwork', peerMultiaddr, peerId, error: error.message });
+            this.logger.error('luid-b2d7c0a9 Failed to send message', { component: 'P2PNetwork', peerMultiaddr, peerId, error: error.message });
 
             // Attempt to close the faulty stream if it exists
             const peer = this.peers.get(peerId);
@@ -380,7 +408,7 @@ class P2PNetwork extends EventEmitter {
             clearTimeout(timeout);
 
             this.updatePeer(peerId, { stream });
-            this.logger.debug('luid-64097d47 Created new stream',{ component: 'P2PNetwork', peerId });
+            this.logger.debug('luid-64097d47 Created new stream', { component: 'P2PNetwork', peerId });
             return stream;
         } catch (error) {
             this.logger.error('luid-9dee0369 Failed to acquire stream', { component: 'P2PNetwork', peerId, error: error.message });
@@ -398,11 +426,11 @@ class P2PNetwork extends EventEmitter {
             const lp = lpStream(stream);
             const serialized = utils.serializer.rawData.toBinary_v1(message);
             await lp.write(serialized);
-            this.logger.info('luid-e99e2dac Message written to stream',{ component: 'P2PNetwork', length: message.length });
+            this.logger.info('luid-e99e2dac Message written to stream', { component: 'P2PNetwork', length: message.length });
 
             const res = await lp.read();
             if (!res) { throw new Error('No response received (unexpected end of input)'); }
-            this.logger.info('luid-d7de89d1 Response read from stream',{ component: 'P2PNetwork', response_bytes: res.length });
+            this.logger.info('luid-d7de89d1 Response read from stream', { component: 'P2PNetwork', response_bytes: res.length });
 
             const response = utils.serializer.rawData.fromBinary_v1(res.subarray());
             if (response.status !== 'error') {
@@ -411,7 +439,7 @@ class P2PNetwork extends EventEmitter {
 
             throw new Error(response.message);
         } catch (error) {
-            this.logger.error('luid-a0932f5f Error during sendOverStream',{ component: 'P2PNetwork', error: error.message });
+            this.logger.error('luid-a0932f5f Error during sendOverStream', { component: 'P2PNetwork', error: error.message });
             throw error;
         }
         finally {
@@ -419,7 +447,7 @@ class P2PNetwork extends EventEmitter {
                 try {
                     stream.close();
                 } catch (closeErr) {
-                    this.logger.error('luid-d0cd7dc0 Failed to close stream',{ error: closeErr.message });
+                    this.logger.error('luid-d0cd7dc0 Failed to close stream', { error: closeErr.message });
                 }
             } else {
                 this.logger.warn('luid-07277de5 Stream is undefined; cannot close stream');
@@ -430,16 +458,16 @@ class P2PNetwork extends EventEmitter {
     async subscribe(topic, callback) {
         if (this.subscriptions.has(topic)) { return; }
 
-        this.logger.debug('luid-0f2f018d Subscribing to topic',{ component: 'P2PNetwork', topic });
+        this.logger.debug('luid-0f2f018d Subscribing to topic', { component: 'P2PNetwork', topic });
         try {
             await this.p2pNode.services.pubsub.subscribe(topic);
             this.subscriptions.add(topic);
             if (callback) {
                 this.on(topic, (message) => callback(topic, message));
             }
-            this.logger.debug('luid-6ddfdefb Subscribed to topic', {component: 'P2PNetwork', topic, subscriptions: Array.from(this.subscriptions) });
+            this.logger.debug('luid-6ddfdefb Subscribed to topic', { component: 'P2PNetwork', topic, subscriptions: Array.from(this.subscriptions) });
         } catch (error) {
-            this.logger.error('luid-fc18ad60 Failed to subscribe to topic',{ component: 'P2PNetwork', topic, error: error.message });
+            this.logger.error('luid-fc18ad60 Failed to subscribe to topic', { component: 'P2PNetwork', topic, error: error.message });
             throw error;
         }
     }
@@ -450,7 +478,7 @@ class P2PNetwork extends EventEmitter {
     /** @param {string} topic */
     async unsubscribe(topic) {
         if (!this.subscriptions.has(topic)) {
-            this.logger.error('luid-7c191bc3 Attempting to unsubscribe from a topic that was not subscribed to', { component: 'P2PNetwork', topic }, );
+            this.logger.error('luid-7c191bc3 Attempting to unsubscribe from a topic that was not subscribed to', { component: 'P2PNetwork', topic },);
             return;
         }
 
@@ -458,7 +486,7 @@ class P2PNetwork extends EventEmitter {
             await this.p2pNode.services.pubsub.unsubscribe(topic);
             this.p2pNode.services.pubsub.topics.delete(topic);
             this.subscriptions.delete(topic);
-            this.logger.debug('luid-4d686b67 Unsubscribed from topic',{ component: 'P2PNetwork', topic });
+            this.logger.debug('luid-4d686b67 Unsubscribed from topic', { component: 'P2PNetwork', topic });
         } catch (error) {
             this.logger.error('luid-fb112b3b Error unsubscribing from topic', { component: 'P2PNetwork', topic, error: error.message });
             throw error;
