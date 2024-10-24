@@ -118,6 +118,7 @@ const selectedWalletIndex = 0;
 const animations = {};
 const eHTML = {
     appTitle: document.getElementById('appTitle'),
+    welcomeCanvas: document.getElementById('welcomeCanvas'),
     centerScreenBtnContrainer: document.getElementsByClassName('centerScreenBtnContrainer')[0],
     popUpContent: document.getElementById('popUpContent'),
     popUpContentWrap: document.getElementById('popUpContent').children[0],
@@ -187,6 +188,7 @@ const busy = [];
 /** @type {Object<string, AddressExhaustiveData>} */
 const addressesExhaustiveData = {};
 //#region - UX FUNCTIONS
+const colors = { background: 'white', text: 'black' };
 function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
@@ -235,6 +237,7 @@ function setVisibleForm(formId, applyBLur = true) {
     let popUpSize = 'medium';
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
+    eHTML.welcomeCanvas.classList.add('hidden');
     eHTML.centerScreenBtnContrainer.classList.add('hidden');
 
     const forms = document.getElementsByTagName('form');
@@ -244,7 +247,8 @@ function setVisibleForm(formId, applyBLur = true) {
     }
 
     if (formId === "passwordCreationForm" || formId === "loginForm") {
-        eHTML.centerScreenBtnContrainer.classList.remove('hidden');
+        //eHTML.centerScreenBtnContrainer.classList.remove('hidden');
+        eHTML.welcomeCanvas.classList.remove('hidden');
         eHTML.bottomBar.classList.add('hidden');
         eHTML.appTitle.classList.remove('hidden');
         eHTML.popUpContent.classList.remove('large');
@@ -625,6 +629,95 @@ function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
 
     if (divToInject) { divToInject.appendChild(element); }
     return element;
+}
+var ctx,count,tx,ty,ob;
+(function(){
+    var a,b;
+    ctx = eHTML.welcomeCanvas.getContext('2d');
+    eHTML.welcomeCanvas.width=eHTML.welcomeCanvas.height=400;
+    count=0;
+    tx=eHTML.welcomeCanvas.width/2;
+    ty=eHTML.welcomeCanvas.height/2;
+    
+    ob=[];
+    for(a=0;a<27;a++){
+        b={};
+        c=Math.PI*2*Math.random();
+        d=Math.random()*7000;
+        b.x=tx+Math.cos(c)*d;
+        b.y=ty+Math.sin(c)*d;
+        b.rx=b.ry=0;
+        b.typ=(Math.random()*360)|0;
+        ob.push(b);
+    }
+    aaa();
+})();
+function aaa(){
+    var a,b,c,d,e,f,g,h,x,y,abs,pe,tim;
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle=colors.background;
+    ctx.fillRect(0,0,eHTML.welcomeCanvas.width,eHTML.welcomeCanvas.height);
+    /*ctx.globalCompositeOperation = "lighter";*/
+    tim=count/12;
+    abs=Math.abs;
+    pe=1.2+Math.sin(tim/14.7)*0.87;
+    
+    for(a=0;a<ob.length;a++){
+        b=ob[a];
+        b.rx*=0.2;
+        b.ry*=0.2;
+        b.s=0.72+Math.sin((b.typ/360)*Math.PI*2+tim)/2;
+        b.s*=b.s;
+    }
+    
+    for(a=0;a<ob.length;a++){
+        b=ob[a];
+        for(c=a+1;c<ob.length;c++){
+            d=ob[c];
+            x=b.x-d.x;
+            y=b.y-d.y;
+            e=(b.typ-d.typ)/360;
+            if(e<0)e+=1;
+            if(e>0.52)e=1-e;
+            e*=pe;
+            if(e>1)continue;
+            e=0.2+e*1.2;
+            h=120*e*(b.s+d.s+0.4)/pe;
+            if(abs(x)>h || abs(y)>h)continue;
+            e=Math.pow(x*x+y*y,0.68);
+            if(e<h){
+                e=(h-e)/h;
+                e*=e/10;
+                x*=e;
+                y*=e;
+                b.rx+=x;
+                b.ry+=y;
+                d.rx-=x;
+                d.ry-=y;
+            }
+        }
+    }
+    
+    for(a=0;a<ob.length;a++){
+        b=ob[a];
+        x=b.x-tx;
+        y=b.y-ty;
+        e=Math.pow(x*x+y*y,0.5);
+        b.rx-=x*e/2750;
+        b.ry-=y*e/2750;
+        b.x+=b.rx;
+        b.y+=b.ry;
+    }
+    for(a=0;a<ob.length;a++){
+        b=ob[a];
+        ctx.strokeStyle=ctx.fillStyle=colors.text;
+        ctx.beginPath();
+        ctx.arc(b.x,b.y,10*(b.s+0.8),0,Math.PI*2,0);
+        ctx.fill();
+        ctx.stroke();
+    }
+    count++;
+    requestAnimationFrame(aaa);
 }
 //#endregion
 
@@ -1048,33 +1141,33 @@ document.addEventListener('mouseup', function(e) { // release click
     }
 
     switch (e.target.className) {
-        case 'sendBtn':
+        case 'sendBtn holdBtn':
             if (animations.sendBtn) {
                 animations.sendBtn.pause();
                 textInfo(eHTML.send.miniForm, 'Hold the button to confirm');
             }
             animations.sendBtn = anime({
                 targets: e.target,
-                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
+                background: 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)',
                 duration: 1000,
                 easing: 'easeInOutQuad',
                 complete: () => {
-                    e.target.style.background = 'white';
+                    e.target.style.background = 'var(--background-color2)';
                 }
             });
             break;
-        case 'stakeBtn':
+        case 'stakeBtn holdBtn':
             if (animations.stakeBtn) {
                 animations.stakeBtn.pause();
                 textInfo(eHTML.stake.miniForm, 'Hold the button to confirm');
             }
             animations.stakeBtn = anime({
                 targets: e.target,
-                background: 'linear-gradient(90deg, white 0%, transparent 0%)',
+                background: 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)',
                 duration: 1000,
                 easing: 'easeInOutQuad',
                 complete: () => {
-                    e.target.style.background = 'white';
+                    e.target.style.background = 'var(--background-color2)';
                 }
             });
             break;
@@ -1103,15 +1196,15 @@ document.addEventListener('mousedown', function(e) { // hold click
     }
 
     switch (e.target.className) {
-        case 'sendBtn':
+        case 'sendBtn holdBtn':
             if (eHTML.send.amount.value === '') { textInfo(eHTML.send.miniForm, 'Amount is empty'); return; }
             if (eHTML.send.address.value === '') { textInfo(eHTML.send.miniForm, 'Address is empty'); return; }
             if (animations.sendBtn) { animations.sendBtn.pause(); }
-            e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
+            e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
             animations.sendBtn = anime({
                 targets: e.target,
-                background: 'linear-gradient(90deg, white 100%, transparent 110%)',
-                duration: 1000,
+                background: 'linear-gradient(90deg, var(--background-color1) 100%, var(--background-color2) 110%)',
+                duration: 2000,
                 easing: 'easeInOutQuad',
                 complete: async () => {
                     console.log('sendBtn');
@@ -1123,7 +1216,10 @@ document.addEventListener('mousedown', function(e) { // hold click
                     const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
                     if (!createdSignedTx.signedTx) {
                         console.error('Transaction creation failed', createdSignedTx.error);
-                        textInfo(eHTML.send.miniForm, createdSignedTx.error);
+                        //Error: Invalid address length !== 20
+                        let infoText = createdSignedTx.error;
+                        if (createdSignedTx.error.includes('Invalid address')) { infoText = 'Invalid address'; }
+                        textInfo(eHTML.send.miniForm, infoText);
                         return;
                     }
                     
@@ -1134,9 +1230,9 @@ document.addEventListener('mousedown', function(e) { // hold click
                 }
             });
             break;
-        case 'stakeBtn':
+        case 'stakeBtn holdBtn':
             if (eHTML.stake.amount.value === '') { textInfo(eHTML.stake.miniForm, 'Amount is empty'); return; }
-            if (animations.stakeBtn) { animations.stakeBtn.pause(); }
+            if (animations.stakeBtn) { animations.stakeBtn.pause(); animations.sendBtn = null; }
             e.target.style.background = 'linear-gradient(90deg, white 0%, transparent 0%)';
             animations.stakeBtn = anime({
                 targets: e.target,

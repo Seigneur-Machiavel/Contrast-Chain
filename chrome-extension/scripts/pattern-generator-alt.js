@@ -57,7 +57,7 @@ class PatternGenerator {
 
     _getBrightness(randomValue) {
         // Generate a brightness value between 50 and 255 for better contrast
-        const brightness = Math.floor(50 + randomValue * 205);
+        const brightness = Math.floor(0 + randomValue * 255);
         return brightness;
     }
 

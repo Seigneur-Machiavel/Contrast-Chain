@@ -92,6 +92,7 @@ export class OpStack {
                             return;
                         }
                     }
+                    
                     // reset the timeout for the sync
                     clearTimeout(this.lastConfirmedBlockTimeout);
                     this.lastConfirmedBlockTimeout = setTimeout(() => {
@@ -110,6 +111,13 @@ export class OpStack {
                         this.tasks.unshift(task);
                         break;
                     }
+
+                    // reset the timeout for the sync
+                    clearTimeout(this.lastConfirmedBlockTimeout);
+                    this.lastConfirmedBlockTimeout = setTimeout(() => {
+                        this.pushFirst('syncWithKnownPeers', null);
+                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    }, this.delayWithoutConfirmationBeforeSync);
 
                     console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
