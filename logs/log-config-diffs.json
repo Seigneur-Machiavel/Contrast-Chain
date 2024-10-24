@@ -10,5 +10,414 @@
   {
     "timestamp": "2024-10-24T11:58:39.168Z",
     "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T12:08:56.649Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T12:11:31.629Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T12:12:35.822Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T12:14:02.418Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T13:39:31.015Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-24T15:07:44.397Z",
+    "diffs": [
+      {
+        "id": "luid-b97807e0",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 347,
+          "type": "warn",
+          "content": "luid-b97807e0 luid-topic-validation Invalid topic type"
+        }
+      },
+      {
+        "id": "luid-441b066f",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 352,
+          "type": "warn",
+          "content": "luid-441b066f luid-topic-validation Topic not allowed"
+        }
+      },
+      {
+        "id": "luid-b1180a7e",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 252,
+          "type": "debug",
+          "content": "luid-b1180a7e Received pubsub message"
+        }
+      },
+      {
+        "id": "luid-db87846b",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 254,
+          "type": "error",
+          "content": "luid-db87846b Received non-binary data from ${from} dataset: ${data} topic: ${topic}"
+        }
+      },
+      {
+        "id": "luid-bb4b664c",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 265,
+          "type": "error",
+          "content": "luid-bb4b664c Block candidate size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-d4e9de17",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 269,
+          "type": "error",
+          "content": "luid-d4e9de17 Block finalized size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-801de822",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 281,
+          "type": "error",
+          "content": "luid-801de822 Failed to parse pubsub message"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-10-24T15:13:58.679Z",
+    "diffs": [
+      {
+        "id": "luid-b1180a7e",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 256,
+          "type": "debug",
+          "content": "luid-b1180a7e Received pubsub message"
+        }
+      },
+      {
+        "id": "luid-2f97d81d",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 260,
+          "type": "warn",
+          "content": "luid-2f97d81d luid-topic-validation Received message on unauthorized topic"
+        }
+      },
+      {
+        "id": "luid-db87846b",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 264,
+          "type": "error",
+          "content": "luid-db87846b Received non-binary data from ${from} dataset: ${data} topic: ${topic}"
+        }
+      },
+      {
+        "id": "luid-900cf4c9",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 271,
+          "type": "error",
+          "content": "luid-900cf4c9 Transaction size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-bb4b664c",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 275,
+          "type": "error",
+          "content": "luid-bb4b664c Block candidate size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-d4e9de17",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 279,
+          "type": "error",
+          "content": "luid-d4e9de17 Block finalized size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-801de822",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 291,
+          "type": "error",
+          "content": "luid-801de822 Failed to parse pubsub message"
+        }
+      },
+      {
+        "id": "luid-db623485",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 301,
+          "type": "warn",
+          "content": "luid-db623485 luid-topic-validation Invalid topic type"
+        }
+      },
+      {
+        "id": "luid-ebe7c5ec",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 306,
+          "type": "warn",
+          "content": "luid-ebe7c5ec luid-topic-validation Topic not allowed"
+        }
+      },
+      {
+        "id": "luid-b97807e0",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 347,
+          "type": "warn",
+          "content": "luid-b97807e0 luid-topic-validation Invalid topic type"
+        }
+      },
+      {
+        "id": "luid-441b066f",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 352,
+          "type": "warn",
+          "content": "luid-441b066f luid-topic-validation Topic not allowed"
+        }
+      },
+      {
+        "id": "luid-f03a471a",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 335,
+          "type": "error",
+          "content": "luid-f03a471a Failed to parse multiaddr"
+        }
+      },
+      {
+        "id": "luid-b2d7c0a9",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 347,
+          "type": "error",
+          "content": "luid-b2d7c0a9 Failed to send message"
+        }
+      },
+      {
+        "id": "luid-c8221f8c",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 356,
+          "type": "debug",
+          "content": "luid-c8221f8c Closed faulty stream after error"
+        }
+      },
+      {
+        "id": "luid-cb6e42b1",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 358,
+          "type": "error",
+          "content": "luid-cb6e42b1 Failed to close stream after error"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-10-24T15:14:43.406Z",
+    "diffs": [
+      {
+        "id": "luid-42d36d6e",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 260,
+          "type": "warn",
+          "content": "luid-42d36d6e luid-topic-validation Received message on unauthorized topic"
+        }
+      },
+      {
+        "id": "luid-ed4b8d0b",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 271,
+          "type": "error",
+          "content": "luid-ed4b8d0b Transaction size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-be3516e1",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 301,
+          "type": "warn",
+          "content": "luid-be3516e1 luid-topic-validation Invalid topic type"
+        }
+      },
+      {
+        "id": "luid-d0ad52f1",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 306,
+          "type": "warn",
+          "content": "luid-d0ad52f1 luid-topic-validation Topic not allowed"
+        }
+      },
+      {
+        "id": "luid-f03a471a",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 363,
+          "type": "error",
+          "content": "luid-f03a471a Failed to parse multiaddr"
+        }
+      },
+      {
+        "id": "luid-b2d7c0a9",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 375,
+          "type": "error",
+          "content": "luid-b2d7c0a9 Failed to send message"
+        }
+      },
+      {
+        "id": "luid-c8221f8c",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 384,
+          "type": "debug",
+          "content": "luid-c8221f8c Closed faulty stream after error"
+        }
+      },
+      {
+        "id": "luid-cb6e42b1",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 386,
+          "type": "error",
+          "content": "luid-cb6e42b1 Failed to close stream after error"
+        }
+      },
+      {
+        "id": "luid-2f97d81d",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 260,
+          "type": "warn",
+          "content": "luid-2f97d81d luid-topic-validation Received message on unauthorized topic"
+        }
+      },
+      {
+        "id": "luid-900cf4c9",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 271,
+          "type": "error",
+          "content": "luid-900cf4c9 Transaction size exceeds the maximum allowed size"
+        }
+      },
+      {
+        "id": "luid-db623485",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 301,
+          "type": "warn",
+          "content": "luid-db623485 luid-topic-validation Invalid topic type"
+        }
+      },
+      {
+        "id": "luid-ebe7c5ec",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 306,
+          "type": "warn",
+          "content": "luid-ebe7c5ec luid-topic-validation Topic not allowed"
+        }
+      }
+    ]
   }
 ]
