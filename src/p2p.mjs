@@ -50,7 +50,7 @@ class P2PNetwork extends EventEmitter {
 
         // Event listener for when an identifier is banned
         this.reputationManager.on('identifierBanned', ({ identifier, permanent }) => {
-            this.logger.warn(
+            this.logger.debug(
                 { identifier, permanent },
                 `Identifier ${identifier} has been ${permanent ? 'permanently' : 'temporarily'} banned`
             );
@@ -76,7 +76,7 @@ class P2PNetwork extends EventEmitter {
                 }
 
                 if (peerId) {
-                    this.logger.info({ identifier, peerId }, 'Closing connections to banned identifier');
+                    this.logger.debug({ identifier, peerId }, 'Closing connections to banned identifier');
                     this.p2pNode.components.connectionManager.closeConnections(peerId);
                 }
             }
@@ -216,6 +216,8 @@ class P2PNetwork extends EventEmitter {
         this.logger.debug({ peerId }, 'Peer connected');
 
         const isBanned = this.reputationManager.isPeerBanned({peerId});
+        this.reputationManager.recordAction({ peerId });
+
         if (isBanned) {
             this.logger.warn({ peerId }, 'Peer is banned, closing connection');
             this.closeConnection(peerId);
@@ -269,6 +271,8 @@ class P2PNetwork extends EventEmitter {
     #handlePubsubMessage = async (event) => {
         const { topic, data, from } = event.detail;
         const isBanned = this.reputationManager.isPeerBanned({peerId: from});
+        this.reputationManager.recordAction({ peerId : from});
+
         this.logger.debug({ component: 'P2PNetwork', topic, from, isBanned }, 'Received pubsub message');
         // check if binary
         if (!(data instanceof Uint8Array)) { console.error(`Received non-binary data from ${from} dataset: ${data} topic: ${topic}`); return; }

@@ -3,6 +3,8 @@
 * @typedef {import("./node.mjs").Node} Node
 */
 
+import ReputationManager from "./reputation.mjs";
+
 // Simple task manager, used to avoid vars overwriting in the callstack
 export class OpStack {
     /** @type {Node} */
@@ -70,7 +72,12 @@ export class OpStack {
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
                     try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false }, byteLength);
                     } catch (error) {
-                        if (error.message.includes('!ban!')) { } //! -> Ban the peer
+                        if (error.message.includes('!ban!')) { 
+                           if (task.data.from !== undefined) {
+                            this.node.p2pNetwork.reputationManager.applyOffense(
+                                {peerId : task.data.from},
+                                ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION); }
+                        } //! -> Ban the peer
 
                         if (error.message.includes('Anchor not found')) {
                             console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }

@@ -78,6 +78,7 @@ class AppStaticFncs {
         result.peerIds = node.p2pNetwork?.getConnectedPeers() ?? 'No Peer IDs';
         result.repScores = node.p2pNetwork?.reputationManager?.getScores() ?? 'No Rep Scores';
         result.nodeState = node.blockchainStats.state ?? 'No State';
+        result.peerHeights = node.syncHandler.getAllPeerHeights() ?? 'No Peer Height';
         return result;
     }
     /** @param {Node} node */

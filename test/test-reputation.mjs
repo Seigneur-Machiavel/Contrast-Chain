@@ -77,6 +77,51 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         console.log('All nodes stopped.');
     });
 
+    it('should associate identifiers and apply bans uniformly', async () => {
+        const peerCId = nodeC.p2pNode.peerId.toString();
+        const peerCAddr = getFirstAddress(nodeC);
+        const addr = multiaddr(peerCAddr);
+        const ip = addr.nodeAddress().address;
+        const address = '0x456def'; // Suppose nodeC has an associated address
+
+        console.log(`Associating Peer ID: ${peerCId}, IP: ${ip}, Address: ${address}`);
+
+        // Initial offense with peerId and ip
+        nodeA.reputationManager.applyOffense(
+            { peerId: peerCId, ip },
+            ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS
+        );
+
+        // Update associations
+        nodeA.reputationManager.updateAssociations({ peerId: peerCId, ip, address });
+
+        // Apply offense with address
+        nodeA.reputationManager.applyOffense(
+            { address },
+            ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING
+        );
+
+        await wait(500);
+
+        // Get all associated identifiers
+        const associatedIdentifiers = nodeA.reputationManager.getAssociatedIdentifiers({ peerId: peerCId });
+        expect(associatedIdentifiers.has(ip)).to.be.true;
+        expect(associatedIdentifiers.has(address)).to.be.true;
+
+        // Check if all identifiers are banned
+        associatedIdentifiers.forEach(identifier => {
+            expect(nodeA.reputationManager.isIdentifierBanned(identifier)).to.be.true;
+        });
+
+        // Wait for temporary ban to expire
+        await wait(nodeA.reputationManager.options.tempBanDuration + 1000);
+
+        // Check if all identifiers are unbanned
+        associatedIdentifiers.forEach(identifier => {
+            expect(nodeA.reputationManager.isIdentifierBanned(identifier)).to.be.false;
+        });
+    });
+
     it('should apply offense by only ip and ban correctly', async () => {
         console.warn('This test WILL FAIL if you have a peer-reputation.json file in the root directory of the project. Please move or delete the file before running the test again.');
 
@@ -203,50 +248,6 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         }).to.throw(`Unknown offense type: ${unsupportedOffense}`);
     });
 
-    it('should associate identifiers and apply bans uniformly', async () => {
-        const peerCId = nodeC.p2pNode.peerId.toString();
-        const peerCAddr = getFirstAddress(nodeC);
-        const addr = multiaddr(peerCAddr);
-        const ip = addr.nodeAddress().address;
-        const address = '0x456def'; // Suppose nodeC has an associated address
-
-        console.log(`Associating Peer ID: ${peerCId}, IP: ${ip}, Address: ${address}`);
-
-        // Initial offense with peerId and ip
-        nodeA.reputationManager.applyOffense(
-            { peerId: peerCId, ip },
-            ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS
-        );
-
-        // Update associations
-        nodeA.reputationManager.updateAssociations({ peerId: peerCId, ip, address });
-
-        // Apply offense with address
-        nodeA.reputationManager.applyOffense(
-            { address },
-            ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING
-        );
-
-        await wait(500);
-
-        // Get all associated identifiers
-        const associatedIdentifiers = nodeA.reputationManager.getAssociatedIdentifiers({ peerId: peerCId });
-        expect(associatedIdentifiers.has(ip)).to.be.true;
-        expect(associatedIdentifiers.has(address)).to.be.true;
-
-        // Check if all identifiers are banned
-        associatedIdentifiers.forEach(identifier => {
-            expect(nodeA.reputationManager.isIdentifierBanned(identifier)).to.be.true;
-        });
-
-        // Wait for temporary ban to expire
-        await wait(nodeA.reputationManager.options.tempBanDuration + 1000);
-
-        // Check if all identifiers are unbanned
-        associatedIdentifiers.forEach(identifier => {
-            expect(nodeA.reputationManager.isIdentifierBanned(identifier)).to.be.false;
-        });
-    });
 
     it('should reset scores upon unban', async () => {
         const peerCId = nodeC.p2pNode.peerId.toString();
@@ -271,4 +272,42 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         score = nodeA.reputationManager.getIdentifierScore(peerCId);
         expect(score).to.equal(nodeA.reputationManager.options.defaultScore);
     });
+    it('should apply positive actions and increase score correctly', async () => {
+        const peerCId = nodeC.p2pNode.peerId.toString();
+        
+        console.log(`Applying positive actions to Peer ID: ${peerCId}`);
+        
+        // Apply multiple positive actions
+        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.VALID_BLOCK_SUBMISSION);
+        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.ACTIVE_PARTICIPATION);
+        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE);
+
+        await wait(500);
+
+        // Check if the score has increased correctly
+        const score = nodeA.reputationManager.getIdentifierScore(peerCId);
+        expect(score).to.equal(22); // 10 + 5 + 7 = 22 (from positiveScoreMap)
+    });
+
+    it('should detect spamming and apply MESSAGE_SPAMMING offense', async () => {
+        const peerCId = nodeC.p2pNode.peerId.toString();
+        
+        console.log(`Simulating spam actions for Peer ID: ${peerCId}`);
+
+        // Simulate actions exceeding the spam threshold
+        for (let i = 0; i <= nodeA.reputationManager.options.spamMaxActions; i++) {
+            nodeA.reputationManager.recordAction({ peerId: peerCId });
+        }
+
+        await wait(500);
+
+        // Check if the peer has been banned for spamming
+        expect(nodeA.reputationManager.isIdentifierBanned(peerCId)).to.be.true;
+
+        // Check if the offense applied was MESSAGE_SPAMMING
+        const score = nodeA.reputationManager.getIdentifierScore(peerCId);
+        const expectedScore = nodeA.reputationManager.options.defaultScore - nodeA.reputationManager.offenseScoreMap[ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING];
+        expect(score).to.equal(expectedScore);
+    });
+    
 });
