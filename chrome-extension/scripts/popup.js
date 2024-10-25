@@ -216,6 +216,15 @@ function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
         }
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const canvas = document.getElementById('canvas');
+    if (canvas) {
+      ParticleAnimation.init(canvas);
+    }
+});
+
+
 async function setMiningIntensityFromLocalStorage() {
     const miningIntensity = await chrome.storage.local.get('miningIntensity');
     const intensity = miningIntensity.miningIntensity || 1;
@@ -253,7 +262,7 @@ function setVisibleForm(formId, applyBLur = true) {
 
     if (formId === "passwordCreationForm" || formId === "loginForm") {
         //eHTML.centerScreenBtnContrainer.classList.remove('hidden');
-        eHTML.welcomeCanvas.classList.remove('hidden');
+        //eHTML.welcomeCanvas.classList.remove('hidden');
         eHTML.bottomBar.classList.add('hidden');
         eHTML.appTitle.classList.remove('hidden');
         eHTML.popUpContent.classList.remove('large');

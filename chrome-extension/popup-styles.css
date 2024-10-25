@@ -965,3 +965,13 @@ button.classy.clicked:not(.disabled) {
 .lockCircle svg:nth-child(4) { transform: rotate(180deg); }
 .lockCircle svg:nth-child(5) { transform: rotate(240deg); }
 .lockCircle svg:nth-child(6) { transform: rotate(300deg); }
+
+.particleCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 322px;    /* Match your popup width */
+    height: 100vh;   /* Full viewport height */
+    z-index: 0;      /* Behind welcomeCanvas */
+    pointer-events: none;
+}
