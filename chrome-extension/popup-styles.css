@@ -1,9 +1,8 @@
 :root {
-    --background-color1: white;
-    --background-color2: black;
-    --text-color: black;
-    --text-color2: white;
-    --input-color: black;
+    --color1: white;
+    --color2: black;
+    --color3: #4f4f4f; /* to delete, use opacity instead */
+
     --primary-color: #f2f8ff;
     --secondary-color: #b9d9f3;
 
@@ -12,16 +11,12 @@
     --correct-color: green;
 
     /* EXPLORER CUSTOMIZABLE CSS */
-    /*--cbe-neumo-color1: #ffffff;
-    --cbe-neumo-color2: #bdbdbd;*/
-    --cbe-widget-margin: 2% 6%;
-    --cbe-color1: #c5c8d0; /* USELESS ATM */
-    /*--cbe-color2: #787878;
+    --cbe-widget-margin: 0%;
+    --cbe-color4: #787878;
     --cbe-color3: #4f4f4f;
-    --cbe-color4: #dedede;
-    --cbe-color5: #f1f3f8;*/
-    --inner-height: 120px;
-    --wrap-border-radius: 16px;
+
+    --inner-height: 140px;
+    --wrap-border-radius: 0px;
     --search-menu-width: calc(370px - 12px);
 }
 
@@ -38,7 +33,7 @@
     border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb {
-    background: var(--background-color1);
+    background: var(--color1);
     border-radius: 2px;
 }
 html {
@@ -47,12 +42,12 @@ html {
 body {
     overflow: hidden;
     font-family: monospace;
-    color: var(--text-color);
-    background: var(--background-color1);
+    color: var(--color2);
+    background: var(--color1);
     margin: 0;
 }
 h1, h2 {
-    color: var(--text-color1);
+    color: var(--color2);
 }
 #welcomeCanvas {
     margin-top: 0px;
@@ -68,26 +63,58 @@ h1, h2 {
 #popUpExplorer {
     z-index: 3;
     position: absolute;
-    background: var(--cbe-color4);
-    color: var(--cbe-color3);
     height: 100%;
     opacity: 1;
     transition: opacity 0.12s ease-in-out;
-    overflow: hidden;
+    /*overflow: hidden;*/
 }
-.cbe-contrastBlocksWidgetWrap {
-    position: relative;
-    background: var(--cbe-color4-default);
-    margin-top: -10px;
-    padding-top: 16px;
-    top: 0;
-    height: 150px;
-    margin-bottom: -34px;
+#cbe-contrastBlocksWidget {
+    /*animation: widgetRetract .3s linear forwards;*/
+    background: linear-gradient(90deg, var(--color1) 80%, transparent 200%) !important;
+    /*background-position: 50% 200%;*/
+    filter: brightness(1);
+    width: calc(100% - 20px);
+    box-shadow: 0px 0px 0px 0px var(--color2);
+}
+@keyframes widgetRetract {
+    0% {
+        filter: brightness(1);
+        /*width: calc(100vw - 20px);*/
+        box-shadow: 0px 0px 0px 2px var(--color2);
+    }
+    80% {
+        filter: brightness(1.2);
+        box-shadow: 0px 0px 10px 0px var(--color2);
+    }
+    100% {
+        filter: brightness(1);
+        width: calc(100% - 20px);
+        box-shadow: 0px 0px 0px 0px var(--color2);
+    }
+}
+#cbe-contrastBlocksWidget.focused {
+    /*animation: widgetExpand .2s .06s cubic-bezier(0.715, 0.810, 0.955, 1) forwards;*/
+}
+@keyframes widgetExpand {
+    0% {
+        filter: brightness(1);
+        width: calc(100% - 20px);
+        box-shadow: 0px 0px 0px 0px var(--color2);
+    }
+    80% {
+        filter: brightness(1.2);
+        box-shadow: 0px 0px 10px 0px var(--color2);
+    }
+    100% {
+        filter: brightness(1);
+        width: calc(100vw - 20px);
+        box-shadow: 0px 0px 0px 2px var(--color2);
+    }
 }
 #explorerBtn .icon {
     pointer-events: none;
-    width: 32px;
-    height: 32px;
+    /*width: 32px;
+    height: 32px;*/
     background-image: url(../images/explorer96.png);
     background-size: 32px;
     filter: brightness(0.4);
@@ -104,9 +131,8 @@ h1, h2 {
 
 #txHistoryWrap {
     border-top: 3px solid var(--cbe-color2, var(--cbe-color2-default));
-    margin-top: 30px;
     height: -webkit-fill-available;
-    background: var(--background-color1);
+    background: var(--color1);
 }
 .txHistoryHeader {
     border-bottom: 2px solid var(--cbe-color1, var(--cbe-color1-default));
@@ -126,13 +152,10 @@ h1, h2 {
 }
 .w-addressTxDate {
     cursor: pointer;
-    background: linear-gradient(90deg, var(--background-color1) -100%, var(--background-color1) 200%);
-    /*background: linear-gradient(90deg, var(--background-color2) -10%, var(--background-color1) 0%, var(--background-color2) 0%);*/
-    /*transition: background 1.2s ease-in-out;*/
+    background: linear-gradient(90deg, var(--color1) -100%, var(--color1) 200%);
 }
 .w-addressTxDate:hover {
-    /*background: linear-gradient(-90deg, var(--background-color2) -100%, var(--background-color2) 200%);*/
-    background: linear-gradient(90deg, var(--background-color2) 0%, var(--background-color1) 10%, var(--background-color2) 20%);
+    background: linear-gradient(90deg, var(--color2) 0%, var(--color1) 10%, var(--color2) 20%);
     background-position: 50% 100%;
     animation: lineHover .4s ease-in-out forwards;
 }
@@ -148,7 +171,7 @@ h1, h2 {
     }
 }
 .w-addressTxDate:hover td, .w-addressTxDate:hover th {
-    color: var(--text-color2);
+    color: var(--color1);
 }
 
 .w-addressTxAmount, .w-addressTxFee, .w-addressTxReference {
@@ -156,7 +179,7 @@ h1, h2 {
 
 #popUpContent {
     z-index: 2;
-    background: var(--background-color1);
+    background: var(--color1);
     position: absolute;
     right: 0;
     top: 0;
@@ -210,16 +233,16 @@ h1, h2 {
 }
 @keyframes textColorBlink {
     0% {
-        color: var(--text-color);
+        color: var(--color2);
     }
     10% {
-        color: var(--text-color3);
+        color: var(--color3);
     }
     40% {
-        color: var(--text-color);
+        color: var(--color2);
     }
     100% {
-        color: var(--text-color);
+        color: var(--color2);
     }
 }
 .appTitle {
@@ -232,13 +255,13 @@ h1, h2 {
     width: 94%;
     border-bottom-style: solid;
     border-width: 3px;
-    border-color: var(--text-color);
+    border-color: var(--color2);
     /*filter: drop-shadow(-1px 6px 3px rgba(0, 0, 0, .1));*/
     transition: color 0.12s ease-in-out;
-    background: var(--background-color1);
+    background: var(--color1);
 }
 .appTitle h1 {
-    color: var(--text-color3);
+    color: var(--color3);
     padding-top: 6px;
 }
 .ml3 {
@@ -252,7 +275,7 @@ h1, h2 {
     top: 10%;
     left: 0;
     font-size: 12px;
-    color: var(--text-color3);
+    color: var(--color3);
 }
 form {
     display: flex;
@@ -270,8 +293,8 @@ input {
     margin-bottom: 10px;
     font-size: large;
     text-align: center;
-    background-color: var(--input-color);
-    color: var(--text-color2);
+    background-color: var(--color2);
+    color: var(--color1);
 }
 input.wrong {
     border: 2px solid red;
@@ -294,29 +317,21 @@ button {
     border-style: none;
     border-radius: 10px;
     font-size: large;
-    /*background-color: var(--button-color);*/
-    background: var(--background-color2);
+    background: var(--color2);
     transition: transform .08s ease-in-out;
-    color: var(--text-color2);
-
-    /*color: var(--text-color);
-    padding: 10px 20px;
-    font-size: 16px;
-    border-radius: 10px;
-    border: 2px solid transparent;
-    background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, .7) 258%) padding-box, linear-gradient(32deg, #fb923c -20%, #fb7185 38%, #818cf8 120%) border-box;*/
+    color: var(--color1);
 }
 /*button:not(.disabled):hover {
     transform: scale(1.02);
 }*/
 button.disabled {
-    background-color: var(--input-color);
+    background-color: var(--color2);
     color: #c1c1c1;
     cursor: not-allowed;
 }
 button.classy {
     border: 1px solid transparent;
-    background: linear-gradient(120deg, var(--background-color2) 0%, var(--background-color2) 258%) padding-box, white;
+    background: linear-gradient(120deg, var(--color2) 0%, var(--color2) 258%) padding-box, white;
     background-size: .01% 100%;
     background-position: 50% 100%;
     font-family: 'Contrast', sans-serif;
@@ -325,7 +340,7 @@ button.classy {
 }
 button.classy.clicked:not(.disabled) {
     border: 2px solid transparent;
-    background: linear-gradient(120deg, var(--background-color2) 0%, var(--background-color2) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
+    background: linear-gradient(120deg, var(--color2) 0%, var(--color2) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
     background-size: .01% 100%;
     background-position: 50% 100%;
     animation: classyBtnAnimation .8s linear forwards;
@@ -384,20 +399,20 @@ button.classy.clicked:not(.disabled) {
     font-size: small;
     border-style: none;
     cursor: pointer;
-    transition: background .18s ease-in-out, transform 0.12s ease-in-out, box-shadow .04s ease-in-out, color .22s .18s;
+    transition: background .12s ease-in-out, transform 0.12s ease-in-out, box-shadow .04s ease-in-out, color .18s .12s;
     padding: 0;
     box-shadow: 3px 2px 5px var(--neumo-color1), -2px -2px 4px var(--neumo-color2);
     font-weight: bold;
 
-    background: var(--background-color2);
-    color: var(--text-color2);
+    background: var(--color2);
+    color: var(--color1);
 }
 .buttonBar button:not(.disabled):hover {
     transform: none !important;
     box-shadow: -2px -2px 7px -4px white, 1px 1px 10px -6px var(--primary-color);
 
-    background: var(--background-color1);
-    color: var(--text-color1);
+    background: var(--color1);
+    color: var(--color2);
 }
 .buttonBar button.disabled {
     cursor: initial;
@@ -414,7 +429,7 @@ button.classy.clicked:not(.disabled) {
     /*box-shadow: 6px 3px 7px var(--neumo-color1), -5px -3px 8px var(--neumo-color2);*/
     filter: invert(1) brightness(1) drop-shadow(-3px -1px .6px rgba(0, 0, 0, .2)) drop-shadow(4px 3px .8px rgba(255, 255, 255, .06));
     transform: skew(-1deg, -.4deg) translateY(4px);
-    transition: filter 0.12s .18s ease-in-out, transform 0.12s ease-in-out;
+    transition: filter 0.12s .12s ease-in-out, transform 0.12s ease-in-out;
 }
 .btnBackground {
     pointer-events: none;
@@ -465,18 +480,16 @@ button.classy.clicked:not(.disabled) {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background-color: var(--background-color);
+    background-color: var(--color1);
     margin-top: 10px;
     padding: 2px 12px;
     border-radius: 10px;
     transition: box-shadow .12s .06s ease-in-out;
     width: 86%;
-    /*box-shadow: inset -2px -2px 6px -4px var(--background-color2), 1px 1px 0px 2px var(--background-color2);*/
-    box-shadow: inset 0px 0px 6px -4px var(--background-color2), -.2px -.2px 0px 1px var(--background-color2);
+    box-shadow: inset 0px 0px 6px -4px var(--color2), -.2px -.2px 0px 1px var(--color2);
 }
 .accountLabel.active {
-    /*box-shadow: inset 0px 0px 6px -4px var(--background-color2), -.2px -.2px 0px 1px var(--background-color2);*/
-    box-shadow: inset -1px -1px 8px -6px var(--background-color2), .2px .2px 0px 2px var(--background-color2);
+    box-shadow: inset -1px -1px 8px -6px var(--color2), .2px .2px 0px 2px var(--color2);
 }
 .accountLabel .accountImgWrap {
     cursor: pointer;
@@ -507,49 +520,45 @@ button.classy.clicked:not(.disabled) {
     filter: invert(1);
 }
 .accountLabel.active .accountImgWrap div:first-child {
-    /*box-shadow: 0px 0px 10px var(--text-color);*/
     animation: spinTransformGlowShadowA 9.9s infinite alternate-reverse cubic-bezier(.71,.93,.86,.7) !important
-    /*animation: spinTransformGlowShadowA 9.9s infinite alternate-reverse linear !important*/
 }
 .accountLabel.active .accountImgWrap div {
-    /*box-shadow: 0px 0px 10px var(--text-color);*/
     animation: spinTransformGlowShadowB 10.9s infinite alternate cubic-bezier(.08,.62,.86,.42);
-    /*animation: spinTransformGlowShadowB 12s infinite alternate linear;*/
 }
 @keyframes spinTransformGlowShadowA {
     0% {
         opacity: .9;
-        box-shadow: 0px 0px 4px var(--text-color2);
+        box-shadow: 0px 0px 4px var(--color1);
         transform: rotate(0deg) skew(0deg, 14deg) scale(.8);
         filter: brightness(1) drop-shadow(0px 2px 1px var(--secondary-color)) blur(1px);
     }
     40% {
         opacity: .2;
-        box-shadow: 0px 2px 8px var(--text-color2);
+        box-shadow: 0px 2px 8px var(--color1);
         transform: rotate(216deg) skew(2deg, 0deg) scale(.76);
         filter: brightness(.8) drop-shadow(0px 0px 2px var(--primary-color)) blur(1.05px);
     }
     50% {
         opacity: .5;
-        box-shadow: 3px 2px 6px var(--text-color2);
+        box-shadow: 3px 2px 6px var(--color1);
         transform: rotate(144deg) skew(4deg, 2deg) scale(.8);
         filter: brightness(.6) drop-shadow(2px 2px 3px var(--secondary-color)) blur(1.2px);
     }
     60% {
         opacity: .4;
-        box-shadow: 5px 2px 2px var(--text-color2);
+        box-shadow: 5px 2px 2px var(--color1);
         transform: rotate(216deg) skew(2deg, 4deg) scale(.86);
         filter: brightness(1) drop-shadow(0px 0px 4px var(--primary-color)) blur(1.35px);
     }
     70% {
         opacity: .2;
-        box-shadow: 1px 2px 2px var(--text-color2);
+        box-shadow: 1px 2px 2px var(--color1);
         transform: rotate(288deg) skew(0deg, 2deg) scale(.8);
         filter: brightness(1.15) drop-shadow(0px 2px 5px var(--secondary-color)) blur(2.5px);
     }
     100% {
         opacity: .4;
-        box-shadow: 5px 0px 3px var(--text-color2);
+        box-shadow: 5px 0px 3px var(--color1);
         transform: rotate(144deg) skew(14deg, 2deg) scale(.92); 
         filter: brightness(.9) drop-shadow(0px 2px 10px var(--primary-color)) blur(3px);
     }
@@ -557,37 +566,37 @@ button.classy.clicked:not(.disabled) {
 @keyframes spinTransformGlowShadowB {
     0% {
         opacity: .5;
-        box-shadow: 0px 0px 4px var(--text-color2);
+        box-shadow: 0px 0px 4px var(--color1);
         transform: rotate(0deg) skew(0deg, 0deg) scale(.92);
         filter: brightness(1) drop-shadow(0px 2px 1px var(--secondary-color)) blur(1px);
     }
     20% {
         opacity: .4;
-        box-shadow: 0px 2px 2px var(--text-color2);
+        box-shadow: 0px 2px 2px var(--color1);
         transform: rotate(72deg) skew(0deg, 0deg) scale(.8);
         filter: brightness(.8) drop-shadow(0px 0px 2px var(--primary-color)) blur(1.05px);
     }
     40% {
         opacity: .9;
-        box-shadow: 3px 2px 1px var(--text-color2);
+        box-shadow: 3px 2px 1px var(--color1);
         transform: rotate(144deg) skew(2deg, 7deg) scale(.86);
         filter: brightness(.6) drop-shadow(2px 2px 3px var(--secondary-color)) blur(1.2px);
     }
     60% {
         opacity: .7;
-        box-shadow: 5px 2px 2px var(--text-color2);
+        box-shadow: 5px 2px 2px var(--color1);
         transform: rotate(216deg) skew(2deg, -20deg) scale(.86);
         filter: brightness(0.3) drop-shadow(0px 0px 4px var(--primary-color)) blur(1.35px);
     }
     80% {
         opacity: .9;
-        box-shadow: 1px 2px 2px var(--text-color2);
+        box-shadow: 1px 2px 2px var(--color1);
         transform: rotate(288deg) skew(0deg, 2deg) scale(.9);
         filter: brightness(.8) drop-shadow(0px 2px 5px var(--primary-color)) blur(2.5px);
     }
     100% {
         opacity: .2;
-        box-shadow: 2px 0px 3px var(--text-color2);
+        box-shadow: 2px 0px 3px var(--color1);
         transform: rotate(360deg) scale(.82);
         filter: brightness(.9) drop-shadow(0px 2px 10px var(--secondary-color)) blur(3px);
     }
@@ -603,7 +612,7 @@ button.classy.clicked:not(.disabled) {
     transition: box-shadow 0.12s ease-in-out, filter 0.12s ease-in-out;
 }
 .accountLabel.active .accountImgWrap canvas {
-    box-shadow: 0px 0px 6px 0px var(--background-color1);
+    box-shadow: 0px 0px 6px 0px var(--color1);
     filter: blur(0px) brightness(1);
     animation: brightnessGlow 2s infinite;
 }
@@ -628,14 +637,14 @@ button.classy.clicked:not(.disabled) {
     margin-top: 2px;
 }
 .accountLabelNameAndValueWrap h2 {
-    color: var(--text-color);
+    color: var(--color2);
     opacity: .7;
 }
 .accountLabelNameAndValueWrap h3 {
-    color: var(--text-color);
+    color: var(--color2);
 }
 .accountLabelAddress h3 {
-    color: var(--text-color);
+    color: var(--color2);
     text-align: right;
     font-size: 1.6em;
     margin: 0 0 4px 0;
@@ -646,19 +655,19 @@ button.classy.clicked:not(.disabled) {
     margin-top: 6px;
     width: 34px;
     height: 34px;
-    background: var(--background-color2);
-    color: var(--text-color2);
+    background: var(--color2);
+    color: var(--color1);
     font-size: 24px;
     border-radius: 12px;
     transition: width .12s;
 }
 #newAddressBtn:hover {
     background: var(--neumo-color2);
-    color: var(--text-color);
+    color: var(--color2);
 }
 #newAddressBtn.loading {
     border: 2px solid transparent;
-    background: linear-gradient(120deg, var(--background-color1) 0%, rgba(0, 0, 0, 1) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
+    background: linear-gradient(120deg, var(--color1) 0%, rgba(0, 0, 0, 1) 258%) padding-box, linear-gradient(269deg, #fdfdfd, #9e9e9e, var(--primary-color), #3d3d3d, #000000);
     background-size: .01% 100%;
     background-position: 50% 100%;
     animation: loadingBtnBorderAnimation 2s alternate infinite;
@@ -703,19 +712,19 @@ button.classy.clicked:not(.disabled) {
     /*overflow: hidden;*/
     transform: rotateY(60deg) translateX(-160%);
     opacity: 0;
-    background-color: var(--background-color1);
+    background-color: var(--color1);
     flex-direction: column;
     align-items: center;
 }
 #spendMiniForm .textInfo, #stakeMiniForm .textInfo {
     position: absolute;
     top: 14px;
-    background: var(--background-color1);
+    background: var(--color1);
     width: 80%;
     animation: textColorBlink 1s infinite;
 }
 #spendMiniForm h2, #stakeMiniForm h2 {
-    color: var(--text-color3);
+    color: var(--color3);
 }
 #spendMiniForm input, #stakeMiniForm input {
     height: 30px !important;
@@ -728,11 +737,11 @@ button.classy.clicked:not(.disabled) {
     font-weight: bold;
     color: var(--neumo-color2) !important;
     margin: 10px 0 !important;
-    background: linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%);
+    background: linear-gradient(90deg, var(--color1) 0%, var(--color2) 0%);
     transition: background 0.24s ease-in-out;
 }
 .holdBtn {
-    box-shadow: inset 0px 0px 0px 2px var(--background-color2);
+    box-shadow: inset 0px 0px 0px 2px var(--color2);
 }
 .holdBtn div {
     pointer-events: none;
@@ -767,7 +776,7 @@ button.classy.clicked:not(.disabled) {
     border-top: solid #80808024 1px;
     margin: 10px 0 16px 0;
     padding-top: 4px;
-    color: var(--text-color3);
+    color: var(--color3);
 }
 
 
@@ -789,7 +798,7 @@ button.classy.clicked:not(.disabled) {
     position: absolute;
     top: -30px;
     margin: 8px 0;
-    background: var(--background-color1);
+    background: var(--color1);
     width: 100%;
     animation: textColorBlink 1s infinite;
 }
@@ -827,7 +836,7 @@ button.classy.clicked:not(.disabled) {
     cursor: pointer;
 }
 #bottomBar button.active:hover {
-    background-color: var(--background-color2);
+    background-color: var(--color2);
 }
 #bottomBar button.active:hover img {
     transform: scale(1.02);
@@ -835,7 +844,9 @@ button.classy.clicked:not(.disabled) {
 }
 #bottomBar button img, #bottomBar button .icon {
     pointer-events: none;
-    height: 70%;
+    /*height: 70%;*/
+    height: 32px;
+    width: 32px;
     filter: brightness(0);
     transition: transform 0.12s ease-in-out, filter 0.12s ease-in-out;
 }
@@ -870,7 +881,7 @@ button.classy.clicked:not(.disabled) {
     margin: 14px 0 0;
 }
 #miningForm h2 span {
-    color: var(--text-color);
+    color: var(--color2);
 }
 
 /* Center Screen Button - Visual only */
@@ -908,7 +919,7 @@ button.classy.clicked:not(.disabled) {
     height: 100%;
     width: 100%;
 
-    filter: invert(1) drop-shadow(-2px 3px 4px var(--text-color));
+    filter: invert(1) drop-shadow(-2px 3px 4px var(--color2));
     background: radial-gradient(circle, rgba(207, 207, 207, 1) 0%, rgba(216, 216, 216, .8) 30%, rgba(252, 252, 252, .72) 42%, rgba(232, 232, 232, .92) 64%, rgb(236 236 236 / 50%) 72%);
 }
 #centerScreenBtn .wrap {

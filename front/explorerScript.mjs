@@ -48,12 +48,12 @@ const SETTINGS = {
     LOCAL: window.explorerLOCAL || false,
     //LOCAL_DOMAIN: 'localhost:27270',
     //DOMAIN: 'pinkparrot.observer',
-    RECONNECT_INTERVAL: 1000,
+    RECONNECT_INTERVAL: 2000,
     //GET_NODE_INFO_INTERVAL: 10000,
     GET_CURRENT_HEIGHT_INTERVAL: 5000,
     ROLES: window.explorerROLES || ['chainExplorer', 'blockExplorer'],
 
-    NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 6,
+    NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 5,
 }
 function connectWS() {
     //ws = new WebSocket(`${SETTINGS.WS_PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
@@ -94,7 +94,11 @@ function connectWS() {
                 const lastBlockIndex = blockExplorerWidget.getLastBlockInfoIndex();
                 if (lastBlockIndex === 0) { return; }
                 //console.log(`current_height: ${currentHeight}, lastBlockIndex: ${lastBlockIndex}`);
-                if (currentHeight - lastBlockIndex > 2) { try { ws.close() } catch (error) {}; return; }
+                if (currentHeight - lastBlockIndex > 10) {
+                    console.info('current_height n+10 -> ws.close()');
+                    try { ws.close() } catch (error) {};
+                    return;
+                }
                 break;
             case 'last_confirmed_blocks':
                 //console.log(`last_confirmed_block from ${data[0].header.index} to ${data[data.length - 1].header.index}`);
@@ -109,14 +113,18 @@ function connectWS() {
                 //console.log('new_block_confirmed', data);
                 displayLastConfirmedBlock(data.header);
                 
-                while (blockExplorerWidget.bcElmtsManager.isSucking) {
+                /*while (blockExplorerWidget.bcElmtsManager.isSucking) {
                     if (remainingAttempts === 0) { return; }
                     await new Promise((resolve) => { setTimeout(() => { resolve(); }, 100); });
                     remainingAttempts--;
-                }
+                }*/
 
-                const isGapBetweenBlocks = data.header.index - blockExplorerWidget.getLastBlockInfoIndex() > 1;
-                if (isGapBetweenBlocks) { try { ws.close() } catch (error) {}; return; }
+                /*const isGapBetweenBlocks = data.header.index - blockExplorerWidget.getLastBlockInfoIndex() > 1;
+                if (isGapBetweenBlocks) { 
+                    console.info('new_block_confirmed -> isGapBetweenBlocks -> ws.close()');
+                    try { ws.close() } catch (error) {};
+                    return;
+                }*/
 
                 blockExplorerWidget.fillBlockInfo(data);
                 break;
@@ -205,6 +213,8 @@ export class BlockExplorerWidget {
         this.blocksDataByIndex = blocksDataByIndex;
         /** @type {BlockInfo[]} */
         this.blocksInfo = blocksInfo;
+        /** @type {BlockInfo[]} */
+        this.incomingBlocksInfo = [];
         /** @type {Object<string, AddressExhaustiveData>} */
         this.addressesExhaustiveData = {};
         /** @type {Object<string, Transaction>} */
@@ -245,10 +255,10 @@ export class BlockExplorerWidget {
 
                 const modalContainer = this.cbeHTML.modalContainer();
                 if (!modalContainer) { return; }
-                modalContainer.style.background = 'transparent';
+                modalContainer.style.opacity = 0;
+
                 this.animations.modalContainerAnim = anime({
                     targets: modalContainer,
-                    opacity: 0,
                     backdropFilter: 'blur(0px)',
                     duration: this.animations.modalDuration * .5,
                     easing: 'easeInOutQuad',
@@ -430,6 +440,7 @@ export class BlockExplorerWidget {
         }
         this.initBlockExplorerContent();
         this.#updateBlockTimeLoop();
+        this.#blockFillingLoop();
     }
     initBlockExplorerContent() {
         const containerDiv = this.cbeHTML.containerDiv;
@@ -455,10 +466,12 @@ export class BlockExplorerWidget {
         let modalContentCreated = false;
         const { blockReference, txId, outputIndex, address } = this.navigationTarget;
         this.navigationTarget = { blockReference: null, txId: null, outputIndex: null, address: null };
-        if (blockReference === null) { console.info('navigateUntilTarget => blockReference === null'); return; }
-
+        
         if (address) {
             console.info('navigateUntilTarget =>', address);
+        } else if (blockReference === null) {
+            console.info('navigateUntilTarget => blockReference === null');
+            return; 
         } else {
             console.info('navigateUntilTarget =>', isNaN(blockReference) ? blockReference : blockReference, txId, outputIndex);
         }
@@ -468,7 +481,10 @@ export class BlockExplorerWidget {
             this.cbeHTML.modalContainer().click();
             await new Promise((resolve) => { setTimeout(() => { resolve(); }, this.animations.modalDuration); });
         }
-        if (!this.cbeHTML.modalContent()) { this.#modalContainerFromSearchMenuBtn(); modalContentCreated = true; }
+        if (!this.cbeHTML.modalContent()) {
+            this.#modalContainerFromSearchMenuBtn();
+            modalContentCreated = true;
+        }
 
         // if address is set, fill the modal content with address data
         if (address) { this.#fillModalContentWithAddressData(address); return; }
@@ -561,41 +577,57 @@ export class BlockExplorerWidget {
         this.blocksDataByHash[blockData.hash] = blockData;
         this.blocksDataByIndex[blockData.index] = blockData;
     }
+    async #blockFillingLoop() {
+        while (true) {
+            let numberOfConfirmedBlocksShown = this.bcElmtsManager.getNumberOfConfirmedBlocksShown();
+            let isFilled = numberOfConfirmedBlocksShown > this.nbOfConfirmedBlocks;
+
+            await new Promise((resolve) => { setTimeout(() => { resolve(); }, isFilled ? 1000 : 100); });
+            if (this.incomingBlocksInfo.length === 0) { continue; }
+            
+            const blockInfo = this.incomingBlocksInfo.shift();
+            for (let i = 0; i < this.blocksInfo; i++) { //TODO: find a better way to avoid empty blocks in the chain
+                const blockInfo = this.blocksInfo[i];
+    
+                /** @type {HTMLDivElement} */
+                const chainWrap = this.cbeHTML.chainWrap();
+                if (!chainWrap) { console.error('fillBlockInfo() error: chainWrap not found'); return; }
+    
+                //const blockElement = chainWrap.children.find(block => block.querySelector('.cbe-blockIndex').textContent === `#${blockInfo.header.index}`);
+                let blockElement = undefined;
+                for (const block of chainWrap.children) {
+                    if (block.querySelector('.cbe-blockIndex').textContent === `#${blockInfo.header.index}`) { blockElement = block; break; }
+                }
+                if (blockElement) { continue; }
+    
+                console.info(`Missing block ${blockInfo.header.index}, trying to recover...`);
+                this.bcElmtsManager.createChainOfEmptyBlocksUntilFillTheDiv(chainWrap);
+                for (const blockInfo of this.blocksInfo) { this.fillBlockInfo(blockInfo); }
+    
+                console.info('recovered');
+                break;
+            }
+    
+            const lastBlockInfoIndex = this.getLastBlockInfoIndex();
+            if (blockInfo.header.index <= lastBlockInfoIndex) { console.info(`already have block ${blockInfo.header.index}`); continue; }
+    
+            this.blocksInfo.push(blockInfo);
+            this.bcElmtsManager.fillFirstEmptyBlockElement(blockInfo);
+            
+            numberOfConfirmedBlocksShown = this.bcElmtsManager.getNumberOfConfirmedBlocksShown();
+            isFilled = numberOfConfirmedBlocksShown > this.nbOfConfirmedBlocks;
+            if (!isFilled) { continue; }
+    
+            this.blocksInfo.shift();
+            const nbOfBlocksInQueue = this.incomingBlocksInfo.length;
+            const suckDuration = Math.min(this.animations.newBlockDuration, Math.max(500, 1000 - (nbOfBlocksInQueue * 250)));
+            this.bcElmtsManager.suckFirstBlockElement(this.cbeHTML.chainWrap(), suckDuration);
+            await new Promise((resolve) => { setTimeout(() => { resolve(); }, suckDuration); });
+        }
+    }
     /** @param {BlockInfo} blockInfo */
     fillBlockInfo(blockInfo) {
-        for (let i = 0; i < this.blocksInfo; i++) { //TODO: find a better way to avoid empty blocks in the chain
-            const blockInfo = this.blocksInfo[i];
-
-            /** @type {HTMLDivElement} */
-            const chainWrap = this.cbeHTML.chainWrap();
-            if (!chainWrap) { console.error('fillBlockInfo() error: chainWrap not found'); return; }
-
-            //const blockElement = chainWrap.children.find(block => block.querySelector('.cbe-blockIndex').textContent === `#${blockInfo.header.index}`);
-            let blockElement = undefined;
-            for (const block of chainWrap.children) {
-                if (block.querySelector('.cbe-blockIndex').textContent === `#${blockInfo.header.index}`) { blockElement = block; break; }
-            }
-            if (blockElement) { continue; }
-
-            console.info(`Missing block ${blockInfo.header.index}, trying to recover...`);
-            this.bcElmtsManager.createChainOfEmptyBlocksUntilFillTheDiv(chainWrap);
-            for (const blockInfo of this.blocksInfo) { blockExplorerWidget.fillBlockInfo(blockInfo); }
-
-            console.info('recovered');
-            break;
-        }
-
-        const lastBlockInfoIndex = this.getLastBlockInfoIndex();
-        if (blockInfo.header.index <= lastBlockInfoIndex) { console.info(`already have block ${blockInfo.header.index}`); return; }
-
-        this.blocksInfo.push(blockInfo);
-        this.bcElmtsManager.fillFirstEmptyBlockElement(blockInfo);
-        
-        const numberOfConfirmedBlocksShown = this.bcElmtsManager.getNumberOfConfirmedBlocksShown();
-        if (numberOfConfirmedBlocksShown <= this.nbOfConfirmedBlocks) { return; }
-
-        this.blocksInfo.shift();
-        this.bcElmtsManager.suckFirstBlockElement(this.cbeHTML.chainWrap(), this.animations.newBlockDuration);
+        this.incomingBlocksInfo.push(blockInfo); // add to the queue
     }
     /** @param {BlockData} blockData */
     #fillModalContentWithBlockData(blockData) {
@@ -690,18 +722,15 @@ export class BlockExplorerWidget {
     }
     newModalContainer() {
         const modalContainer = createHtmlElement('div', 'cbe-modalContainer', [], this.cbeHTML.containerDiv);
-
+        modalContainer.style.backdropFilter = 'blur(0px)';
+        modalContainer.style.opacity = 1;
+        
         this.animations.modalContainerAnim = anime({
             targets: modalContainer,
-            //opacity: 1,
             backdropFilter: 'blur(2px)',
             duration: this.animations.modalDuration * .4,
-            delay: this.animations.modalDuration * .1,
+            delay: this.animations.modalDuration,
             easing: 'easeInOutQuad',
-            complete: () => {
-                // background: var(--cbe-color4);
-                modalContainer.style.background = 'var(--cbe-color4)';
-            }
         });
     }
     /** @param {number} fromWidth @param {number} fromHeight @param {{ x: number, y: number }} fromPosition */
@@ -790,8 +819,21 @@ export class BlockExplorerWidget {
         if (killExisting && cbeTxDetailsElement) { cbeTxDetailsElement.remove(); }
 
         const txDetails = createHtmlElement('div', id);
-        const threeContainerWrap = createHtmlElement('div', undefined, ['cbe-threeContainerWrap'], txDetails);
+        
+        const isMinerTx = tx.inputs.length === 1 && tx.inputs[0].split(':').length === 1;
+        if (!isMinerTx) {
+            const witnessesWrap = createHtmlElement('div', undefined, ['cbe-TxWitnessesWrap'], txDetails);
+            createHtmlElement('h3', undefined, [], witnessesWrap).textContent = tx.witnesses.length > 1 ? `Witnesses (${tx.witnesses.length})` : 'Witness';
+            for (const witness of tx.witnesses) {
+                const sigText = `Sig: ${witness.split(':')[0]}`;
+                const pubKeyText = `PubKey: ${witness.split(':')[1]}`;
+                const witnessDiv = createHtmlElement('div', undefined, ['cbe-TxWitness'], witnessesWrap);
+                createHtmlElement('div', undefined, [], witnessDiv).textContent = sigText;
+                createHtmlElement('div', undefined, [], witnessDiv).textContent = pubKeyText;
+            }
+        }
 
+        const threeContainerWrap = createHtmlElement('div', undefined, ['cbe-threeContainerWrap'], txDetails);
         const TxInfoWrap = createHtmlElement('div', undefined, ['cbe-TxInfoWrap'], threeContainerWrap);
         createHtmlElement('h3', undefined, [], TxInfoWrap).textContent = `Info`;
         createSpacedTextElement('Id:', [], tx.id, [], TxInfoWrap);
@@ -800,7 +842,6 @@ export class BlockExplorerWidget {
         //createHtmlElement('div', undefined, [], TxInfoWrap).textContent = `Version: ${tx.version}`;
         
         const inputsWrap = createHtmlElement('div', undefined, ['cbe-TxInputsWrap'], threeContainerWrap);
-        const isMinerTx = tx.inputs.length === 1 && tx.inputs[0].split(':').length === 1;
         const isValidatorTx = tx.inputs[0].split(':').length === 2;
         const titleText = isMinerTx ? 'Miner nonce' : isValidatorTx ? 'Validator Tx (no input)' : `Inputs (${tx.inputs.length})`;
         createHtmlElement('h3', undefined, [], inputsWrap).textContent = titleText;
@@ -834,18 +875,6 @@ export class BlockExplorerWidget {
             feeDiv.textContent = `Fee: ${utils.convert.number.formatNumberAsCurrency(tx.fee)}`;
         } else {
             console.info('tx fee not found');
-        }
-
-        if (isMinerTx) { return txDetails; }
-
-        const witnessesWrap = createHtmlElement('div', undefined, ['cbe-TxWitnessesWrap'], txDetails);
-        createHtmlElement('h3', undefined, [], witnessesWrap).textContent = tx.witnesses.length > 1 ? `Witnesses (${tx.witnesses.length})` : 'Witness';
-        for (const witness of tx.witnesses) {
-            const sigText = `Sig: ${witness.split(':')[0]}`;
-            const pubKeyText = `PubKey: ${witness.split(':')[1]}`;
-            const witnessDiv = createHtmlElement('div', undefined, ['cbe-TxWitness'], witnessesWrap);
-            createHtmlElement('div', undefined, [], witnessDiv).textContent = sigText;
-            createHtmlElement('div', undefined, [], witnessDiv).textContent = pubKeyText;
         }
 
         return txDetails;

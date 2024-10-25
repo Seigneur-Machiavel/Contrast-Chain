@@ -340,13 +340,16 @@ export class Blockchain {
         } catch (error) {}; //console.error(error);
 
         const txsRefsDupiCounter = {};
+        const txsRefsWithDuplicates = [];
         let duplicate = 0;
         for (let i = 0; i < txsRefs.length; i++) {
             const txRef = txsRefs[i];
             if (txsRefsDupiCounter[txRef]) { duplicate++; }
             
             txsRefsDupiCounter[txRef] = true;
+            txsRefsWithDuplicates.push(txRef);
         }
+        txsRefs = txsRefsWithDuplicates
         if (duplicate > 0) {
              console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
 

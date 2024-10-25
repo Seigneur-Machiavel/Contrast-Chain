@@ -4,7 +4,7 @@ window.explorerPORT = "27270";
 window.explorerLOCAL = false;
 window.explorerROLES = ['blockExplorer'];
 window.explorerMagnetImgPath = '../img/C_magnet.png';
-window.explorerNB_OF_CONFIRMED_BLOCKS = 2;
+window.explorerNB_OF_CONFIRMED_BLOCKS = 3;
 console.log('EXPLORER SETTINGS INJECTED!');
 
 // MODULES LOADER

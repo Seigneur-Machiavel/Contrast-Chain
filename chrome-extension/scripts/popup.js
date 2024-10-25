@@ -173,6 +173,7 @@ const eHTML = {
     settingsBtn: document.getElementById('settingsBtn'),
 
     popUpExplorer: document.getElementById('popUpExplorer'),
+    contrastBlocksWidget: document.getElementById('cbe-contrastBlocksWidget'),
     txHistoryAddress: document.getElementById('txHistoryAddress'),
     txHistoryWrap: document.getElementById('txHistoryWrap'),
     txHistoryTable: document.getElementById('txHistoryWrap').getElementsByTagName('table')[0],
@@ -1449,6 +1450,45 @@ document.addEventListener('focusout', async (event) => {
         const amountMicro = parseInt(event.target.value.replace('.',''));
         const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
         event.target.value = formatedValue;
+    }
+});
+document.addEventListener('mouseover', function(event) {
+    if (event.target === eHTML.contrastBlocksWidget || eHTML.contrastBlocksWidget.contains(event.target)) {
+        if (eHTML.contrastBlocksWidget.classList.contains('focused')) { return; }
+        if (animations.contrastBlocksWidget) { animations.contrastBlocksWidget.pause(); }
+        eHTML.contrastBlocksWidget.classList.add('focused');
+
+        const computedStyle = getComputedStyle(eHTML.contrastBlocksWidget);
+        eHTML.contrastBlocksWidget.style.width = computedStyle.width;
+        eHTML.contrastBlocksWidget.style.boxShadow = '0px 0px 10px 0px var(--color2)';
+        
+        const viewWidth = window.innerWidth;
+        animations.contrastBlocksWidget = anime({
+            targets: eHTML.contrastBlocksWidget,
+            width: `${viewWidth - 20}px`,
+            boxShadow: '0px 0px 0px 2px var(--color2)',
+            duration: 300,
+            easing: 'easeInOutCubic'
+        });
+    } else {
+        if (!eHTML.contrastBlocksWidget.classList.contains('focused')) { return; }
+        if (animations.contrastBlocksWidget) { animations.contrastBlocksWidget.pause(); }
+        eHTML.contrastBlocksWidget.classList.remove('focused');
+        
+        const parentWidth = eHTML.contrastBlocksWidget.parentElement.offsetWidth;
+        animations.contrastBlocksWidget = anime({
+            targets: eHTML.contrastBlocksWidget,
+            width: `${parentWidth - 20}px`,
+            boxShadow: '0px 0px 0px 0px var(--color2)',
+            delay: 250,
+            begin: () => {
+                const computedStyle = getComputedStyle(eHTML.contrastBlocksWidget);
+                eHTML.contrastBlocksWidget.style.width = computedStyle.width;
+                eHTML.contrastBlocksWidget.style.boxShadow = '0px 0px 10px 0px var(--color2)';
+            },
+            duration: 250,
+            easing: 'easeInOutCubic'
+        });
     }
 });
 window.addEventListener('beforeunload', function(e) {
