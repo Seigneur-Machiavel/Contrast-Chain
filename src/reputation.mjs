@@ -21,11 +21,10 @@ class ReputationManager extends EventEmitter {
             cleanupInterval: 60 * 60 * 1000, // 1 hour
             offenseScoreMap: {},
             maxScore: 100,
-            // Spam Detection Configurations
-            spamMaxActions: 200, // Maximum allowed actions within the time window
-            spamTimeWindow: 60 * 1000, // Time window in milliseconds (e.g., 1 minute)
-            spamCleanupInterval: 5 * 60 * 1000, // Interval to clean up old actions (e.g., 5 minutes)
-            saveInterval: 5 * 60 * 1000, // Save every 1 minute
+             // Spam Detection Configurations
+             spamMaxActions: 200, // Maximum allowed actions within the time window
+             spamTimeWindow: 60 * 1000, // Time window in milliseconds (e.g., 1 minute)
+             spamCleanupInterval: 5 * 60 * 1000, // Interval to clean up old actions (e.g., 5 minutes)
         };
 
         this.options = { ...defaultOptions, ...options };
@@ -71,11 +70,8 @@ class ReputationManager extends EventEmitter {
             this.options.cleanupInterval
         );
         // Periodically clean up expired temporary bans
-        this.banCleanupInterval = setInterval(
-            () => this.cleanupExpiredBans(),
-            this.options.cleanupInterval
-        );
-
+        this.banCleanupInterval = setInterval(() => this.cleanupExpiredBans(), this.options.cleanupInterval);
+        
         // Initialize action tracking for spam detection
         /** @type {Map<string, Array<number>>} */
         this.actionTimestamps = new Map(); // Map of identifier -> array of action timestamps
@@ -84,12 +80,7 @@ class ReputationManager extends EventEmitter {
             () => this.cleanupOldActions(),
             this.options.spamCleanupInterval
         );
-
-        // Initialize periodic saving of scores
-        this.scoreSaveInterval = setInterval(
-            () => this.saveScoresToDisk(),
-            this.options.saveInterval
-        );
+   
     }
 
     static OFFENSE_TYPES = {
@@ -115,108 +106,43 @@ class ReputationManager extends EventEmitter {
         CUSTOM_EVENT: 'Custom Event',
         SYNC_INCOMING_STREAM: 'Sync Incoming Stream',
     };
-
     /**
      * Load scores and bans from disk when the node starts.
      */
     loadScoresFromDisk() {
         if (fs.existsSync(this.options.scoreFilePath)) {
-            try {
-                const data = JSON.parse(
-                    fs.readFileSync(this.options.scoreFilePath, 'utf8')
-                );
-                this.identifierScores = new Map(
-                    data.identifierScores.map(([key, value]) => [
-                        String(key),
-                        value,
-                    ])
-                );
-                this.identifierBans = new Map(
-                    data.identifierBans.map(([key, value]) => [
-                        String(key),
-                        value,
-                    ])
-                );
-                this.identifierAssociations = new Map();
-                const associations = data.identifierAssociations || [];
-                for (const [key, value] of associations) {
-                    const strKey = String(key);
-                    const strValues = value.map(String);
-                    if (this.identifierAssociations.has(strKey)) {
-                        const existingSet = this.identifierAssociations.get(
-                            strKey
-                        );
-                        strValues.forEach((id) => existingSet.add(id));
-                    } else {
-                        this.identifierAssociations.set(
-                            strKey,
-                            new Set(strValues)
-                        );
-                    }
-                }
-                console.log('Reputation scores loaded successfully.');
-            } catch (error) {
-                console.error('Error loading reputation scores:', error);
-                // Initialize empty maps if there's an error
-                this.identifierScores = new Map();
-                this.identifierBans = new Map();
-                this.identifierAssociations = new Map();
+            const data = JSON.parse(fs.readFileSync(this.options.scoreFilePath, 'utf8'));
+            this.identifierScores = new Map(data.identifierScores);
+            this.identifierBans = new Map(data.identifierBans);
+            this.identifierAssociations = new Map();
+            const associations = data.identifierAssociations || [];
+            for (const [key, value] of associations) {
+                this.identifierAssociations.set(key, new Set(value));
             }
         } else {
             // Initialize empty maps if the file doesn't exist
             this.identifierScores = new Map();
             this.identifierBans = new Map();
             this.identifierAssociations = new Map();
-            console.log(
-                'No existing reputation score file found. Initialized empty scores.'
-            );
         }
     }
-
     /**
-     * Save scores and bans to disk on shutdown or periodically.
+     * Save scores and bans to disk on shutdown.
      */
     saveScoresToDisk() {
-        // Validate uniqueness
-        const uniqueAssociations = new Map();
-        for (const [key, set] of this.identifierAssociations.entries()) {
-            const strKey = String(key);
-            if (uniqueAssociations.has(strKey)) {
-                const existingSet = uniqueAssociations.get(strKey);
-                set.forEach((id) => existingSet.add(String(id)));
-                console.log(`Merged associations for identifier: ${strKey}`);
-            } else {
-                uniqueAssociations.set(
-                    strKey,
-                    new Set(Array.from(set).map(String))
-                );
-            }
-        }
-
         const data = {
             identifierScores: Array.from(this.identifierScores.entries()),
             identifierBans: Array.from(this.identifierBans.entries()),
-            identifierAssociations: Array.from(
-                uniqueAssociations.entries()
-            ).map(([key, set]) => [key, Array.from(set)]),
+            identifierAssociations: Array.from(this.identifierAssociations.entries()).map(([key, set]) => [key, Array.from(set)]),
         };
-        fs.writeFile(
-            this.options.scoreFilePath,
-            JSON.stringify(data, null, 2),
-            (err) => {
-                if (err) {
-                    console.error('Error saving reputation scores:', err);
-                } else {
-                }
-            }
-        );
+        fs.writeFileSync(this.options.scoreFilePath, JSON.stringify(data, null, 2));
     }
 
     /**
      * Apply an offense to a peer.
      * Based on offense type, score is decremented and temporary/permanent ban may apply.
      * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
-     * @param {string} offenseType
+     * @param {string} offenseType 
      */
     applyOffense(peer, offenseType) {
         // Update associations
@@ -224,10 +150,10 @@ class ReputationManager extends EventEmitter {
 
         const identifiers = this.getAssociatedIdentifiers(peer);
 
+        // log current score
+        //console.log(`Current score: ${this.identifierScores.get(identifiers) || this.options.defaultScore}`);
         if (identifiers.size === 0) {
-            throw new Error(
-                `At least one of peerId, ip, or address must be provided.`
-            );
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
         }
 
         if (!this.offenseScoreMap[offenseType]) {
@@ -241,6 +167,8 @@ class ReputationManager extends EventEmitter {
             this.decrementScore(identifier, scoreDecrement);
             this.checkIdentifierScore(identifier, offenseType);
         }
+        // log new score
+        //console.log(`New score: ${this.identifierScores.get(identifiers) || this.options.defaultScore}`);
         this.emit('offenseApplied', { peer, offenseType, scoreDecrement });
     }
 
@@ -248,18 +176,17 @@ class ReputationManager extends EventEmitter {
      * Apply a positive action to a peer.
      * Based on positive action type, score is incremented.
      * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
-     * @param {string} positiveActionType
+     * @param {string} positiveActionType 
      */
     applyPositive(peer, positiveActionType) {
+        
         // Update associations
         this.updateAssociations(peer);
 
         const identifiers = this.getAssociatedIdentifiers(peer);
 
         if (identifiers.size === 0) {
-            throw new Error(
-                `At least one of peerId, ip, or address must be provided.`
-            );
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
         }
 
         if (!this.positiveScoreMap[positiveActionType]) {
@@ -272,18 +199,14 @@ class ReputationManager extends EventEmitter {
         for (const identifier of identifiers) {
             this.incrementScore(identifier, scoreIncrement);
             // Optionally, emit an event for positive actions
-            this.emit('positiveActionApplied', {
-                identifier,
-                positiveActionType,
-                scoreIncrement,
-            });
+            this.emit('positiveActionApplied', { identifier, positiveActionType, scoreIncrement });
         }
-    }
 
+    }
     /**
      * Decrement the score of an identifier (negative actions).
-     * @param {string} identifier
-     * @param {number} decrement
+     * @param {string} identifier 
+     * @param {number} decrement 
      */
     decrementScore(identifier, decrement = 1) {
         const currentScore = this.identifierScores.has(identifier)
@@ -292,11 +215,12 @@ class ReputationManager extends EventEmitter {
         const newScore = currentScore - decrement;
         this.identifierScores.set(identifier, newScore);
     }
+    
 
     /**
      * Increment the score of an identifier (positive actions).
-     * @param {string} identifier
-     * @param {number} increment
+     * @param {string} identifier 
+     * @param {number} increment 
      */
     incrementScore(identifier, increment = 1) {
         if (!this.identifierScores.has(identifier)) {
@@ -310,9 +234,10 @@ class ReputationManager extends EventEmitter {
         this.identifierScores.set(identifier, newScore);
     }
 
+    
     /**
      * Check the score of an identifier and ban if below the threshold.
-     * @param {string} identifier
+     * @param {string} identifier 
      * @param {string} offenseType
      */
     checkIdentifierScore(identifier, offenseType) {
@@ -320,15 +245,9 @@ class ReputationManager extends EventEmitter {
 
         // Check for permanent offenses
         const permanentOffenses = [
-            // Add offense types that should trigger a permanent ban
-            // Example:
-            // ReputationManager.OFFENSE_TYPES.SOME_CRITICAL_OFFENSE,
         ];
 
-        if (
-            permanentOffenses.includes(offenseType) ||
-            score <= this.options.banPermanentScore
-        ) {
+        if (permanentOffenses.includes(offenseType) || score <= this.options.banPermanentScore) {
             this.banIdentifier(identifier, true);
         } else if (score <= this.options.banThreshold) {
             this.banIdentifier(identifier, false);
@@ -337,15 +256,12 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Ban an identifier (peerId, ip, or address).
-     * @param {string} identifier
-     * @param {boolean} permanent
+     * @param {string} identifier 
+     * @param {boolean} permanent 
      */
     banIdentifier(identifier, permanent = false) {
-        console.log(
-            `Banning identifier ${identifier} ${
-                permanent ? 'permanently' : 'temporarily'
-            }`
-        );
+        console.log(`Banning identifier ${identifier} ${permanent ? 'permanently' : 'temporarily'}`);
+        //log score 
         console.log(`Score: ${this.identifierScores.get(identifier)}`);
         const existingBan = this.identifierBans.get(identifier);
         if (!existingBan || (!existingBan.permanent && permanent)) {
@@ -361,15 +277,15 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Get all identifiers associated with a peer.
-     * @param {PeerInfo} peer
+     * @param {PeerInfo} peer 
      * @returns {Set<string>}
      */
     getAssociatedIdentifiers(peer) {
         const identifiers = new Set();
 
-        if (peer.peerId) identifiers.add(String(peer.peerId));
-        if (peer.ip) identifiers.add(String(peer.ip));
-        if (peer.address) identifiers.add(String(peer.address));
+        if (peer.peerId) identifiers.add(peer.peerId);
+        if (peer.ip) identifiers.add(peer.ip);
+        if (peer.address) identifiers.add(peer.address);
 
         const queue = Array.from(identifiers);
         const visited = new Set(identifiers);
@@ -392,14 +308,14 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Update identifier associations based on a new or existing peer.
-     * @param {PeerInfo} peer
+     * @param {PeerInfo} peer 
      */
     updateAssociations(peer) {
         const identifiers = [];
 
-        if (peer.peerId) identifiers.push(String(peer.peerId));
-        if (peer.ip) identifiers.push(String(peer.ip));
-        if (peer.address) identifiers.push(String(peer.address));
+        if (peer.peerId) identifiers.push(peer.peerId);
+        if (peer.ip) identifiers.push(peer.ip);
+        if (peer.address) identifiers.push(peer.address);
 
         const now = Date.now();
 
@@ -412,9 +328,7 @@ class ReputationManager extends EventEmitter {
             }
             for (const otherId of identifiers) {
                 if (otherId !== id) {
-                    if (!associated.has(otherId)) {
-                        associated.add(otherId);
-                    }
+                    associated.add(otherId);
                 }
             }
         }
@@ -422,7 +336,7 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Check if an identifier is banned.
-     * @param {string} identifier
+     * @param {string} identifier 
      * @returns {boolean}
      */
     isIdentifierBanned(identifier) {
@@ -444,7 +358,7 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Check if a peer is banned based on their identifiers.
-     * @param {PeerInfo} peer
+     * @param {PeerInfo} peer 
      * @returns {boolean}
      */
     isPeerBanned(peer) {
@@ -460,9 +374,10 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Unban an identifier, resetting its score.
-     * @param {string} identifier
+     * @param {string} identifier 
      */
     unbanIdentifier(identifier) {
+        //console.log(`Unbanning identifier ${identifier}`);
         if (this.identifierBans.delete(identifier)) {
             this.identifierScores.set(identifier, this.options.defaultScore);
             this.emit('identifierUnbanned', { identifier });
@@ -471,7 +386,7 @@ class ReputationManager extends EventEmitter {
 
     /**
      * Get the score of an identifier.
-     * @param {string} identifier
+     * @param {string} identifier 
      * @returns {number}
      */
     getIdentifierScore(identifier) {
@@ -479,7 +394,6 @@ class ReputationManager extends EventEmitter {
             ? this.identifierScores.get(identifier)
             : this.options.defaultScore;
     }
-
     /**
      * Periodically clean up expired temporary bans.
      */
@@ -494,10 +408,6 @@ class ReputationManager extends EventEmitter {
             }
         }
     }
-
-    /**
-     * Clean up old associations based on inactivity.
-     */
     cleanupOldAssociations() {
         const now = Date.now();
         const maxInactivity = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -508,7 +418,6 @@ class ReputationManager extends EventEmitter {
             }
         }
     }
-
     /**
      * Gracefully shutdown - save the scores to disk and clear intervals.
      */
@@ -516,11 +425,9 @@ class ReputationManager extends EventEmitter {
         clearInterval(this.banCleanupInterval);
         clearInterval(this.associationCleanupInterval);
         clearInterval(this.spamCleanupInterval);
-        clearInterval(this.scoreSaveInterval); // Clear the save interval
-        await this.saveScoresToDisk();
+        this.saveScoresToDisk();
         this.emit('shutdown');
     }
-
     /**
      * Get a clean list of identifiers and their scores for the dashboard.
      * Each entry includes the identifier, its score, and ban status.
@@ -537,40 +444,32 @@ class ReputationManager extends EventEmitter {
 
         return scoresList;
     }
-
     /**
      * Record an action performed by a peer for spam detection.
      * If the peer exceeds the maximum number of allowed actions within the time window,
      * apply a MESSAGE_SPAMMING offense.
      * @param {PeerInfo} peer - An object that can contain peerId, ip, address (any or all).
-     * @param {string} action
      */
     recordAction(peer, action) {
         // Update associations
-        console.log(
-            { component: 'ReputationManager', peer, action },
-            'Recording action'
-        );
+        console.log({ component: 'ReputationManager', peer, action }, 'Recording action');
         this.updateAssociations(peer);
 
         const identifiers = this.getAssociatedIdentifiers(peer);
 
         if (identifiers.size === 0) {
-            throw new Error(
-                `At least one of peerId, ip, or address must be provided.`
-            );
+            throw new Error(`At least one of peerId, ip, or address must be provided.`);
         }
 
         const now = Date.now();
         const windowStart = now - this.options.spamTimeWindow;
 
         for (const identifier of identifiers) {
-            const idStr = String(identifier);
-            if (!this.actionTimestamps.has(idStr)) {
-                this.actionTimestamps.set(idStr, []);
+            if (!this.actionTimestamps.has(identifier)) {
+                this.actionTimestamps.set(identifier, []);
             }
 
-            const timestamps = this.actionTimestamps.get(idStr);
+            const timestamps = this.actionTimestamps.get(identifier);
 
             // Add current timestamp
             timestamps.push(now);
@@ -589,11 +488,7 @@ class ReputationManager extends EventEmitter {
                 // timestamps.length = 0;
 
                 // Emit an event for spam detection
-                this.emit('spamDetected', {
-                    peer,
-                    identifier,
-                    actionCount: timestamps.length,
-                });
+                this.emit('spamDetected', { peer, identifier, actionCount: timestamps.length });
             }
         }
     }
@@ -618,5 +513,4 @@ class ReputationManager extends EventEmitter {
         }
     }
 }
-
 export default ReputationManager;
