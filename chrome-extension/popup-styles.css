@@ -382,6 +382,7 @@ button.classy.clicked:not(.disabled) {
     color: var(--color2);
 }
 .buttonBar button.disabled {
+    opacity: .6;
     cursor: initial;
     filter: brightness(0.8);
     box-shadow: 3px 2px 5px var(--neumo-color2), -2px -2px 4px var(--neumo-color1);
@@ -490,82 +491,71 @@ button.classy.clicked:not(.disabled) {
     animation: spinTransformGlowShadowA 9.9s infinite alternate-reverse cubic-bezier(.71,.93,.86,.7) !important
 }
 .accountLabel.active .accountImgWrap div {
+    display: none !important;
     animation: spinTransformGlowShadowB 10.9s infinite alternate cubic-bezier(.08,.62,.86,.42);
 }
 @keyframes spinTransformGlowShadowA {
     0% {
-        opacity: .9;
         box-shadow: 0px 0px 4px var(--color1);
         transform: rotate(0deg) skew(0deg, 14deg) scale(.8);
-        filter: brightness(1) drop-shadow(0px 2px 1px var(--secondary-color)) blur(1px);
+        filter: brightness(1) drop-shadow(0px 2px 1px var(--color2)) blur(1px);
     }
     40% {
-        opacity: .2;
         box-shadow: 0px 2px 8px var(--color1);
         transform: rotate(216deg) skew(2deg, 0deg) scale(.76);
-        filter: brightness(.8) drop-shadow(0px 0px 2px var(--primary-color)) blur(1.05px);
+        filter: brightness(.8) drop-shadow(0px 0px 2px var(--color2)) blur(1.05px);
     }
     50% {
-        opacity: .5;
         box-shadow: 3px 2px 6px var(--color1);
         transform: rotate(144deg) skew(4deg, 2deg) scale(.8);
-        filter: brightness(.6) drop-shadow(2px 2px 3px var(--secondary-color)) blur(1.2px);
+        filter: brightness(.6) drop-shadow(2px 2px 3px var(--color2)) blur(1.2px);
     }
     60% {
-        opacity: .4;
         box-shadow: 5px 2px 2px var(--color1);
         transform: rotate(216deg) skew(2deg, 4deg) scale(.86);
-        filter: brightness(1) drop-shadow(0px 0px 4px var(--primary-color)) blur(1.35px);
+        filter: brightness(1) drop-shadow(0px 0px 4px var(--color2)) blur(1.35px);
     }
     70% {
-        opacity: .2;
         box-shadow: 1px 2px 2px var(--color1);
         transform: rotate(288deg) skew(0deg, 2deg) scale(.8);
-        filter: brightness(1.15) drop-shadow(0px 2px 5px var(--secondary-color)) blur(2.5px);
+        filter: brightness(1.15) drop-shadow(0px 2px 5px var(--color2)) blur(2.5px);
     }
     100% {
-        opacity: .4;
         box-shadow: 5px 0px 3px var(--color1);
         transform: rotate(144deg) skew(14deg, 2deg) scale(.92); 
-        filter: brightness(.9) drop-shadow(0px 2px 10px var(--primary-color)) blur(3px);
+        filter: brightness(.9) drop-shadow(0px 2px 10px var(--color2)) blur(3px);
     }
 }
 @keyframes spinTransformGlowShadowB {
     0% {
-        opacity: .5;
         box-shadow: 0px 0px 4px var(--color1);
         transform: rotate(0deg) skew(0deg, 0deg) scale(.92);
-        filter: brightness(1) drop-shadow(0px 2px 1px var(--secondary-color)) blur(1px);
+        filter: brightness(1) drop-shadow(0px 2px 1px var(--color2)) blur(1px);
     }
     20% {
-        opacity: .4;
         box-shadow: 0px 2px 2px var(--color1);
         transform: rotate(72deg) skew(0deg, 0deg) scale(.8);
-        filter: brightness(.8) drop-shadow(0px 0px 2px var(--primary-color)) blur(1.05px);
+        filter: brightness(.8) drop-shadow(0px 0px 2px var(--color2)) blur(1.05px);
     }
     40% {
-        opacity: .9;
         box-shadow: 3px 2px 1px var(--color1);
         transform: rotate(144deg) skew(2deg, 7deg) scale(.86);
-        filter: brightness(.6) drop-shadow(2px 2px 3px var(--secondary-color)) blur(1.2px);
+        filter: brightness(.6) drop-shadow(2px 2px 3px var(--color2)) blur(1.2px);
     }
     60% {
-        opacity: .7;
         box-shadow: 5px 2px 2px var(--color1);
         transform: rotate(216deg) skew(2deg, -20deg) scale(.86);
-        filter: brightness(0.3) drop-shadow(0px 0px 4px var(--primary-color)) blur(1.35px);
+        filter: brightness(0.3) drop-shadow(0px 0px 4px var(--color2)) blur(1.35px);
     }
     80% {
-        opacity: .9;
         box-shadow: 1px 2px 2px var(--color1);
         transform: rotate(288deg) skew(0deg, 2deg) scale(.9);
-        filter: brightness(.8) drop-shadow(0px 2px 5px var(--primary-color)) blur(2.5px);
+        filter: brightness(.8) drop-shadow(0px 2px 5px var(--color2)) blur(2.5px);
     }
     100% {
-        opacity: .2;
         box-shadow: 2px 0px 3px var(--color1);
         transform: rotate(360deg) scale(.82);
-        filter: brightness(.9) drop-shadow(0px 2px 10px var(--secondary-color)) blur(3px);
+        filter: brightness(.9) drop-shadow(0px 2px 10px var(--color2)) blur(3px);
     }
 }
 .accountLabel .accountImgWrap canvas {
