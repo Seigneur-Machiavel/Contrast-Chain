@@ -448,7 +448,12 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
             console.log('Asking peer to sync:', askSyncPeerId);
             ws.send(JSON.stringify({ type: 'ask_sync_peer', data: askSyncPeerId }));
             break;
-
+        case 'ban_peer':
+            const banPeerId = currentActionPeerId;
+            console.log('Banning peer:', banPeerId);
+            ws.send(JSON.stringify({ type: 'ban_peer', data: banPeerId }));
+            break;
+            
         default:
             console.error('Unknown action:', currentAction);
     }
