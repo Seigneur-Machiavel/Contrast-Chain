@@ -258,10 +258,11 @@
     font-size: calc(var(--inner-height, var(--inner-height-default))* .116);
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
+    width: 100vw;
+    height: 100vh;
     z-index: 100;
-    background: transparent;
+    /*background: transparent;*/
+    background: radial-gradient(transparent, var(--cbe-color1-default) 150%);
     opacity: 0;
     transition: opacity .2s;
 }

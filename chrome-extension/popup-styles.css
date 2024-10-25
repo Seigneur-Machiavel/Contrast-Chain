@@ -69,47 +69,14 @@ h1, h2 {
     /*overflow: hidden;*/
 }
 #cbe-contrastBlocksWidget {
-    /*animation: widgetRetract .3s linear forwards;*/
+    z-index: 2;
     background: linear-gradient(90deg, var(--color1) 80%, transparent 200%) !important;
-    /*background-position: 50% 200%;*/
     filter: brightness(1);
     width: calc(100% - 20px);
     box-shadow: 0px 0px 0px 0px var(--color2);
 }
-@keyframes widgetRetract {
-    0% {
-        filter: brightness(1);
-        /*width: calc(100vw - 20px);*/
-        box-shadow: 0px 0px 0px 2px var(--color2);
-    }
-    80% {
-        filter: brightness(1.2);
-        box-shadow: 0px 0px 10px 0px var(--color2);
-    }
-    100% {
-        filter: brightness(1);
-        width: calc(100% - 20px);
-        box-shadow: 0px 0px 0px 0px var(--color2);
-    }
-}
 #cbe-contrastBlocksWidget.focused {
-    /*animation: widgetExpand .2s .06s cubic-bezier(0.715, 0.810, 0.955, 1) forwards;*/
-}
-@keyframes widgetExpand {
-    0% {
-        filter: brightness(1);
-        width: calc(100% - 20px);
-        box-shadow: 0px 0px 0px 0px var(--color2);
-    }
-    80% {
-        filter: brightness(1.2);
-        box-shadow: 0px 0px 10px 0px var(--color2);
-    }
-    100% {
-        filter: brightness(1);
-        width: calc(100vw - 20px);
-        box-shadow: 0px 0px 0px 2px var(--color2);
-    }
+
 }
 #explorerBtn .icon {
     pointer-events: none;
