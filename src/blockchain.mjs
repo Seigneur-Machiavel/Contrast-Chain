@@ -448,14 +448,14 @@ export class Blockchain {
             const serializedHeader = await this.db.get(hash);
             const blockHeader = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
             const height = blockHeader.index;
-            const serializedTxsIds = this.db.get(`height-${height}-txIds`);
+            const serializedTxsIds = await this.db.get(`height-${height}-txIds`);
 
             const txsIds = utils.serializer.array_of_tx_ids.fromBinary_v3(serializedTxsIds);
             const txsPromises = txsIds.map(txId => this.db.get(`${height}:${txId}`));
 
             if (!deserialize) { return { header: serializedHeader, txs: await Promise.all(txsPromises) }; }
 
-            return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
+            return this.blockDataFromSerializedHeaderAndTxs(serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
