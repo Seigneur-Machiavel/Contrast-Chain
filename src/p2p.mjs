@@ -40,42 +40,16 @@ class P2PNetwork extends EventEmitter {
         this.peers = new Map();
         this.subscriptions = new Set();
         this.logger = logger;
-
+        if (this.logger === undefined) {
+            this.logger = new Logger ();
+        }
         // Initialize ReputationManager
         this.reputationManager = new ReputationManager(this.options.reputationOptions);
 
         // Event listener for when an identifier is banned
-        this.reputationManager.on('identifierBanned', ({ identifier, permanent }) => {
-            this.logger.debug(
-                { identifier, permanent },
-                `Identifier ${identifier} has been ${permanent ? 'permanently' : 'temporarily'} banned`
-            );
-
-            if (this.p2pNode) {
-                // Attempt to find peerId associated with the identifier
-                let peerId = null;
-
-                if (this.peers.has(identifier)) {
-                    // Identifier is a peerId
-                    peerId = identifier;
-                } else {
-                    // Try to find peerId associated with the identifier
-                    for (let [id, peer] of this.peers) {
-                        if (peer.address && peer.address.includes(identifier)) {
-                            peerId = id;
-                            break;
-                        } else if (peer.address.includes(identifier)) {
-                            peerId = id;
-                            break;
-                        }
-                    }
-                }
-
-                if (peerId) {
-                    this.logger.debug({ identifier, peerId }, 'Closing connections to banned identifier');
-                    this.p2pNode.components.connectionManager.closeConnections(peerId);
-                }
-            }
+        this.reputationManager.on('identifierBanned', ({ identifier }) => {
+            this.disconnectPeer(identifier);
+            this.logger.info('luid-f7a23b4c Peer banned and disconnected', { identifier });
         });
 
         // Event listener for when an identifier is unbanned
@@ -135,7 +109,18 @@ class P2PNetwork extends EventEmitter {
                 dht: kadDHT(),
             },
             peerDiscovery,
+            connectionGater: {
+                denyDialPeer: this.isDeniedPeer.bind(this),
+                denyDialMultiaddr: this.isDeniedMultiaddr.bind(this),
+                denyInboundConnection: this.isDeniedConnection.bind(this),
+                denyOutboundConnection: this.isDeniedConnection.bind(this),
+                denyInboundEncrypted: this.isDeniedEncrypted.bind(this),
+                denyOutboundEncrypted: this.isDeniedEncrypted.bind(this),
+                denyInboundUpgraded: this.isDeniedUpgraded.bind(this),
+                denyOutboundUpgraded: this.isDeniedUpgraded.bind(this)
+            },
             connectionManager: {},
+            
         });
     }
 
@@ -525,6 +510,48 @@ class P2PNetwork extends EventEmitter {
     /** @returns {boolean} */
     isStarted() {
         return this.p2pNode && this.p2pNode.status === 'started';
+    }
+
+    // Connection Gating Methods
+    async isDeniedPeer(peerId) {
+        return this.reputationManager.isPeerBanned({ peerId: peerId.toString() });
+    }
+
+    async isDeniedMultiaddr(multiaddr) {
+        const ip = multiaddr.nodeAddress().address;
+        return this.reputationManager.isPeerBanned({ ip });
+    }
+
+    async isDeniedConnection(connection) {
+        const peerId = connection.remotePeer.toString();
+        const ip = connection.remoteAddr.nodeAddress().address;
+        
+        return this.reputationManager.isPeerBanned({ peerId }) || 
+               this.reputationManager.isPeerBanned({ ip });
+    }
+
+    async isDeniedEncrypted(connection) {
+        return this.isDeniedConnection(connection);
+    }
+
+    async isDeniedUpgraded(connection) {
+        return this.isDeniedConnection(connection);
+    }
+
+    async disconnectPeer(identifier) {
+        if (!this.p2pNode) return;
+
+        const connections = this.p2pNode.getConnections();
+        for (const connection of connections) {
+            const peerId = connection.remotePeer.toString();
+            const ip = connection.remoteAddr.nodeAddress().address;
+            
+            if (identifier === peerId || identifier === ip) {
+                await this.p2pNode.connections.close(connection.id);
+                this.logger.info('luid-9d42e1f5 Disconnected peer', 
+                    { identifier });
+            }
+        }
     }
 }
 
