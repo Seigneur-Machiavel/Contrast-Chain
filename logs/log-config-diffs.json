@@ -425,99 +425,31 @@
     "diffs": []
   },
   {
-    "timestamp": "2024-10-25T05:50:02.282Z",
+    "timestamp": "2024-10-25T07:38:54.363Z",
     "diffs": []
   },
   {
-    "timestamp": "2024-10-25T07:14:06.869Z",
+    "timestamp": "2024-10-25T07:55:15.407Z",
+    "diffs": [
+      {
+        "id": "luid-f7a23b4c",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 49,
+          "type": "info",
+          "content": "luid-f7a23b4c Peer banned and disconnected"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-10-25T08:13:14.890Z",
     "diffs": []
   },
   {
-    "timestamp": "2024-10-25T07:14:13.235Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:16:32.003Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:17:56.379Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:18:00.745Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:19:07.020Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:19:21.784Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:19:25.475Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:20:54.363Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:21:16.914Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:21:35.214Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:22:00.535Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:22:04.666Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:23:02.323Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:23:06.852Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:23:55.386Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:25:40.787Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:28:25.594Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:30:39.381Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:32:37.260Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:35:06.978Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:40:12.138Z",
-    "diffs": []
-  },
-  {
-    "timestamp": "2024-10-25T07:40:39.579Z",
+    "timestamp": "2024-10-25T08:15:17.711Z",
     "diffs": []
   }
 ]

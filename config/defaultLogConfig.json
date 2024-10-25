@@ -6,6 +6,13 @@
     "type": "error",
     "content": "luid-9f54fbca Unable to deserialize transaction using available strategies"
   },
+  "luid-f7a23b4c": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 49,
+    "type": "info",
+    "content": "luid-f7a23b4c Peer banned and disconnected"
+  },
   "luid-04ed05eb": {
     "active": true,
     "file": "src\\p2p.mjs",

@@ -255,6 +255,12 @@ function renderPeers(peers) {
         disconnectBtn.classList.add('disconnect-btn'); // Add class for styling
         disconnectBtn.dataset.peerId = peerId; // Store peerId for reference
 
+        // Create Ban Button
+        const banBtn = document.createElement('button');
+        banBtn.textContent = 'Ban';
+        banBtn.classList.add('ban-btn'); // Add class for styling
+        banBtn.dataset.peerId = peerId; // Store peerId for reference
+
         // Create Ask Sync Button
         const askSyncBtn = document.createElement('button');
         askSyncBtn.textContent = 'Ask Sync';
@@ -264,6 +270,7 @@ function renderPeers(peers) {
         // Append elements to the list item
         li.appendChild(peerSpan);
         li.appendChild(disconnectBtn);
+        li.appendChild(banBtn);
         li.appendChild(askSyncBtn);
 
         eHTML.peersConnectedList.appendChild(li);
@@ -332,6 +339,14 @@ eHTML.peersConnectedList.addEventListener('click', (event) => {
         const peerId = target.dataset.peerId;
         handleAskSyncPeer(peerId);
     }
+
+    // Check if Ban button was clicked
+
+    if (target.classList.contains('ban-btn')) {
+        const peerId = target.dataset.peerId;
+        console.log('Ban button clicked for peer:', peerId);
+        handleBanPeer(peerId);
+    }
 });
 
 function handleDisconnectPeer(peerId) {
@@ -343,6 +358,17 @@ function handleDisconnectPeer(peerId) {
         showInput: false
     });
 }
+
+function handleBanPeer(peerId) {
+    console.log(`Banning peer: ${peerId}`);
+    currentAction = 'ban_peer';
+    currentActionPeerId = peerId;
+    openModal('ban_peer', {
+        message: `Are you sure you want to ban peer ${peerId}?`,
+        showInput: false
+    });
+}
+
 
 function handleAskSyncPeer(peerId) {
     console.log(`Asking peer ${peerId} to sync`);
@@ -422,7 +448,12 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
             console.log('Asking peer to sync:', askSyncPeerId);
             ws.send(JSON.stringify({ type: 'ask_sync_peer', data: askSyncPeerId }));
             break;
-
+        case 'ban_peer':
+            const banPeerId = currentActionPeerId;
+            console.log('Banning peer:', banPeerId);
+            ws.send(JSON.stringify({ type: 'ban_peer', data: banPeerId }));
+            break;
+            
         default:
             console.error('Unknown action:', currentAction);
     }
