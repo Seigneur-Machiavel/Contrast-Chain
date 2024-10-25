@@ -290,7 +290,7 @@ export class BlockExplorerWidget {
                 this.navigationTarget.blockReference = blockIndex;
 
                 // we prepared the container and target, we can send the request
-                if (this.#getBlockDataFromMemoryOrSendRequest(blockIndex) === 'request sent') { return; }
+                if (this.getBlockDataFromMemoryOrSendRequest(blockIndex) === 'request sent') { return; }
                 
                 this.navigateUntilTarget(false);
             },
@@ -319,7 +319,7 @@ export class BlockExplorerWidget {
                 this.navigationTarget.txId = anchor.split(':')[1];
                 this.navigationTarget.outputIndex = Number(anchor.split(':')[2]);
 
-                if (this.#getBlockDataFromMemoryOrSendRequest(this.navigationTarget.blockReference) === 'request sent') { return; }
+                if (this.getBlockDataFromMemoryOrSendRequest(this.navigationTarget.blockReference) === 'request sent') { return; }
 
                 this.navigateUntilTarget(true);
             },
@@ -364,7 +364,6 @@ export class BlockExplorerWidget {
             },
             'cbe-addressTxRow': (event) => {
                 try {
-
                     if (this.cbeHTML.txDetails()) { this.cbeHTML.txDetails().remove(); }
         
                     const rowElement = event.target.closest('.cbe-addressTxRow');
@@ -402,7 +401,7 @@ export class BlockExplorerWidget {
                 }
 
                 if (isNumber || isHash || isAnchor || isTxReference) {
-                    if (this.#getBlockDataFromMemoryOrSendRequest(this.navigationTarget.blockReference) === 'request sent') { return; }
+                    if (this.getBlockDataFromMemoryOrSendRequest(this.navigationTarget.blockReference) === 'request sent') { return; }
 
                     this.navigateUntilTarget(true);
                     return;
@@ -981,7 +980,7 @@ export class BlockExplorerWidget {
         return null;
     }
     /** @param {string | number} blockReference block hash or block index */
-    #getBlockDataFromMemoryOrSendRequest(blockReference = 0) {
+    getBlockDataFromMemoryOrSendRequest(blockReference = 0) {
         const referenceIsHash = typeof blockReference === 'string';
 
         const fromMemory = referenceIsHash ? this.blocksDataByHash[blockReference] : this.blocksDataByIndex[blockReference];

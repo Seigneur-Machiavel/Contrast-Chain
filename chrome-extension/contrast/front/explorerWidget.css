@@ -2,7 +2,8 @@
     --cbe-color1-default: white;
     --cbe-color2-default: black;
 
-    --cbe-widget-margin-default: 2% 10%;
+    --cbe-widget-margin-default: 0% 10%;
+    --cbe-widget-padding-default: 20px 10px;
     --cbe-color4-default: #787878;
     --cbe-color3-default: #4f4f4f;
 
@@ -29,9 +30,11 @@
 #cbe-contrastBlocksWidget {
     position: relative;
     margin: var(--cbe-widget-margin, var(--cbe-widget-margin-default));
+    /*padding: 0 10px;*/
+    padding: var(--cbe-widget-padding, var(--cbe-widget-padding-default));
+
     border-radius: var(--wrap-border-radius, var(--wrap-border-radius-default));
     height: var(--inner-height, var(--inner-height-default));
-    padding: 0 10px;
 
     background: none;
 }
@@ -438,6 +441,8 @@
 
     box-shadow: inset 0px 0px 4px -2px var(--cbe-color2, var(--cbe-color2-default));
     height: fit-content;
+    max-height: 200px;
+    overflow: auto;
 }
 .cbe-TxInputsWrap, .cbe-TxOutputsWrap {
     text-align: right;

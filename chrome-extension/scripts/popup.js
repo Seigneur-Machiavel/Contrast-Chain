@@ -227,9 +227,13 @@ function setVisibleForm(formId, applyBLur = true) {
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
+
     eHTML.walletBtn.classList.add('active');
     eHTML.miningBtn.classList.add('active');
     eHTML.settingsBtn.classList.add('active');
+    eHTML.walletBtn.classList.remove('selected');
+    eHTML.miningBtn.classList.remove('selected');
+    eHTML.settingsBtn.classList.remove('selected');
 
     eHTML.popUpExplorer.classList.add('hidden');
     eHTML.explorerBtn.classList.remove('active');
@@ -259,7 +263,7 @@ function setVisibleForm(formId, applyBLur = true) {
     if (formId === "walletForm") {
         eHTML.explorerBtn.classList.add('active');
         eHTML.walletBtn.classList.remove('active');
-        eHTML.explorerBtn.classList.add('active');
+        eHTML.walletBtn.classList.add('selected');
     }
     if (formId === "createWalletForm") {
         eHTML.miningBtn.classList.remove('active');
@@ -273,11 +277,13 @@ function setVisibleForm(formId, applyBLur = true) {
         eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         centerScreenBtn.centerScreenBtnWrap.classList.add('active');
         eHTML.miningBtn.classList.remove('active');
+        eHTML.miningBtn.classList.add('selected');
         setTimeout(async () => { setMiningIntensityFromLocalStorage() }, 100);
     }
 
     if (formId === "settingsForm") {
         eHTML.settingsBtn.classList.remove('active');
+        eHTML.settingsBtn.classList.add('selected');
     }
 
     resizePopUp(applyBLur, popUpSize);
@@ -389,10 +395,12 @@ function textInfo(targetForm, text, timeout = 3000, eraseAnyCurrentTextInfo = fa
     for (const infoElmnt of infoElmnts) {
         currentTextInfo = text;
         infoElmnt.innerText = text;
+        infoElmnt.style.opacity = '1';
 
         setTimeout(() => {
             currentTextInfo = null;
-            infoElmnt.innerText = "";
+            infoElmnt.style.opacity = '0';
+            setTimeout(() => { infoElmnt.innerText = ""; }, 200);
         }, timeout);
     }
 }
@@ -401,9 +409,38 @@ function setWaitingForConnectionFormLoading(loading = true) {
     const loadingSvg = waitingForConnectionForm.getElementsByClassName('loadingSvgDiv')[0];
     loadingSvg.innerHTML = loading ? htmlAnimations.horizontalBtnLoading : '';
 }
-function initUI() {
+async function initUI() {
     document.body.style.width = "0px";
     document.body.style.height = "0px";
+
+    const titleMl3 = eHTML.appTitle.getElementsByClassName('ml3')[0];
+    titleMl3.innerHTML = titleMl3.textContent.replace(/\S/g, "<span class='letter' style='display: inline-block'>$&</span>");
+
+    const letterElmnts = titleMl3.getElementsByClassName('letter');
+    const nbOfLetters = letterElmnts.length;
+    for (let i = 0; i < nbOfLetters; i++) {
+        
+        const rndScale = Math.random() * 2;
+        letterElmnts[i].style.transform = `scale(${rndScale})`;
+        letterElmnts[i].style.filter = `blur(2px)`;
+    }
+
+    const letterAppearedIndexes = [];
+    for (let i = 0; i < nbOfLetters; i++) {
+        const rnd = Math.floor(Math.random() * nbOfLetters);
+        if (letterAppearedIndexes.includes(rnd)) { i--; continue; }
+
+        letterAppearedIndexes.push(rnd);
+        anime({
+            targets: letterElmnts[rnd],
+            opacity: 1,
+            scale: 1,
+            filter: 'blur(0px)',
+            duration: 200,
+            easing: 'easeInOutQuad'
+        });
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
 }
 function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');
@@ -572,7 +609,7 @@ function newAddressBtnLoadingToggle() {
     }
 }
 /** @param {AddressExhaustiveData} addressExhaustiveData */
-function fillTxHistoryWithActiveAddressData(maxTxs = 10) {
+function fillTxHistoryWithActiveAddressData(maxTxs = 16) {
     const txHistoryTable = eHTML.txHistoryTable;
     const tbody = txHistoryTable.getElementsByTagName('tbody')[0];
     tbody.innerHTML = '';
@@ -590,12 +627,11 @@ function fillTxHistoryWithActiveAddressData(maxTxs = 10) {
     let shownTxsReferences = [];
     for (let i = txsReferences.length; i > 0; i--) {
         const txReference = txsReferences[i - 1];
-        const row = createHtmlElement('tr', undefined, ['w-addressTxDate'], tbody);
-        const amountText = createHtmlElement('td', undefined, ['w-addressTxAmount'], row);
-        amountText.textContent = '...';
-        const feeText = createHtmlElement('td', undefined, ['w-addressTxFee'], row);
-        feeText.textContent = '...';
+        const row = createHtmlElement('tr', undefined, ['w-addressTxRow'], tbody);
+        createHtmlElement('td', undefined, ['w-addressTxAmount'], row).textContent = '...';
+        createHtmlElement('td', undefined, ['w-addressTxFee'], row).textContent = '...';
         createHtmlElement('td', undefined, ['w-addressTxReference'], row).textContent = txReference;
+        createHtmlElement('td', undefined, ['w-addressTxStatus'], row).textContent = '...';
 
         shownTxsReferences.push(txReference);
         
@@ -621,6 +657,8 @@ function fillInfoOfTxInHistory(txWithDetails) {
         amountText.textContent = utils.convert.number.formatNumberAsCurrencyChange(txWithDetails.balanceChange);
         const feeText = txRow.getElementsByClassName('w-addressTxFee')[0];
         feeText.textContent = utils.convert.number.formatNumberAsCurrency(txWithDetails.fee);
+        const statusText = txRow.getElementsByClassName('w-addressTxStatus')[0];
+        statusText.textContent = 'confirmed';
         break;
     }
 }
@@ -1260,6 +1298,9 @@ document.addEventListener('mousedown', function(e) { // hold click
     }
 });
 document.addEventListener('click', async function(e) {
+    let target = e.target;
+    if (target.tagName === 'TD') { target = target.parentElement; }
+
     let loadedWalletsInfo;
     let walletsInfo;
     let encryptedSeedHex;
@@ -1275,7 +1316,7 @@ document.addEventListener('click', async function(e) {
     let createdTx;
     /** @type {Transaction} */
     let signedTx;
-    switch (e.target.id) {
+    switch (target.id) {
         case 'randomizeBtn':
             const rndSeedHex = cryptoLight.generateRdnHex(64);
             eHTML.privateKeyHexInput.value = strToMaxLen(rndSeedHex, 21);
@@ -1289,7 +1330,7 @@ document.addEventListener('click', async function(e) {
             textInfo(eHTML.createWalletForm, 'Private key copied to clipboard');
             break;
         case 'confirmPrivateKeyBtn':
-            if (e.target.classList.contains('disabled')) { return; }
+            if (target.classList.contains('disabled')) { return; }
             encryptedSeedHex = await cryptoLight.encryptText(eHTML.privateKeyHexInput.placeholder);
             activeWallet = new Wallet(eHTML.privateKeyHexInput.placeholder);
             eHTML.privateKeyHexInput.placeholder = 'Private key';
@@ -1303,16 +1344,16 @@ document.addEventListener('click', async function(e) {
             console.log('Private key set');
             break;
         case 'walletBtn':
-            if (!e.target.classList.contains('active')) { return; }
+            if (!target.classList.contains('active')) { return; }
             setVisibleForm('walletForm', false);
             break;
         case 'explorerBtn':
-            if (!e.target.classList.contains('active')) { return; }
+            if (!target.classList.contains('active')) { return; }
             //setVisibleForm('explorerForm', true);
             toggleExplorer();
             break;
         case 'newAddressBtn':
-            if (e.target.innerHTML !== '+') { console.log('Already generating new address'); return; }
+            if (target.innerHTML !== '+') { console.log('Already generating new address'); return; }
             privateKeyHex = await getWalletPrivateKey(selectedWalletIndex);
 
             newAddressBtnLoadingToggle();
@@ -1349,22 +1390,22 @@ document.addEventListener('click', async function(e) {
             break;
         case 'createWalletBtn':
         case 'miningBtn':
-            if (!e.target.classList.contains('active')) { return; }
+            if (!target.classList.contains('active')) { return; }
             setVisibleForm('miningForm', false);
             break;
         case 'settingsBtn':
-            if (!e.target.classList.contains('active')) { return; }
+            if (!target.classList.contains('active')) { return; }
             setVisibleForm('settingsForm', false);
             break;
         default:
-            //console.log(`clicked: ${e.target.id}`);
+            //console.log(`clicked: ${target.id}`);
             break;
     }
-
-    switch (e.target.className) {
+    console.log(`clicked: ${target.className}`);
+    switch (target.className) {
         case 'accountImgWrap':
             //console.log('accountImgWrap clicked');
-            const accountLabel = e.target.parentElement;
+            const accountLabel = target.parentElement;
             const accountIndex = Array.from(accountLabel.parentElement.children).indexOf(accountLabel);
 
             //console.log(`accountIndex: ${accountIndex}`);
@@ -1380,7 +1421,20 @@ document.addEventListener('click', async function(e) {
             break;
         case 'foldBtn':
             console.log('foldBtn');
-            toggleMiniForm(e.target.parentElement);
+            toggleMiniForm(target.parentElement);
+            break;
+        case 'w-addressTxRow':
+            const txReference = target.querySelector('.w-addressTxReference').textContent;
+            const isConformTxReference = utils.types.txReference.isConform(txReference);
+            if (!isConformTxReference) { console.error('Invalid txReference'); return; }
+
+            blockExplorerWidget.navigationTarget.blockReference = Number(txReference.split(':')[0]);
+            blockExplorerWidget.navigationTarget.txId = txReference.split(':')[1];
+
+            const blockFetchResult = blockExplorerWidget.getBlockDataFromMemoryOrSendRequest(blockExplorerWidget.navigationTarget.blockReference);
+            if (blockFetchResult === 'request sent') { return; } // wait for block data to be fetched
+
+            blockExplorerWidget.navigateUntilTarget(true);
             break;
         default:
             break;

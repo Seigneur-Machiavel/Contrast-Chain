@@ -15,9 +15,10 @@
     --cbe-color4: #787878;
     --cbe-color3: #4f4f4f;
 
+    --cbe-widget-padding: 22.6px 10px;
     --inner-height: 140px;
     --wrap-border-radius: 0px;
-    --search-menu-width: calc(370px - 12px);
+    /*--search-menu-width: calc(370px - 12px);*/
 }
 
 @font-face {
@@ -102,26 +103,31 @@ h1, h2 {
     background: var(--color1);
 }
 .txHistoryHeader {
-    border-bottom: 2px solid var(--cbe-color1, var(--cbe-color1-default));
-    width: 80%;
-    margin-left: 10%;
 }
 .txHistoryHeader h2 {
     text-align: center;
     color: var(--cbe-color2, var(--cbe-color2-default));
 }
+#txHistoryWrap table {
+    padding: 0;
+    background: var(--color2) content-box;
+}
 #txHistoryWrap table thead {
     color: var(--cbe-color3);
     font-weight: bolder;
 }
-.w-addressTxRow {
-
+#txHistoryWrap table thead tr th {
+    color: var(--color1);
 }
-.w-addressTxDate {
+
+#txHistoryWrap table thead tr th, #txHistoryWrap table tbody tr td {
+    padding: 0 8px;
+}
+.w-addressTxRow {
     cursor: pointer;
     background: linear-gradient(90deg, var(--color1) -100%, var(--color1) 200%);
 }
-.w-addressTxDate:hover {
+.w-addressTxRow:hover {
     background: linear-gradient(90deg, var(--color2) 0%, var(--color1) 10%, var(--color2) 20%);
     background-position: 50% 100%;
     animation: lineHover .4s ease-in-out forwards;
@@ -137,12 +143,12 @@ h1, h2 {
         background-size: 200% 100%;
     }
 }
-.w-addressTxDate:hover td, .w-addressTxDate:hover th {
+.w-addressTxRow:hover td, .w-addressTxRow:hover th {
     color: var(--color1);
 }
+/*.w-addressTxAmount, .w-addressTxFee, .w-addressTxReference {
 
-.w-addressTxAmount, .w-addressTxFee, .w-addressTxReference {
-}
+}*/
 
 #popUpContent {
     z-index: 2;
@@ -228,13 +234,17 @@ h1, h2 {
     background: var(--color1);
 }
 .appTitle h1 {
-    color: var(--color3);
+    color: var(--color2);
     padding-top: 6px;
 }
 .ml3 {
     font-weight: 600;
     font-size: 26px;
     margin: 10px 0;
+}
+.ml3 .letter {
+    opacity: 0;
+    /*transition: opacity .4s;*/
 }
 .appTitle .titleSufix {
     position: absolute;
@@ -675,13 +685,15 @@ button.classy.clicked:not(.disabled) {
 }
 #spendMiniForm .textInfo, #stakeMiniForm .textInfo {
     position: absolute;
+    opacity: 0;
     top: 14px;
-    background: var(--color1);
     width: 80%;
+    background: var(--color1);
     animation: textColorBlink 1s infinite;
+    transition: opacity 0.2s ease-in-out;
 }
 #spendMiniForm h2, #stakeMiniForm h2 {
-    color: var(--color3);
+    color: var(--color2);
 }
 #spendMiniForm input, #stakeMiniForm input {
     height: 30px !important;
@@ -809,6 +821,27 @@ button.classy.clicked:not(.disabled) {
 }
 #bottomBar .inlineCheckBox {
     width: 220px;
+}
+
+#bottomBar button.selected {
+    animation: bottomButtonSelected .6s forwards;
+}
+@keyframes bottomButtonSelected {
+    0% {
+        box-shadow: 0px 0px 0px 0px var(--color2), inset 0px 0px 0px 0px var(--color2);
+    }
+    30% {
+        box-shadow: 0px 0px 0px 2px var(--color1), inset 0px 0px 0px 0px var(--color2);
+    }
+    60% {
+        box-shadow: 0px 0px 2px 0px var(--color2), inset 0px 0px 2px 0px var(--color2);
+    }
+    80% {
+        box-shadow: 0px 0px 6px -2px var(--color2), inset 0px 0px 8px 0px var(--color2);
+    }
+    100% {
+        box-shadow: 0px 0px 0px .6px var(--color2), inset 0px 0px 0px .6px var(--color2);
+    }
 }
 
 #miningForm {

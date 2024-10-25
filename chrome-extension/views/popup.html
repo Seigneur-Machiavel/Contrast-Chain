@@ -21,15 +21,13 @@
     <div id="popUpExplorer" class="hidden">
         <div id="cbe-contrastBlocksWidget"></div>
         <div id="txHistoryWrap" class="cbe-TxHistoryWrap cbe-unfolded">
-            <div class="txHistoryHeader">
-                <h2>Transaction history: <span id="txHistoryAddress"></span></h2>
-            </div>
             <table class="cbe-TxHistoryTable cbe-Table">
                 <thead>
                     <tr>
                         <th>Amount</th>
                         <th>Fee</th>
                         <th>Block:Transaction-ID</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,6 +38,9 @@
                     </tr>
                 </tbody>
             </table>
+            <div class="txHistoryHeader">
+                <h2>Transaction history: <span id="txHistoryAddress"></span></h2>
+            </div>
         </div>
     </div>
     <div id="popUpContent">
