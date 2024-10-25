@@ -1,16 +1,4 @@
-
-
 class ParticleAnimation {
-    animationColor1 = '255, 255, 255';
-    animationColor2 = '0, 0, 0';
-    canvas = null;
-    ctx = null;
-    simplex = null;
-    time = 0;
-    particles = [];
-    connections = [];
-    animationId = null;
-
     // ==================== Configuration Objects ====================
     systemConfig = {
         motion: {
@@ -28,18 +16,20 @@ class ParticleAnimation {
             scale: 1.5,
             rotation: Math.PI / 6
         }
-    }
+    };
+    
     canvasConfig = {
-        //backgroundColor: 'transparent',
-        backgroundColor: `rgb(${window.animationColor1})`,
+        backgroundColor: 'rgb(255, 255, 255)', // Default, will be set in init
         resizeDebounce: 100,
-    }
+    };
+    
     waveConfig = {
         scale1: 0.03,
         scale2: 0.02,
         scale3: 0.01,
         amplitude: 8,
-    }
+    };
+    
     particleConfig = {
         number: 64,
         radius: 64,
@@ -52,9 +42,9 @@ class ParticleAnimation {
             },
             multipliers: {
                 huge: { min: 2, max: 5 },
-                large: { min: .5, max: 2 },
-                medium: { min: .2, max: .5 },
-                small: { min: .1, max: .2 },
+                large: { min: 0.5, max: 2 },
+                medium: { min: 0.2, max: 0.5 },
+                small: { min: 0.1, max: 0.2 },
             },
         },
         sizeRange: [2, 8],
@@ -64,16 +54,17 @@ class ParticleAnimation {
             waveforms: ['sin', 'triangle'],
         },
         colors: {
-            primary: `rgb(${window.animationColor2})`,
+            primary: 'rgb(0, 0, 0)', // Default, will be set in init
         },
-    }
+    };
+    
     connectionConfig = {
         maxConnections: 8,
         distanceThreshold: 250,
         decayRange: [0.002, 0.008],
         thicknessRange: [0.1, 1],
         colors: {
-            primary: `rgb(${window.animationColor2})`,
+            primary: 'rgb(0, 0, 0)', // Default, will be set in init
         },
         tetherPhysics: {
             tension: 0.5,
@@ -86,26 +77,29 @@ class ParticleAnimation {
             speed: 0.02,
             fadeDuration: 60,
         }
-    }
+    };
+    
     animationConfig = {
         timeIncrement: 0.01,
         fps: 60,
-    }
+    };
 
-    // ==================== Initialization ====================
-    init(canvasElement) {
-        this.canvas = canvasElement;
-        this.ctx = this.canvas.getContext('2d');
-        this.simplex = new SimplexNoise();
-
-        this.initParticles();
-        this.animate();
-    }
+    // ==================== Instance Properties ====================
+    animationColor1 = '255, 255, 255'; // Background color
+    animationColor2 = '0, 0, 0';       // Particle and connection color
+    canvas = null;
+    ctx = null;
+    simplex = null;
+    time = 0;
+    particles = [];
+    connections = [];
+    animationId = null;
 
     // ==================== Utility Functions ====================
     static map(value, start1, stop1, start2, stop2) {
         return start2 + ((stop2 - start2) * ((value - start1) / (stop1 - start1)));
     }
+    
     static getWaveform(type, value) {
         switch (type) {
             case 'triangle':
@@ -116,54 +110,112 @@ class ParticleAnimation {
     }
 
     // ==================== Motion Pattern Functions ====================
-    static spiralPattern(x, y, z, t) {
+    spiralPattern(x, y, z, t) {
         const u = Math.cos(x) * Math.sin(2 * y);
         const v = Math.sin(x) * Math.sin(2 * y);
         const w = Math.cos(2 * y);
         return (u + v + w) * Math.sin(t);
     }
-    static wavePattern(x, y, z, t) {
-        const u = (1 + y / 2 * Math.cos(x / 2)) * Math.cos(x);
-        const v = (1 + y / 2 * Math.cos(x / 2)) * Math.sin(x);
-        const w = y / 2 * Math.sin(x / 2);
+    
+    wavePattern(x, y, z, t) {
+        const u = (1 + (y / 2) * Math.cos(x / 2)) * Math.cos(x);
+        const v = (1 + (y / 2) * Math.cos(x / 2)) * Math.sin(x);
+        const w = (y / 2) * Math.sin(x / 2);
         return (u * v * w) * Math.cos(t);
     }
-    static circularPattern(s, t, p, q) {
+    
+    circularPattern(s, t, p, q) {
         const r = Math.cos(q * s) + 2;
         const x = r * Math.cos(p * s);
         const y = r * Math.sin(p * s);
         const z = -Math.sin(q * s);
         return { x, y, z };
     }
+    
     complexMotion(x, y, z, t) {
         const wave1 = Math.sin(x * this.waveConfig.scale1 + t) *
-            Math.cos(y * this.waveConfig.scale1 + t) * 0.5;
+                      Math.cos(y * this.waveConfig.scale1 + t) * 0.5;
         const wave2 = Math.sin(x * this.waveConfig.scale2 - t * 0.7) *
-            Math.cos(z * this.waveConfig.scale2 + t * 1.2) * 0.3;
+                      Math.cos(z * this.waveConfig.scale2 + t * 1.2) * 0.3;
         const wave3 = Math.sin(y * this.waveConfig.scale3 + t * 1.1) *
-            Math.cos(z * this.waveConfig.scale3 - t * 0.9) * 0.2;
+                      Math.cos(z * this.waveConfig.scale3 - t * 0.9) * 0.2;
 
-        const spiral = ParticleAnimation.spiralPattern(x * 0.01, y * 0.01, z * 0.01, t) *
-            this.systemConfig.field.intensity;
-        const wave = ParticleAnimation.wavePattern(x * 0.01, y * 0.01, z * 0.01, t) *
-            this.systemConfig.field.intensity;
+        const spiral = this.spiralPattern(x * 0.01, y * 0.01, z * 0.01, t) *
+                       this.systemConfig.field.intensity;
+        const wave = this.wavePattern(x * 0.01, y * 0.01, z * 0.01, t) *
+                     this.systemConfig.field.intensity;
         const flow = Math.tanh(Math.sin(x * 0.02 + t) * Math.cos(y * 0.02 - t)) *
-            this.systemConfig.motion.flowSpeed;
+                     this.systemConfig.motion.flowSpeed;
         const noise = this.simplex.noise4D(x * 0.01, y * 0.01, z * 0.01, t) *
-            this.systemConfig.field.blendStrength;
+                      this.systemConfig.field.blendStrength;
 
         return (wave1 + wave2 + wave3) * this.waveConfig.amplitude +
-            spiral * Math.sin(t) +
-            wave * Math.cos(t) +
-            flow +
-            noise;
+               spiral * Math.sin(t) +
+               wave * Math.cos(t) +
+               flow +
+               noise;
+    }
+
+    // ==================== Initialization ====================
+    /**
+     * Initializes the animation with a given canvas element.
+     * @param {HTMLCanvasElement} canvasElement - The canvas element to render the animation on.
+     */
+    init(canvasElement) {
+        this.canvas = canvasElement;
+        this.ctx = this.canvas.getContext('2d');
+        this.simplex = new SimplexNoise();
+
+        // Set colors based on instance properties
+        this.canvasConfig.backgroundColor = `rgb(${this.animationColor1})`;
+        this.particleConfig.colors.primary = `rgb(${this.animationColor2})`;
+        this.connectionConfig.colors.primary = `rgb(${this.animationColor2})`;
+
+        this.initParticles();
+        this.animate();
+
+        // Add resize handler with debounce
+        window.addEventListener('resize', this.debounce(() => this.onResize(), this.canvasConfig.resizeDebounce));
+        this.onResize(); // Initial sizing
+    }
+
+    /**
+     * Handles canvas resizing.
+     */
+    onResize() {
+        this.canvas.width = window.innerWidth;
+        this.canvas.height = window.innerHeight;
+        // Optionally, reset particles on resize
+        // this.reset();
+    }
+
+    /**
+     * Creates a debounced version of a function.
+     * @param {Function} func - The function to debounce.
+     * @param {number} wait - The debounce delay in milliseconds.
+     * @returns {Function} - The debounced function.
+     */
+    debounce(func, wait) {
+        let timeout;
+        return () => {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => {
+                func();
+            }, wait);
+        };
     }
 
     // ==================== Particle Class ====================
+    /**
+     * Represents a single particle in the animation.
+     */
     Particle = class {
-        constructor(particleConfig, ctx) {
-            this.particleConfig = particleConfig;
-            this.ctx = ctx;
+        /**
+         * Creates a new Particle instance.
+         * @param {ParticleAnimation} animation - Reference to the parent ParticleAnimation instance.
+         */
+        constructor(animation) {
+            this.animation = animation;
             this.reset();
             this.phi = Math.random() * Math.PI * 2;
             this.theta = Math.random() * Math.PI;
@@ -175,8 +227,8 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                this.particleConfig.sizeRange[0],
-                this.particleConfig.sizeRange[1]
+                this.animation.particleConfig.sizeRange[0],
+                this.animation.particleConfig.sizeRange[1]
             ) * this.sizeMultiplier;
 
             this.noiseOffsetX = Math.random() * 1000;
@@ -186,19 +238,19 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                this.particleConfig.pulsing.frequencyRange[0],
-                this.particleConfig.pulsing.frequencyRange[1]
+                this.animation.particleConfig.pulsing.frequencyRange[0],
+                this.animation.particleConfig.pulsing.frequencyRange[1]
             );
             this.pulseAmplitude = ParticleAnimation.map(
                 Math.random(),
                 0,
                 1,
-                this.particleConfig.pulsing.amplitudeRange[0],
-                this.particleConfig.pulsing.amplitudeRange[1]
+                this.animation.particleConfig.pulsing.amplitudeRange[0],
+                this.animation.particleConfig.pulsing.amplitudeRange[1]
             );
             this.pulsePhase = Math.random() * Math.PI * 2;
-            this.waveformType = this.particleConfig.pulsing.waveforms[
-                Math.floor(Math.random() * this.particleConfig.pulsing.waveforms.length)
+            this.waveformType = this.animation.particleConfig.pulsing.waveforms[
+                Math.floor(Math.random() * this.animation.particleConfig.pulsing.waveforms.length)
             ];
 
             this.deformationPhase = Math.random() * Math.PI * 2;
@@ -208,10 +260,14 @@ class ParticleAnimation {
             this.motionX = Math.floor(Math.random() * 3) + 2;
             this.motionY = Math.floor(Math.random() * 3) + 3;
         }
-        // ... Particle class methods continued
 
+        /**
+         * Assigns a size category based on a random value.
+         * @param {number} rand - A random number between 0 and 1.
+         * @returns {string} - The size category.
+         */
         assignSizeCategory(rand) {
-            const { probabilities } = this.particleConfig.sizeCategories;
+            const { probabilities } = this.animation.particleConfig.sizeCategories;
             const cumulative = [];
             let sum = 0;
             for (let key in probabilities) {
@@ -224,32 +280,42 @@ class ParticleAnimation {
             return 'small';
         }
 
+        /**
+         * Determines the size multiplier based on the size category.
+         * @returns {number} - The size multiplier.
+         */
         getSizeMultiplier() {
-            const { multipliers } = this.particleConfig.sizeCategories;
+            const { multipliers } = this.animation.particleConfig.sizeCategories;
             const category = this.sizeCategory;
             const range = multipliers[category];
             return ParticleAnimation.map(Math.random(), 0, 1, range.min, range.max);
         }
 
+        /**
+         * Resets the particle's position and properties.
+         */
         reset() {
-            this.radius = this.particleConfig.radius;
+            this.radius = this.animation.particleConfig.radius;
             this.updatePosition();
         }
 
+        /**
+         * Updates the particle's position based on motion patterns.
+         */
         updatePosition() {
             this.phi += 0.001;
             this.z = this.radius * Math.cos(this.theta);
             const projectedRadius = this.radius * Math.sin(this.theta);
-            this.x = this.canvas.width / 2 + projectedRadius * Math.cos(this.phi);
-            this.y = ParticleAnimation.canvas.height / 2 + projectedRadius * Math.sin(this.phi);
+            this.x = this.animation.canvas.width / 2 + projectedRadius * Math.cos(this.phi);
+            this.y = this.animation.canvas.height / 2 + projectedRadius * Math.sin(this.phi);
 
-            const circularMotion = ParticleAnimation.circularPattern(
+            const circularMotion = this.animation.circularPattern(
                 this.motionPhase,
-                ParticleAnimation.time,
+                this.animation.time,
                 this.motionX,
                 this.motionY
             );
-            const motionInfluence = ParticleAnimation.systemConfig.motion.drift;
+            const motionInfluence = this.animation.systemConfig.motion.drift;
 
             this.x += circularMotion.x * motionInfluence * this.radius;
             this.y += circularMotion.y * motionInfluence * this.radius;
@@ -259,62 +325,75 @@ class ParticleAnimation {
             this.scale = Math.tanh(ParticleAnimation.map(this.z, -this.radius, this.radius, -1, 1)) * 0.5 + 0.7;
         }
 
+        /**
+         * Updates the particle's state.
+         */
         update() {
             this.updatePosition();
-            const motion = ParticleAnimation.complexMotion(this.x, this.y, this.z, ParticleAnimation.time);
+            const motion = this.animation.complexMotion(this.x, this.y, this.z, this.animation.time);
 
             let noise = 0;
             let amplitude = 1;
             let frequency = 1;
 
-            for (let i = 0; i < ParticleAnimation.systemConfig.detail.levels; i++) {
-                noise += amplitude * ParticleAnimation.simplex.noise3D(
+            for (let i = 0; i < this.animation.systemConfig.detail.levels; i++) {
+                noise += amplitude * this.animation.simplex.noise3D(
                     this.x * frequency * 0.01,
                     this.y * frequency * 0.01,
-                    ParticleAnimation.time * 0.2
+                    this.animation.time * 0.2
                 );
                 amplitude *= 0.5;
-                frequency *= ParticleAnimation.systemConfig.detail.scale;
+                frequency *= this.animation.systemConfig.detail.scale;
             }
 
-            const flowEffect = Math.sin(this.z * ParticleAnimation.systemConfig.motion.flowSpeed + ParticleAnimation.time);
-            const blendEffect = Math.cos(noise * ParticleAnimation.systemConfig.field.intensity);
+            const flowEffect = Math.sin(this.z * this.animation.systemConfig.motion.flowSpeed + this.animation.time);
+            const blendEffect = Math.cos(noise * this.animation.systemConfig.field.intensity);
 
             this.x += (motion * 5 + noise * 4) * this.scale * flowEffect;
             this.y += (motion * 5 + noise * 4) * this.scale * blendEffect;
         }
 
+        /**
+         * Draws the particle on the canvas.
+         */
         draw() {
             const scaledSize = this.baseSize * this.scale;
             const mainPulse = ParticleAnimation.getWaveform(
                 this.waveformType,
-                ParticleAnimation.time * this.pulseFrequency + this.pulsePhase
+                this.animation.time * this.pulseFrequency + this.pulsePhase
             );
-            const secondaryPulse = Math.sin(ParticleAnimation.time * this.deformationFrequency + this.deformationPhase);
+            const secondaryPulse = Math.sin(this.animation.time * this.deformationFrequency + this.deformationPhase);
             const deformation = mainPulse * this.pulseAmplitude + secondaryPulse * 0.3;
 
             const currentSizeX = scaledSize * (1 + deformation * 0.2);
             const currentSizeY = scaledSize * (1 - deformation * 0.15);
 
-            this.ctx.save();
-            this.ctx.translate(this.x, this.y);
-            this.ctx.rotate(ParticleAnimation.time * 0.5 + this.pulsePhase);
+            this.animation.ctx.save();
+            this.animation.ctx.translate(this.x, this.y);
+            this.animation.ctx.rotate(this.animation.time * 0.5 + this.pulsePhase);
 
-            this.ctx.beginPath();
-            this.ctx.ellipse(0, 0, currentSizeX, currentSizeY, 0, 0, Math.PI * 2);
-            this.ctx.fillStyle = this.particleConfig.colors.primary;
-            this.ctx.fill();
+            this.animation.ctx.beginPath();
+            this.animation.ctx.ellipse(0, 0, currentSizeX, currentSizeY, 0, 0, Math.PI * 2);
+            this.animation.ctx.fillStyle = this.animation.particleConfig.colors.primary;
+            this.animation.ctx.fill();
 
-            this.ctx.restore();
+            this.animation.ctx.restore();
         }
-    }
+    };
 
     // ==================== Connection Class ====================
+    /**
+     * Represents a connection between two particles.
+     */
     Connection = class {
-        constructor(p1, p2, particleConfig, connectionConfig, ctx) {
-            this.particleConfig = particleConfig;
-            this.connectionConfig = connectionConfig;
-            this.ctx = ctx;
+        /**
+         * Creates a new Connection instance.
+         * @param {ParticleAnimation} animation - Reference to the parent ParticleAnimation instance.
+         * @param {Particle} p1 - The first particle.
+         * @param {Particle} p2 - The second particle.
+         */
+        constructor(animation, p1, p2) {
+            this.animation = animation;
             this.p1 = p1;
             this.p2 = p2;
             this.life = 1;
@@ -322,22 +401,22 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                this.connectionConfig.decayRange[0],
-                this.connectionConfig.decayRange[1]
+                this.animation.connectionConfig.decayRange[0],
+                this.animation.connectionConfig.decayRange[1]
             );
             this.pulsePhase = Math.random() * Math.PI * 2;
             this.thickness = ParticleAnimation.map(
                 Math.random(),
                 0,
                 1,
-                this.connectionConfig.thicknessRange[0],
-                this.connectionConfig.thicknessRange[1]
+                this.animation.connectionConfig.thicknessRange[0],
+                this.animation.connectionConfig.thicknessRange[1]
             );
-            this.waveformType = this.particleConfig.pulsing.waveforms[
-                Math.floor(Math.random() * this.particleConfig.pulsing.waveforms.length)
+            this.waveformType = this.animation.particleConfig.pulsing.waveforms[
+                Math.floor(Math.random() * this.animation.particleConfig.pulsing.waveforms.length)
             ];
 
-            const { tetherPhysics } = this.connectionConfig;
+            const { tetherPhysics } = this.animation.connectionConfig;
             this.segments = tetherPhysics.segments;
             this.points = Array(this.segments).fill().map(() => ({
                 x: 0, y: 0,
@@ -357,11 +436,14 @@ class ParticleAnimation {
             this.updateControlPoints();
 
             this.progress = 0;
-            this.speed = this.connectionConfig.shooting.speed;
+            this.speed = this.animation.connectionConfig.shooting.speed;
             this.fading = false;
             this.fadeCounter = 0;
         }
 
+        /**
+         * Initializes control points between the two particles.
+         */
         updateControlPoints() {
             const dx = (this.p2.x - this.p1.x) / (this.segments - 1);
             const dy = (this.p2.y - this.p1.y) / (this.segments - 1);
@@ -374,6 +456,9 @@ class ParticleAnimation {
             });
         }
 
+        /**
+         * Updates the physics of the connection.
+         */
         updatePhysics() {
             const dt = 1 / 60;
 
@@ -401,21 +486,21 @@ class ParticleAnimation {
                 point.ax += (dx1 / dist1) * springForce1 + (dx2 / dist2) * springForce2;
                 point.ay += (dy1 / dist1) * springForce1 + (dy2 / dist2) * springForce2;
 
-                const turbulence = ParticleAnimation.simplex.noise3D(
+                const turbulence = this.animation.simplex.noise3D(
                     point.x * 0.01 + this.flowOffset,
                     point.y * 0.01,
-                    ParticleAnimation.time * this.timeScale
+                    this.animation.time * this.timeScale
                 ) * this.turbulenceScale;
 
-                const noiseX = ParticleAnimation.simplex.noise3D(
-                    point.x * 0.02 + ParticleAnimation.time,
+                const noiseX = this.animation.simplex.noise3D(
+                    point.x * 0.02 + this.animation.time,
                     point.y * 0.02,
                     this.flowOffset
                 ) * this.noiseInfluence;
 
-                const noiseY = ParticleAnimation.simplex.noise3D(
+                const noiseY = this.animation.simplex.noise3D(
                     point.x * 0.02,
-                    point.y * 0.02 + ParticleAnimation.time,
+                    point.y * 0.02 + this.animation.time,
                     this.flowOffset + 100
                 ) * this.noiseInfluence;
 
@@ -438,12 +523,17 @@ class ParticleAnimation {
                 point.y += (idealY - point.y) * this.rigidity;
             }
 
+            // Ensure the first and last points are anchored to the particles
             this.points[0].x = this.p1.x;
             this.points[0].y = this.p1.y;
             this.points[this.segments - 1].x = this.p2.x;
             this.points[this.segments - 1].y = this.p2.y;
         }
 
+        /**
+         * Updates the connection's state.
+         * @returns {boolean} - Returns true if the connection is still active.
+         */
         update() {
             if (!this.fading) {
                 this.progress += this.speed;
@@ -453,7 +543,7 @@ class ParticleAnimation {
                 }
             } else {
                 this.fadeCounter++;
-                if (this.fadeCounter >= this.connectionConfig.shooting.fadeDuration) {
+                if (this.fadeCounter >= this.animation.connectionConfig.shooting.fadeDuration) {
                     this.life -= this.decay;
                 }
             }
@@ -462,44 +552,47 @@ class ParticleAnimation {
             return this.life > 0;
         }
 
+        /**
+         * Draws the connection on the canvas.
+         */
         draw() {
             const dx = this.p2.x - this.p1.x;
             const dy = this.p2.y - this.p1.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist > this.connectionConfig.distanceThreshold) return;
+            if (dist > this.animation.connectionConfig.distanceThreshold) return;
 
             const pulse = ParticleAnimation.getWaveform(
                 this.waveformType,
-                ParticleAnimation.time * 2 + this.pulsePhase
+                this.animation.time * 2 + this.pulsePhase
             );
             const glowIntensity = 0.5 + pulse * 0.5;
 
-            this.ctx.save();
+            this.animation.ctx.save();
 
-            /** @type {CanvasRenderingContext2D} */
-            const gradient = this.ctx.createLinearGradient(
+            // Create gradient for the connection
+            const gradient = this.animation.ctx.createLinearGradient(
                 this.p1.x, this.p1.y,
                 this.p2.x, this.p2.y
             );
-            gradient.addColorStop(0, `rgba(${window.animationColor2}, ${this.life * glowIntensity})`);
-            gradient.addColorStop(0.5, `rgba(${window.animationColor2}, ${this.life * 0.8 * glowIntensity})`);
-            gradient.addColorStop(1, `rgba(${window.animationColor2}, ${this.life * glowIntensity})`);
+            gradient.addColorStop(0, `rgba(${this.animation.animationColor2}, ${this.life * glowIntensity})`);
+            gradient.addColorStop(0.5, `rgba(${this.animation.animationColor2}, ${this.life * 0.8 * glowIntensity})`);
+            gradient.addColorStop(1, `rgba(${this.animation.animationColor2}, ${this.life * glowIntensity})`);
 
-            this.ctx.beginPath();
+            this.animation.ctx.beginPath();
             const currentSegments = Math.floor(this.segments * this.progress);
 
             if (currentSegments < 2) {
-                this.ctx.restore();
+                this.animation.ctx.restore();
                 return;
             }
 
-            this.ctx.moveTo(this.points[0].x, this.points[0].y);
+            this.animation.ctx.moveTo(this.points[0].x, this.points[0].y);
 
             for (let i = 1; i < currentSegments; i++) {
                 const xc = (this.points[i].x + this.points[i - 1].x) / 2;
                 const yc = (this.points[i].y + this.points[i - 1].y) / 2;
-                this.ctx.quadraticCurveTo(
+                this.animation.ctx.quadraticCurveTo(
                     this.points[i - 1].x,
                     this.points[i - 1].y,
                     xc, yc
@@ -511,7 +604,7 @@ class ParticleAnimation {
                 const nextPoint = this.points[currentSegments];
                 if (nextPoint) {
                     const remaining = (this.progress * this.segments) - currentSegments;
-                    this.ctx.quadraticCurveTo(
+                    this.animation.ctx.quadraticCurveTo(
                         lastFull.x,
                         lastFull.y,
                         lastFull.x + (nextPoint.x - lastFull.x) * remaining,
@@ -520,42 +613,54 @@ class ParticleAnimation {
                 }
             }
 
-            this.ctx.strokeStyle = gradient;
-            this.ctx.lineWidth = this.thickness * (1 + pulse * 0.3);
-            this.ctx.lineCap = 'round';
-            this.ctx.lineJoin = 'round';
-            this.ctx.stroke();
+            // Stroke the main connection
+            this.animation.ctx.strokeStyle = gradient;
+            this.animation.ctx.lineWidth = this.thickness * (1 + pulse * 0.3);
+            this.animation.ctx.lineCap = 'round';
+            this.animation.ctx.lineJoin = 'round';
+            this.animation.ctx.stroke();
 
-            this.ctx.globalAlpha = this.life * 0.3;
-            this.ctx.filter = 'blur(4px)';
-            this.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.5)`;
-            this.ctx.lineWidth = this.thickness * 2;
-            this.ctx.stroke();
+            // Add glow effect
+            this.animation.ctx.globalAlpha = this.life * 0.3;
+            this.animation.ctx.filter = 'blur(4px)';
+            this.animation.ctx.strokeStyle = `rgba(${this.animation.animationColor2}, 0.5)`;
+            this.animation.ctx.lineWidth = this.thickness * 2;
+            this.animation.ctx.stroke();
 
-            this.ctx.globalAlpha = this.life * 0.7;
-            this.ctx.filter = 'none';
-            this.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.8)`;
-            this.ctx.lineWidth = this.thickness * 0.5;
-            this.ctx.stroke();
+            // Add secondary glow
+            this.animation.ctx.globalAlpha = this.life * 0.7;
+            this.animation.ctx.filter = 'none';
+            this.animation.ctx.strokeStyle = `rgba(${this.animation.animationColor2}, 0.8)`;
+            this.animation.ctx.lineWidth = this.thickness * 0.5;
+            this.animation.ctx.stroke();
 
-            this.ctx.restore();
+            this.animation.ctx.restore();
         }
-    }
+    };
 
     // ==================== Animation Management ====================
+    /**
+     * Initializes all particles.
+     */
     initParticles() {
         this.particles = [];
         for (let i = 0; i < this.particleConfig.number; i++) {
-            this.particles.push(new this.Particle(this.particleConfig, this.ctx));
+            this.particles.push(new this.Particle(this));
         }
     }
+
+    /**
+     * Updates the connections between particles.
+     */
     updateConnections() {
+        // Remove inactive connections
         for (let i = this.connections.length - 1; i >= 0; i--) {
             if (!this.connections[i].update()) {
                 this.connections.splice(i, 1);
             }
         }
 
+        // Add new connections if below the maximum
         while (this.connections.length < this.connectionConfig.maxConnections) {
             const p1 = this.particles[Math.floor(Math.random() * this.particles.length)];
             const p2 = this.particles[Math.floor(Math.random() * this.particles.length)];
@@ -568,44 +673,74 @@ class ParticleAnimation {
             );
             if (exists) continue;
 
-            this.connections.push(new this.Connection(p1, p2, this.particleConfig, this.connectionConfig, this.ctx));
+            this.connections.push(new this.Connection(this, p1, p2));
         }
     }
+
+    /**
+     * The main animation loop.
+     */
     animate() {
+        // Clear the canvas
         this.ctx.fillStyle = this.canvasConfig.backgroundColor;
-        //this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        // Uncomment the line below if you prefer filling the background
+        // this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
+        // Update and draw particles
         this.particles.forEach(particle => {
             particle.update();
             particle.draw();
         });
 
+        // Update and draw connections
         this.updateConnections();
         this.connections.forEach(connection => connection.draw());
 
+        // Increment time
         this.time += this.animationConfig.timeIncrement;
 
+        // Request the next frame
         this.animationId = requestAnimationFrame(() => this.animate());
     }
+
+    /**
+     * Starts the animation.
+     */
     start() {
         if (!this.animationId) {
             this.animate();
         }
     }
+
+    /**
+     * Stops the animation.
+     */
     stop() {
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
     }
+
+    /**
+     * Resets the animation to its initial state.
+     */
     reset() {
         this.stop();
         this.time = 0;
         this.particles = [];
         this.connections = [];
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        this.initParticles();
     }
-};
 
+    // ==================== Constructor ====================
+    constructor() {
+        // Configurations are already set as class fields
+        // Additional initialization can be done here if necessary
+    }
+}
+
+// Make the class accessible globally (optional)
 window.ParticleAnimation = ParticleAnimation;

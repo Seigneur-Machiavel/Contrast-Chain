@@ -418,8 +418,14 @@ async function initUI() {
     eHTML.welcomeCanvas.width = 360;
     eHTML.welcomeCanvas.height = 400;
     eHTML.welcomeCanvas.style.opacity = '1';
-    const particleAnimation1 = new ParticleAnimation();
-    particleAnimation1.init(eHTML.welcomeCanvas);
+
+    const particleAnimation = new ParticleAnimation();
+
+    // Initialize with the canvas element
+    particleAnimation.init(eHTML.welcomeCanvas);
+
+    // Start the animation
+    particleAnimation.start();
     //ParticleAnimation.init(eHTML.welcomeCanvas);
     //ParticleAnimation2.init(eHTML.welcomeCanvas2);
 
