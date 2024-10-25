@@ -518,7 +518,7 @@ class P2PNetwork extends EventEmitter {
     }
 
     async isDeniedMultiaddr(multiaddr) {
-        const ip = multiaddr.nodeAddress().address;
+        const ip = multiaddr.nodeAddress().address.toString() ;
         return this.reputationManager.isPeerBanned({ ip });
     }
 
