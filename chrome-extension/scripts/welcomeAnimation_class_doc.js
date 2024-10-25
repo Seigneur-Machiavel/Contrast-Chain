@@ -116,19 +116,19 @@ class ParticleAnimation {
     }
 
     // ==================== Motion Pattern Functions ====================
-    spiralPattern(x, y, z, t) {
+    static spiralPattern(x, y, z, t) {
         const u = Math.cos(x) * Math.sin(2 * y);
         const v = Math.sin(x) * Math.sin(2 * y);
         const w = Math.cos(2 * y);
         return (u + v + w) * Math.sin(t);
     }
-    wavePattern(x, y, z, t) {
+    static wavePattern(x, y, z, t) {
         const u = (1 + y / 2 * Math.cos(x / 2)) * Math.cos(x);
         const v = (1 + y / 2 * Math.cos(x / 2)) * Math.sin(x);
         const w = y / 2 * Math.sin(x / 2);
         return (u * v * w) * Math.cos(t);
     }
-    circularPattern(s, t, p, q) {
+    static circularPattern(s, t, p, q) {
         const r = Math.cos(q * s) + 2;
         const x = r * Math.cos(p * s);
         const y = r * Math.sin(p * s);
@@ -143,9 +143,9 @@ class ParticleAnimation {
         const wave3 = Math.sin(y * this.waveConfig.scale3 + t * 1.1) *
             Math.cos(z * this.waveConfig.scale3 - t * 0.9) * 0.2;
 
-        const spiral = this.spiralPattern(x * 0.01, y * 0.01, z * 0.01, t) *
+        const spiral = ParticleAnimation.spiralPattern(x * 0.01, y * 0.01, z * 0.01, t) *
             this.systemConfig.field.intensity;
-        const wave = this.wavePattern(x * 0.01, y * 0.01, z * 0.01, t) *
+        const wave = ParticleAnimation.wavePattern(x * 0.01, y * 0.01, z * 0.01, t) *
             this.systemConfig.field.intensity;
         const flow = Math.tanh(Math.sin(x * 0.02 + t) * Math.cos(y * 0.02 - t)) *
             this.systemConfig.motion.flowSpeed;
@@ -161,7 +161,9 @@ class ParticleAnimation {
 
     // ==================== Particle Class ====================
     Particle = class {
-        constructor() {
+        constructor(particleConfig, ctx) {
+            this.particleConfig = particleConfig;
+            this.ctx = ctx;
             this.reset();
             this.phi = Math.random() * Math.PI * 2;
             this.theta = Math.random() * Math.PI;
@@ -173,8 +175,8 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                ParticleAnimation.particleConfig.sizeRange[0],
-                ParticleAnimation.particleConfig.sizeRange[1]
+                this.particleConfig.sizeRange[0],
+                this.particleConfig.sizeRange[1]
             ) * this.sizeMultiplier;
 
             this.noiseOffsetX = Math.random() * 1000;
@@ -184,19 +186,19 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                ParticleAnimation.particleConfig.pulsing.frequencyRange[0],
-                ParticleAnimation.particleConfig.pulsing.frequencyRange[1]
+                this.particleConfig.pulsing.frequencyRange[0],
+                this.particleConfig.pulsing.frequencyRange[1]
             );
             this.pulseAmplitude = ParticleAnimation.map(
                 Math.random(),
                 0,
                 1,
-                ParticleAnimation.particleConfig.pulsing.amplitudeRange[0],
-                ParticleAnimation.particleConfig.pulsing.amplitudeRange[1]
+                this.particleConfig.pulsing.amplitudeRange[0],
+                this.particleConfig.pulsing.amplitudeRange[1]
             );
             this.pulsePhase = Math.random() * Math.PI * 2;
-            this.waveformType = ParticleAnimation.particleConfig.pulsing.waveforms[
-                Math.floor(Math.random() * ParticleAnimation.particleConfig.pulsing.waveforms.length)
+            this.waveformType = this.particleConfig.pulsing.waveforms[
+                Math.floor(Math.random() * this.particleConfig.pulsing.waveforms.length)
             ];
 
             this.deformationPhase = Math.random() * Math.PI * 2;
@@ -209,7 +211,7 @@ class ParticleAnimation {
         // ... Particle class methods continued
 
         assignSizeCategory(rand) {
-            const { probabilities } = ParticleAnimation.particleConfig.sizeCategories;
+            const { probabilities } = this.particleConfig.sizeCategories;
             const cumulative = [];
             let sum = 0;
             for (let key in probabilities) {
@@ -223,14 +225,14 @@ class ParticleAnimation {
         }
 
         getSizeMultiplier() {
-            const { multipliers } = ParticleAnimation.particleConfig.sizeCategories;
+            const { multipliers } = this.particleConfig.sizeCategories;
             const category = this.sizeCategory;
             const range = multipliers[category];
             return ParticleAnimation.map(Math.random(), 0, 1, range.min, range.max);
         }
 
         reset() {
-            this.radius = ParticleAnimation.particleConfig.radius;
+            this.radius = this.particleConfig.radius;
             this.updatePosition();
         }
 
@@ -238,7 +240,7 @@ class ParticleAnimation {
             this.phi += 0.001;
             this.z = this.radius * Math.cos(this.theta);
             const projectedRadius = this.radius * Math.sin(this.theta);
-            this.x = ParticleAnimation.canvas.width / 2 + projectedRadius * Math.cos(this.phi);
+            this.x = this.canvas.width / 2 + projectedRadius * Math.cos(this.phi);
             this.y = ParticleAnimation.canvas.height / 2 + projectedRadius * Math.sin(this.phi);
 
             const circularMotion = ParticleAnimation.circularPattern(
@@ -294,22 +296,25 @@ class ParticleAnimation {
             const currentSizeX = scaledSize * (1 + deformation * 0.2);
             const currentSizeY = scaledSize * (1 - deformation * 0.15);
 
-            ParticleAnimation.ctx.save();
-            ParticleAnimation.ctx.translate(this.x, this.y);
-            ParticleAnimation.ctx.rotate(ParticleAnimation.time * 0.5 + this.pulsePhase);
+            this.ctx.save();
+            this.ctx.translate(this.x, this.y);
+            this.ctx.rotate(ParticleAnimation.time * 0.5 + this.pulsePhase);
 
-            ParticleAnimation.ctx.beginPath();
-            ParticleAnimation.ctx.ellipse(0, 0, currentSizeX, currentSizeY, 0, 0, Math.PI * 2);
-            ParticleAnimation.ctx.fillStyle = ParticleAnimation.particleConfig.colors.primary;
-            ParticleAnimation.ctx.fill();
+            this.ctx.beginPath();
+            this.ctx.ellipse(0, 0, currentSizeX, currentSizeY, 0, 0, Math.PI * 2);
+            this.ctx.fillStyle = this.particleConfig.colors.primary;
+            this.ctx.fill();
 
-            ParticleAnimation.ctx.restore();
+            this.ctx.restore();
         }
     }
 
     // ==================== Connection Class ====================
     Connection = class {
-        constructor(p1, p2) {
+        constructor(p1, p2, particleConfig, connectionConfig, ctx) {
+            this.particleConfig = particleConfig;
+            this.connectionConfig = connectionConfig;
+            this.ctx = ctx;
             this.p1 = p1;
             this.p2 = p2;
             this.life = 1;
@@ -317,22 +322,22 @@ class ParticleAnimation {
                 Math.random(),
                 0,
                 1,
-                ParticleAnimation.connectionConfig.decayRange[0],
-                ParticleAnimation.connectionConfig.decayRange[1]
+                this.connectionConfig.decayRange[0],
+                this.connectionConfig.decayRange[1]
             );
             this.pulsePhase = Math.random() * Math.PI * 2;
             this.thickness = ParticleAnimation.map(
                 Math.random(),
                 0,
                 1,
-                ParticleAnimation.connectionConfig.thicknessRange[0],
-                ParticleAnimation.connectionConfig.thicknessRange[1]
+                this.connectionConfig.thicknessRange[0],
+                this.connectionConfig.thicknessRange[1]
             );
-            this.waveformType = ParticleAnimation.particleConfig.pulsing.waveforms[
-                Math.floor(Math.random() * ParticleAnimation.particleConfig.pulsing.waveforms.length)
+            this.waveformType = this.particleConfig.pulsing.waveforms[
+                Math.floor(Math.random() * this.particleConfig.pulsing.waveforms.length)
             ];
 
-            const { tetherPhysics } = ParticleAnimation.connectionConfig;
+            const { tetherPhysics } = this.connectionConfig;
             this.segments = tetherPhysics.segments;
             this.points = Array(this.segments).fill().map(() => ({
                 x: 0, y: 0,
@@ -352,7 +357,7 @@ class ParticleAnimation {
             this.updateControlPoints();
 
             this.progress = 0;
-            this.speed = ParticleAnimation.connectionConfig.shooting.speed;
+            this.speed = this.connectionConfig.shooting.speed;
             this.fading = false;
             this.fadeCounter = 0;
         }
@@ -448,7 +453,7 @@ class ParticleAnimation {
                 }
             } else {
                 this.fadeCounter++;
-                if (this.fadeCounter >= ParticleAnimation.connectionConfig.shooting.fadeDuration) {
+                if (this.fadeCounter >= this.connectionConfig.shooting.fadeDuration) {
                     this.life -= this.decay;
                 }
             }
@@ -462,7 +467,7 @@ class ParticleAnimation {
             const dy = this.p2.y - this.p1.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist > ParticleAnimation.connectionConfig.distanceThreshold) return;
+            if (dist > this.connectionConfig.distanceThreshold) return;
 
             const pulse = ParticleAnimation.getWaveform(
                 this.waveformType,
@@ -470,10 +475,10 @@ class ParticleAnimation {
             );
             const glowIntensity = 0.5 + pulse * 0.5;
 
-            ParticleAnimation.ctx.save();
+            this.ctx.save();
 
             /** @type {CanvasRenderingContext2D} */
-            const gradient = ParticleAnimation.ctx.createLinearGradient(
+            const gradient = this.ctx.createLinearGradient(
                 this.p1.x, this.p1.y,
                 this.p2.x, this.p2.y
             );
@@ -481,20 +486,20 @@ class ParticleAnimation {
             gradient.addColorStop(0.5, `rgba(${window.animationColor2}, ${this.life * 0.8 * glowIntensity})`);
             gradient.addColorStop(1, `rgba(${window.animationColor2}, ${this.life * glowIntensity})`);
 
-            ParticleAnimation.ctx.beginPath();
+            this.ctx.beginPath();
             const currentSegments = Math.floor(this.segments * this.progress);
 
             if (currentSegments < 2) {
-                ParticleAnimation.ctx.restore();
+                this.ctx.restore();
                 return;
             }
 
-            ParticleAnimation.ctx.moveTo(this.points[0].x, this.points[0].y);
+            this.ctx.moveTo(this.points[0].x, this.points[0].y);
 
             for (let i = 1; i < currentSegments; i++) {
                 const xc = (this.points[i].x + this.points[i - 1].x) / 2;
                 const yc = (this.points[i].y + this.points[i - 1].y) / 2;
-                ParticleAnimation.ctx.quadraticCurveTo(
+                this.ctx.quadraticCurveTo(
                     this.points[i - 1].x,
                     this.points[i - 1].y,
                     xc, yc
@@ -506,7 +511,7 @@ class ParticleAnimation {
                 const nextPoint = this.points[currentSegments];
                 if (nextPoint) {
                     const remaining = (this.progress * this.segments) - currentSegments;
-                    ParticleAnimation.ctx.quadraticCurveTo(
+                    this.ctx.quadraticCurveTo(
                         lastFull.x,
                         lastFull.y,
                         lastFull.x + (nextPoint.x - lastFull.x) * remaining,
@@ -515,25 +520,25 @@ class ParticleAnimation {
                 }
             }
 
-            ParticleAnimation.ctx.strokeStyle = gradient;
-            ParticleAnimation.ctx.lineWidth = this.thickness * (1 + pulse * 0.3);
-            ParticleAnimation.ctx.lineCap = 'round';
-            ParticleAnimation.ctx.lineJoin = 'round';
-            ParticleAnimation.ctx.stroke();
+            this.ctx.strokeStyle = gradient;
+            this.ctx.lineWidth = this.thickness * (1 + pulse * 0.3);
+            this.ctx.lineCap = 'round';
+            this.ctx.lineJoin = 'round';
+            this.ctx.stroke();
 
-            ParticleAnimation.ctx.globalAlpha = this.life * 0.3;
-            ParticleAnimation.ctx.filter = 'blur(4px)';
-            ParticleAnimation.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.5)`;
-            ParticleAnimation.ctx.lineWidth = this.thickness * 2;
-            ParticleAnimation.ctx.stroke();
+            this.ctx.globalAlpha = this.life * 0.3;
+            this.ctx.filter = 'blur(4px)';
+            this.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.5)`;
+            this.ctx.lineWidth = this.thickness * 2;
+            this.ctx.stroke();
 
-            ParticleAnimation.ctx.globalAlpha = this.life * 0.7;
-            ParticleAnimation.ctx.filter = 'none';
-            ParticleAnimation.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.8)`;
-            ParticleAnimation.ctx.lineWidth = this.thickness * 0.5;
-            ParticleAnimation.ctx.stroke();
+            this.ctx.globalAlpha = this.life * 0.7;
+            this.ctx.filter = 'none';
+            this.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.8)`;
+            this.ctx.lineWidth = this.thickness * 0.5;
+            this.ctx.stroke();
 
-            ParticleAnimation.ctx.restore();
+            this.ctx.restore();
         }
     }
 
@@ -541,7 +546,7 @@ class ParticleAnimation {
     initParticles() {
         this.particles = [];
         for (let i = 0; i < this.particleConfig.number; i++) {
-            this.particles.push(new this.Particle());
+            this.particles.push(new this.Particle(this.particleConfig, this.ctx));
         }
     }
     updateConnections() {
@@ -563,7 +568,7 @@ class ParticleAnimation {
             );
             if (exists) continue;
 
-            this.connections.push(new this.Connection(p1, p2));
+            this.connections.push(new this.Connection(p1, p2, this.particleConfig, this.connectionConfig, this.ctx));
         }
     }
     animate() {
