@@ -25,7 +25,7 @@ class ReputationManager extends EventEmitter {
             spamMaxActions: 200, // Maximum allowed actions within the time window
             spamTimeWindow: 60 * 1000, // Time window in milliseconds (e.g., 1 minute)
             spamCleanupInterval: 5 * 60 * 1000, // Interval to clean up old actions (e.g., 5 minutes)
-            saveInterval: 1 * 60 * 1000, // Save every 1 minute
+            saveInterval: 5 * 60 * 1000, // Save every 1 minute
         };
 
         this.options = { ...defaultOptions, ...options };
@@ -207,7 +207,6 @@ class ReputationManager extends EventEmitter {
                 if (err) {
                     console.error('Error saving reputation scores:', err);
                 } else {
-                    console.log('Reputation scores saved successfully.');
                 }
             }
         );
@@ -410,13 +409,11 @@ class ReputationManager extends EventEmitter {
             if (!associated) {
                 associated = new Set();
                 this.identifierAssociations.set(id, associated);
-                console.log(`Created new association set for identifier: ${id}`);
             }
             for (const otherId of identifiers) {
                 if (otherId !== id) {
                     if (!associated.has(otherId)) {
                         associated.add(otherId);
-                        console.log(`Added association between ${id} and ${otherId}`);
                     }
                 }
             }
