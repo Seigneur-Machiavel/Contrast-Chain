@@ -362,6 +362,11 @@ export class DashboardWsApp {
                 this.node.syncHandler.syncWithPeer(data);
                 break;
 
+            case 'ban_peer':
+                console.log(`Banning peer ${data}`);
+                this.node.p2pNetwork.reputationManager.banIdentifier(data);
+                break;
+
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                 break;
