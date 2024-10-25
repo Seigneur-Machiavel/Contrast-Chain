@@ -131,13 +131,7 @@ class P2PNetwork extends EventEmitter {
             connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
-                pubsub: gossipsub({
-                    emitSelf: false,
-                    gossipIncoming: false,
-                    fallbackToFloodsub: false,
-                    floodPublish: false,
-                    allowPublishToZeroPeers: true,
-                }),
+                pubsub: gossipsub(),
                 dht: kadDHT(),
             },
             peerDiscovery,
