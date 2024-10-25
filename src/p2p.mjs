@@ -547,7 +547,7 @@ class P2PNetwork extends EventEmitter {
             const ip = connection.remoteAddr.nodeAddress().address;
             
             if (identifier === peerId || identifier === ip) {
-                await this.p2pNode.connections.close(connection.id);
+                this.p2pNode.components.connectionManager.closeConnections(peerId);
                 this.logger.info('luid-9d42e1f5 Disconnected peer', 
                     { identifier });
             }
