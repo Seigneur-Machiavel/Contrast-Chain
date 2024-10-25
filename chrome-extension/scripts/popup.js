@@ -418,18 +418,19 @@ async function initUI() {
     eHTML.welcomeCanvas.width = 360;
     eHTML.welcomeCanvas.height = 400;
     eHTML.welcomeCanvas.style.opacity = '1';
+    eHTML.welcomeCanvas.style.filter = 'blur(0px)';
 
     const particleAnimation = new ParticleAnimation();
-
-    // Initialize with the canvas element
+    particleAnimation.particleConfig.sizeRange = [10, 30];
     particleAnimation.init(eHTML.welcomeCanvas);
 
-    // Start the animation
-    particleAnimation.start();
-    //ParticleAnimation.init(eHTML.welcomeCanvas);
-    //ParticleAnimation2.init(eHTML.welcomeCanvas2);
+    eHTML.welcomeCanvas2.width = 360;
+    eHTML.welcomeCanvas2.height = 400;
+    const particleAnimation2 = new ParticleAnimation();
+    particleAnimation2.particleConfig.radius = 256;
+    particleAnimation2.init(eHTML.welcomeCanvas2);
 
-    /*setTimeout(() => { welcomeCanvas2Animation(); }, 400);*/
+    //setTimeout(() => { welcomeCanvas2Animation(); }, 400);
 
     // TITLE APPEAR ANIMATION
     const titleMl3 = eHTML.appTitle.getElementsByClassName('ml3')[0];

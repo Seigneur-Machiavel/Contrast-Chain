@@ -17,21 +17,18 @@ class ParticleAnimation {
             rotation: Math.PI / 6
         }
     };
-    
     canvasConfig = {
         backgroundColor: 'rgb(255, 255, 255)', // Default, will be set in init
         resizeDebounce: 100,
     };
-    
     waveConfig = {
         scale1: 0.03,
         scale2: 0.02,
         scale3: 0.01,
         amplitude: 8,
     };
-    
     particleConfig = {
-        number: 64,
+        number: 256,
         radius: 64,
         sizeCategories: {
             probabilities: {
@@ -41,13 +38,13 @@ class ParticleAnimation {
                 small: 0.50,
             },
             multipliers: {
-                huge: { min: 2, max: 5 },
-                large: { min: 0.5, max: 2 },
-                medium: { min: 0.2, max: 0.5 },
-                small: { min: 0.1, max: 0.2 },
+                huge: { min: .5, max: 1 },
+                large: { min: .3, max: .5 },
+                medium: { min: .2, max: .3 },
+                small: { min: .1, max: .2 },
             },
         },
-        sizeRange: [2, 8],
+        sizeRange: [2, 16],
         pulsing: {
             frequencyRange: [0.5, 4],
             amplitudeRange: [0.8, 2.0],
@@ -57,7 +54,6 @@ class ParticleAnimation {
             primary: 'rgb(0, 0, 0)', // Default, will be set in init
         },
     };
-    
     connectionConfig = {
         maxConnections: 8,
         distanceThreshold: 250,
@@ -78,7 +74,6 @@ class ParticleAnimation {
             fadeDuration: 60,
         }
     };
-    
     animationConfig = {
         timeIncrement: 0.01,
         fps: 60,
@@ -99,7 +94,6 @@ class ParticleAnimation {
     static map(value, start1, stop1, start2, stop2) {
         return start2 + ((stop2 - start2) * ((value - start1) / (stop1 - start1)));
     }
-    
     static getWaveform(type, value) {
         switch (type) {
             case 'triangle':
@@ -116,14 +110,12 @@ class ParticleAnimation {
         const w = Math.cos(2 * y);
         return (u + v + w) * Math.sin(t);
     }
-    
     wavePattern(x, y, z, t) {
         const u = (1 + (y / 2) * Math.cos(x / 2)) * Math.cos(x);
         const v = (1 + (y / 2) * Math.cos(x / 2)) * Math.sin(x);
         const w = (y / 2) * Math.sin(x / 2);
         return (u * v * w) * Math.cos(t);
     }
-    
     circularPattern(s, t, p, q) {
         const r = Math.cos(q * s) + 2;
         const x = r * Math.cos(p * s);
@@ -131,7 +123,6 @@ class ParticleAnimation {
         const z = -Math.sin(q * s);
         return { x, y, z };
     }
-    
     complexMotion(x, y, z, t) {
         const wave1 = Math.sin(x * this.waveConfig.scale1 + t) *
                       Math.cos(y * this.waveConfig.scale1 + t) * 0.5;
@@ -157,10 +148,8 @@ class ParticleAnimation {
     }
 
     // ==================== Initialization ====================
-    /**
-     * Initializes the animation with a given canvas element.
-     * @param {HTMLCanvasElement} canvasElement - The canvas element to render the animation on.
-     */
+    /** Initializes the animation with a given canvas element.
+     * @param {HTMLCanvasElement} canvasElement - The canvas element to render the animation on. */
     init(canvasElement) {
         this.canvas = canvasElement;
         this.ctx = this.canvas.getContext('2d');
@@ -173,20 +162,6 @@ class ParticleAnimation {
 
         this.initParticles();
         this.animate();
-
-        // Add resize handler with debounce
-        window.addEventListener('resize', this.debounce(() => this.onResize(), this.canvasConfig.resizeDebounce));
-        this.onResize(); // Initial sizing
-    }
-
-    /**
-     * Handles canvas resizing.
-     */
-    onResize() {
-        this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
-        // Optionally, reset particles on resize
-        // this.reset();
     }
 
     /**
@@ -648,7 +623,6 @@ class ParticleAnimation {
             this.particles.push(new this.Particle(this));
         }
     }
-
     /**
      * Updates the connections between particles.
      */
@@ -682,9 +656,6 @@ class ParticleAnimation {
      */
     animate() {
         // Clear the canvas
-        this.ctx.fillStyle = this.canvasConfig.backgroundColor;
-        // Uncomment the line below if you prefer filling the background
-        // this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // Update and draw particles
@@ -703,16 +674,6 @@ class ParticleAnimation {
         // Request the next frame
         this.animationId = requestAnimationFrame(() => this.animate());
     }
-
-    /**
-     * Starts the animation.
-     */
-    start() {
-        if (!this.animationId) {
-            this.animate();
-        }
-    }
-
     /**
      * Stops the animation.
      */
@@ -722,7 +683,6 @@ class ParticleAnimation {
             this.animationId = null;
         }
     }
-
     /**
      * Resets the animation to its initial state.
      */

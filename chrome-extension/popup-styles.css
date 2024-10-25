@@ -58,11 +58,13 @@ h1, h2 {
     /*margin-top: 56px;
     margin-bottom: -182px;*/
     opacity: 0;
-    transition: opacity 0.6s ease-in-out;
+    filter: blur(4px);
+    transition: opacity 1.2s ease-in-out, filter .6s .6s ease-in-out;
 }
 #welcomeCanvas2 {
     position: fixed;
-    top: 10px;
+    /*top: 10px;*/
+    top: 0;
 }
 #loginForm {
     position: relative;
