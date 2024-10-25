@@ -1,6 +1,4 @@
-// p2p.mjs
 import { EventEmitter } from 'events';
-import pino from 'pino';
 import { createLibp2p } from 'libp2p';
 import { tcp } from '@libp2p/tcp';
 import { noise } from '@chainsafe/libp2p-noise';
@@ -510,7 +508,6 @@ class P2PNetwork extends EventEmitter {
 
     async isDeniedMultiaddr(multiaddr) {
         const ip = multiaddr.nodeAddress().address.toString() ;
-        console.log("isDeniedMultiaddr", ip);
         const isBanned = this.reputationManager.isPeerBanned({ ip });
         return isBanned;
     }
