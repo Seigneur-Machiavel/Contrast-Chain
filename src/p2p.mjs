@@ -405,7 +405,7 @@ class P2PNetwork extends EventEmitter {
             const lp = lpStream(stream);
             const serialized = utils.serializer.rawData.toBinary_v1(message);
             await lp.write(serialized);
-            this.logger.info('luid-e99e2dac Message written to stream', { component: 'P2PNetwork', length: message.length });
+            this.logger.info('luid-e99e2dac Message written to stream', { component: 'P2PNetwork', length: serialized.length });
 
             const res = await lp.read();
             if (!res) { throw new Error('No response received (unexpected end of input)'); }
