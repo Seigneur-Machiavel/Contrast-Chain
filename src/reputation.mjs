@@ -547,10 +547,6 @@ class ReputationManager extends EventEmitter {
      */
     recordAction(peer, action) {
         // Update associations
-        console.log(
-            { component: 'ReputationManager', peer, action },
-            'Recording action'
-        );
         this.updateAssociations(peer);
 
         const identifiers = this.getAssociatedIdentifiers(peer);
