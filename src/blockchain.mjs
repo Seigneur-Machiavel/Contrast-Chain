@@ -445,13 +445,15 @@ export class Blockchain {
     /** Retrieves a block from disk by its hash. @param {string} hash - The hash of the block to retrieve. */
     async #getBlockFromDiskByHash(hash, deserialize = true) {
         try {
-            const serializedHeader = this.db.get(hash);
+            const serializedHeader = await this.db.get(hash);
+            const blockHeader = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
+            const height = blockHeader.index;
             const serializedTxsIds = this.db.get(`height-${height}-txIds`);
 
             const txsIds = utils.serializer.array_of_tx_ids.fromBinary_v3(serializedTxsIds);
             const txsPromises = txsIds.map(txId => this.db.get(`${height}:${txId}`));
 
-            if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
+            if (!deserialize) { return { header: serializedHeader, txs: await Promise.all(txsPromises) }; }
 
             return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
