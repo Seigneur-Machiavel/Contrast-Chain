@@ -109,16 +109,7 @@ class P2PNetwork extends EventEmitter {
                 dht: kadDHT(),
             },
             peerDiscovery,
-            connectionGater: {
-                denyDialPeer: this.isDeniedPeer.bind(this),
-                denyDialMultiaddr: this.isDeniedMultiaddr.bind(this),
-                denyInboundConnection: this.isDeniedConnection.bind(this),
-                denyOutboundConnection: this.isDeniedConnection.bind(this),
-                denyInboundEncrypted: this.isDeniedEncrypted.bind(this),
-                denyOutboundEncrypted: this.isDeniedEncrypted.bind(this),
-                denyInboundUpgraded: this.isDeniedUpgraded.bind(this),
-                denyOutboundUpgraded: this.isDeniedUpgraded.bind(this)
-            },
+
             connectionManager: {},
             
         });
