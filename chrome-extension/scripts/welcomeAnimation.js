@@ -1,15 +1,18 @@
-const ParticleAnimation = {
-    canvas: null,
-    ctx: null,
-    simplex: null,
-    time: 0,
-    particles: [],
-    connections: [],
-    animationId: null,
+
+
+class ParticleAnimation {
+    animationColor1 = '255, 255, 255';
+    animationColor2 = '0, 0, 0';
+    canvas = null;
+    ctx = null;
+    simplex = null;
+    time = 0;
+    particles = [];
+    connections = [];
+    animationId = null;
 
     // ==================== Configuration Objects ====================
-
-    systemConfig: {
+    systemConfig = {
         motion: {
             flowSpeed: 0.65,
             complexity: 3,
@@ -25,23 +28,21 @@ const ParticleAnimation = {
             scale: 1.5,
             rotation: Math.PI / 6
         }
-    },
-
-    canvasConfig: {
-        backgroundColor: '#111111',
+    }
+    canvasConfig = {
+        //backgroundColor: 'transparent',
+        backgroundColor: `rgb(${window.animationColor1})`,
         resizeDebounce: 100,
-    },
-
-    waveConfig: {
+    }
+    waveConfig = {
         scale1: 0.03,
         scale2: 0.02,
         scale3: 0.01,
         amplitude: 8,
-    },
-
-    particleConfig: {
+    }
+    particleConfig = {
         number: 64,
-        radius: 128,
+        radius: 64,
         sizeCategories: {
             probabilities: {
                 huge: 0.08,
@@ -50,10 +51,10 @@ const ParticleAnimation = {
                 small: 0.50,
             },
             multipliers: {
-                huge: { min: 3, max: 8 },
-                large: { min: 2.5, max: 4 },
-                medium: { min: 1.5, max: 2.5 },
-                small: { min: 0.5, max: 1.5 },
+                huge: { min: 2, max: 5 },
+                large: { min: .5, max: 2 },
+                medium: { min: .2, max: .5 },
+                small: { min: .1, max: .2 },
             },
         },
         sizeRange: [2, 8],
@@ -63,17 +64,16 @@ const ParticleAnimation = {
             waveforms: ['sin', 'triangle'],
         },
         colors: {
-            primary: '#ffffff',
+            primary: `rgb(${window.animationColor2})`,
         },
-    },
-
-    connectionConfig: {
+    }
+    connectionConfig = {
         maxConnections: 8,
         distanceThreshold: 250,
         decayRange: [0.002, 0.008],
-        thicknessRange: [0.2, 1.5],
+        thicknessRange: [0.1, 1],
         colors: {
-            primary: '#ffffff',
+            primary: `rgb(${window.animationColor2})`,
         },
         tetherPhysics: {
             tension: 0.5,
@@ -86,77 +86,55 @@ const ParticleAnimation = {
             speed: 0.02,
             fadeDuration: 60,
         }
-    },
-
-    animationConfig: {
+    }
+    animationConfig = {
         timeIncrement: 0.01,
         fps: 60,
-    },
+    }
 
     // ==================== Initialization ====================
-
     init(canvasElement) {
         this.canvas = canvasElement;
         this.ctx = this.canvas.getContext('2d');
         this.simplex = new SimplexNoise();
-        this.resizeCanvas();
-
-        window.addEventListener('resize', () => {
-            clearTimeout(window.resizeTimeout);
-            window.resizeTimeout = setTimeout(() => this.resizeCanvas(), 100);
-        });
 
         this.initParticles();
         this.animate();
-    },
-    resizeCanvas() {
-        const popupContent = document.getElementById('popUpContent');
-        if (popupContent) {
-            this.canvas.width = popupContent.offsetWidth;
-            this.canvas.height = window.innerHeight;
-            
-            // Adjust particle config to match new size
-        }
-    },
+    }
+
     // ==================== Utility Functions ====================
-
-    map(value, start1, stop1, start2, stop2) {
+    static map(value, start1, stop1, start2, stop2) {
         return start2 + ((stop2 - start2) * ((value - start1) / (stop1 - start1)));
-    },
-
-    getWaveform(type, value) {
+    }
+    static getWaveform(type, value) {
         switch (type) {
             case 'triangle':
                 return Math.asin(Math.sin(value)) / (Math.PI / 2);
             default:
                 return Math.sin(value);
         }
-    },
+    }
 
     // ==================== Motion Pattern Functions ====================
-
     spiralPattern(x, y, z, t) {
         const u = Math.cos(x) * Math.sin(2 * y);
         const v = Math.sin(x) * Math.sin(2 * y);
         const w = Math.cos(2 * y);
         return (u + v + w) * Math.sin(t);
-    },
-
+    }
     wavePattern(x, y, z, t) {
         const u = (1 + y / 2 * Math.cos(x / 2)) * Math.cos(x);
         const v = (1 + y / 2 * Math.cos(x / 2)) * Math.sin(x);
         const w = y / 2 * Math.sin(x / 2);
         return (u * v * w) * Math.cos(t);
-    },
-
+    }
     circularPattern(s, t, p, q) {
         const r = Math.cos(q * s) + 2;
         const x = r * Math.cos(p * s);
         const y = r * Math.sin(p * s);
         const z = -Math.sin(q * s);
         return { x, y, z };
-    },
-
+    }
     complexMotion(x, y, z, t) {
         const wave1 = Math.sin(x * this.waveConfig.scale1 + t) *
             Math.cos(y * this.waveConfig.scale1 + t) * 0.5;
@@ -179,11 +157,10 @@ const ParticleAnimation = {
             wave * Math.cos(t) +
             flow +
             noise;
-    },
+    }
 
     // ==================== Particle Class ====================
-
-    Particle: class {
+    Particle = class {
         constructor() {
             this.reset();
             this.phi = Math.random() * Math.PI * 2;
@@ -328,11 +305,10 @@ const ParticleAnimation = {
 
             ParticleAnimation.ctx.restore();
         }
-    },
+    }
 
     // ==================== Connection Class ====================
-
-    Connection: class {
+    Connection = class {
         constructor(p1, p2) {
             this.p1 = p1;
             this.p2 = p2;
@@ -496,13 +472,14 @@ const ParticleAnimation = {
 
             ParticleAnimation.ctx.save();
 
+            /** @type {CanvasRenderingContext2D} */
             const gradient = ParticleAnimation.ctx.createLinearGradient(
                 this.p1.x, this.p1.y,
                 this.p2.x, this.p2.y
             );
-            gradient.addColorStop(0, `rgba(255, 255, 255, ${this.life * glowIntensity})`);
-            gradient.addColorStop(0.5, `rgba(255, 255, 255, ${this.life * 0.8 * glowIntensity})`);
-            gradient.addColorStop(1, `rgba(255, 255, 255, ${this.life * glowIntensity})`);
+            gradient.addColorStop(0, `rgba(${window.animationColor2}, ${this.life * glowIntensity})`);
+            gradient.addColorStop(0.5, `rgba(${window.animationColor2}, ${this.life * 0.8 * glowIntensity})`);
+            gradient.addColorStop(1, `rgba(${window.animationColor2}, ${this.life * glowIntensity})`);
 
             ParticleAnimation.ctx.beginPath();
             const currentSegments = Math.floor(this.segments * this.progress);
@@ -546,29 +523,27 @@ const ParticleAnimation = {
 
             ParticleAnimation.ctx.globalAlpha = this.life * 0.3;
             ParticleAnimation.ctx.filter = 'blur(4px)';
-            ParticleAnimation.ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ParticleAnimation.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.5)`;
             ParticleAnimation.ctx.lineWidth = this.thickness * 2;
             ParticleAnimation.ctx.stroke();
 
             ParticleAnimation.ctx.globalAlpha = this.life * 0.7;
             ParticleAnimation.ctx.filter = 'none';
-            ParticleAnimation.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ParticleAnimation.ctx.strokeStyle = `rgba(${window.animationColor2}), 0.8)`;
             ParticleAnimation.ctx.lineWidth = this.thickness * 0.5;
             ParticleAnimation.ctx.stroke();
 
             ParticleAnimation.ctx.restore();
         }
-    },
+    }
 
     // ==================== Animation Management ====================
-
     initParticles() {
         this.particles = [];
         for (let i = 0; i < this.particleConfig.number; i++) {
             this.particles.push(new this.Particle());
         }
-    },
-
+    }
     updateConnections() {
         for (let i = this.connections.length - 1; i >= 0; i--) {
             if (!this.connections[i].update()) {
@@ -590,11 +565,11 @@ const ParticleAnimation = {
 
             this.connections.push(new this.Connection(p1, p2));
         }
-    },
-
+    }
     animate() {
         this.ctx.fillStyle = this.canvasConfig.backgroundColor;
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        //this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.particles.forEach(particle => {
             particle.update();
@@ -607,21 +582,18 @@ const ParticleAnimation = {
         this.time += this.animationConfig.timeIncrement;
 
         this.animationId = requestAnimationFrame(() => this.animate());
-    },
-
+    }
     start() {
         if (!this.animationId) {
             this.animate();
         }
-    },
-
+    }
     stop() {
         if (this.animationId) {
             cancelAnimationFrame(this.animationId);
             this.animationId = null;
         }
-    },
-
+    }
     reset() {
         this.stop();
         this.time = 0;
@@ -631,9 +603,4 @@ const ParticleAnimation = {
     }
 };
 
-// Export for both browser and module usage
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ParticleAnimation;
-} else if (typeof window !== 'undefined') {
-    window.ParticleAnimation = ParticleAnimation;
-}
+window.ParticleAnimation = ParticleAnimation;
