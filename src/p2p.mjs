@@ -15,6 +15,7 @@ import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
 import { autoNAT } from '@libp2p/autonat';
 import { ping } from '@libp2p/ping';
+import { enable } from '@libp2p/logger';
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -69,6 +70,7 @@ class P2PNetwork extends EventEmitter {
     ]);
 
     async start() {
+        enable('libp2p:kad-dht*')
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
@@ -107,8 +109,7 @@ class P2PNetwork extends EventEmitter {
                 identify: identify(),
                 pubsub: gossipsub(),
                 dht: kadDHT(),
-                autoNAT: autoNAT(),
-                ping: ping()
+                autoNAT: autoNAT()
             },
             
             peerDiscovery,
