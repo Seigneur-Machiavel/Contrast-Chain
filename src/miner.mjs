@@ -310,7 +310,7 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
             
             const endTimestamp = Date.now();
             const timeSpent = endTimestamp - startTimestamp;
-            console.info(`[MINER-${this.address.slice(0, 6)}] timeSpent: ${timeSpent}ms`);
+            //console.info(`[MINER-${this.address.slice(0, 6)}] timeSpent: ${timeSpent}ms`);
         }
 
         console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);
