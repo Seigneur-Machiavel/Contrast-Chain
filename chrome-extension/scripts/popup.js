@@ -299,6 +299,17 @@ function setVisibleForm(formId, applyBLur = true) {
     if (formId === "settingsForm") {
         eHTML.settingsBtn.classList.remove('active');
         eHTML.settingsBtn.classList.add('selected');
+
+        setTimeout(async () => {
+            const miningIntensity = await chrome.storage.local.get('miningIntensity');
+            const intensity = miningIntensity.miningIntensity || 0;
+            eHTML.mining.intensityInput.value = intensity;
+            //eHTML.mining.intensityValueStr.innerText = intensity;
+            eHTML.mining.intensityValueStr.innerText = intensity === 0 ? 'OFF' : 'ON';
+
+            const hashRate = await chrome.storage.local.get('hashRate');
+            eHTML.mining.hashRateValueStr.innerText = hashRate.hashRate.toFixed(3) || '0';
+        }, 100);
     }
 
     resizePopUp(applyBLur, popUpSize);
