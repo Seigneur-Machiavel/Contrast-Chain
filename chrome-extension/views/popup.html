@@ -151,31 +151,36 @@
                 </div>
             </form>
     
-            <form id="miningForm" class="hidden">
+            <!--<form id="miningForm" class="hidden">
                 <div class="inlineRange">
                     <label for="intensity">Intensity: <span id="intensityValueStr">0</span></label>
                     <input type="range" class="input-range" name="intensity" min="0" max="10" value="0" step="1">
                 </div>
                 <h2>HashRate: <span id="hashRateValueStr">0.00</span> H/s</h2>
-            </form>
+            </form>-->
     
             <form id="settingsForm" class="hidden">
                 <p class="textInfo"></p>
                 <button id="changePasswordBtn">Change password</button>
                 <button id="deleteDataBtn">Delete data</button>
-                <div class="inlineCheckBox">
+                <div class="inlineRange">
+                    <label for="intensity">Intensity: <span id="intensityValueStr">OFF</span></label>
+                    <input type="range" class="input-range" name="intensity" min="0" max="1" value="0" step="1">
+                </div>
+                <h2>HashRate: <span id="hashRateValueStr">0.00</span> H/s</h2>
+                <!--<div class="inlineCheckBox">
                     <label>
                         <input id="autoCloudSync" type="checkbox" name="cloudSyncOption" value="autoCloudSync" checked>
                         Cloud synchronization
                     </label>
-                </div>
+                </div>-->
             </form>
     
             <div id="bottomBar" class="bottomBar">
                 <!--<button id="explorerBtn"><img src="../images/explorer96.png" alt="Explorer"></button>-->
                 <button id="explorerBtn"><div class="icon"></div></button>
                 <button id="walletBtn"><img src="../images/wallet128.png" alt="Wallet"></button>
-                <button id="miningBtn"><img src="../images/pickaxe48.png" alt="Mining"></button>
+                <button id="miningBtn" style="display: none;"><img src="../images/pickaxe48.png" alt="Mining"></button>
                 <button id="settingsBtn"><img src="../images/settings48.png" alt="Settings"></button>
             </div>
         </div>

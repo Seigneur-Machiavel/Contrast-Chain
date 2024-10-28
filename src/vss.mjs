@@ -22,6 +22,19 @@ export const StakeReference = (address, anchor, amount) => {
     };
 }
 
+// test
+/*const testStartTime = performance.now();
+const bigBigInt = BigInt('0x' + 'f'.repeat(64));
+const maxVal = BigInt(1000000);
+const modulo = bigBigInt % maxVal;
+
+const testEndTime = performance.now();
+console.log(`m`);
+console.log(`m`);
+console.log(`modulo: ${modulo}, time: ${testEndTime - testStartTime}ms`);
+console.log(`m`);
+console.log(`m`);*/
+
 export class spectrumFunctions {
     /** @param {spectrum} spectrum */
     static getHighestUpperBound(spectrum) {
@@ -61,20 +74,13 @@ export class spectrumFunctions {
      * @param {number} maxAttempts
      */
     static async hashToIntWithRejection(blockHash, lotteryRound = 0, maxRange = 1000000, maxAttempts = 1000) {
-        let nonce = 0;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             // Generate a hash including the nonce to get different results if needed
-            const hash = await HashFunctions.SHA256(`${lotteryRound}${blockHash}${nonce}`);
+            const hash = await HashFunctions.SHA256(`${lotteryRound}${blockHash}`);
             const hashInt = BigInt('0x' + hash);
     
             // Calculate the maximum acceptable range to avoid bias
-            const maxAcceptableValue = BigInt(2**256 / maxRange) * BigInt(maxRange);
-    
-            if (hashInt < maxAcceptableValue) {
-                return Number(hashInt % BigInt(maxRange));
-            } else {
-                nonce++; // Increment the nonce to try a new hash
-            }
+            return Number(hashInt % BigInt(maxRange));
         }
     
         throw new Error("Max attempts reached. Consider increasing maxAttempts or revising the method.");
@@ -88,12 +94,12 @@ export class spectrumFunctions {
         let nonce = 0;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             const hash = await HashFunctions.SHA256(`${lotteryRound}${blockHash}${nonce}`);
-            const troncatedHash = hash.slice(0, 8); // 4 bytes = 8 characters = 32 bits
+            const troncatedHash = hash.slice(0, 12); // 6 bytes = 12 characters = 48 bits
             const hashInt = parseInt(troncatedHash, 16);
 
             // Calculate the maximum acceptable range to avoid bias
-            const maxAcceptableValue = 2**32 / maxRange * maxRange;
-    
+            const maxAcceptableValue = Math.floor(2**48 / maxRange) * maxRange;
+
             if (hashInt < maxAcceptableValue) {
                 const result = hashInt % maxRange;
                 return result;
@@ -173,10 +179,10 @@ export class Vss {
             if (maxRange < 999_999) { this.legitimacies = roundLegitimacies; return; }
             
             //const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
-            const winningNumber = await spectrumFunctions.hashToIntWithRejection_v2(blockHash, i, maxRange);
-            // can't be existing winner
+            const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
+
             const stakeReference = spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber);
-            if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
+            //if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
 
             roundLegitimacies.push(stakeReference);
             

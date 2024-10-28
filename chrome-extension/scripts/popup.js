@@ -139,7 +139,7 @@ const eHTML = {
 
     settingsForm: document.getElementById('settingsForm'),
     mining: {
-        form: document.getElementById('miningForm'),
+        //form: document.getElementById('miningForm'),
         intensityInput: document.getElementsByName('intensity')[0],
         intensityValueStr: document.getElementById('intensityValueStr'),
         hashRateValueStr: document.getElementById('hashRateValueStr'),
@@ -288,7 +288,8 @@ function setVisibleForm(formId, applyBLur = true) {
             const miningIntensity = await chrome.storage.local.get('miningIntensity');
             const intensity = miningIntensity.miningIntensity || 0;
             eHTML.mining.intensityInput.value = intensity;
-            eHTML.mining.intensityValueStr.innerText = intensity;
+            //eHTML.mining.intensityValueStr.innerText = intensity;
+            eHTML.mining.intensityValueStr.innerText = intensity === 0 ? 'OFF' : 'ON';
 
             const hashRate = await chrome.storage.local.get('hashRate');
             eHTML.mining.hashRateValueStr.innerText = hashRate.hashRate.toFixed(3) || '0';
