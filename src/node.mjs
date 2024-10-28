@@ -233,7 +233,7 @@ export class Node {
             peersIds = this.p2pNetwork.getConnectedPeers();
             peerCount = peersIds.length;
             if (peersIds.includes(myPeerId)) { peerCount--; }
-            if (peerCount >= nbOfPeers) {
+            if (peerCount < nbOfPeers) {
                 this.opStack.pushFirst('syncWithKnownPeers', null);
                 console.log(`Connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
                 return peerCount;

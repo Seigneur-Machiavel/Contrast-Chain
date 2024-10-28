@@ -1590,6 +1590,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             fillInfoOfTxInHistory(txWithDetails);
             break;
         case 'address_exhaustive_data_requested':
+            if (!activeWallet) { console.info('No active wallet'); return; }
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             //console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
             //console.log(request);

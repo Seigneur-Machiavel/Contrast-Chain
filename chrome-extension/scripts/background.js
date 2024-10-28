@@ -68,7 +68,8 @@ function connectWS() {
     ws.onclose = function() {
         console.info('Connection closed');
         setTimeout( () => {
-            connectWS();
+            ws = undefined;
+            //connectWS();
         }, SETTINGS.RECONNECT_INTERVAL);
     };
     ws.onmessage = async function(event) {
@@ -152,7 +153,14 @@ function connectWS() {
     }
 
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
-} connectWS();
+}
+async function connectWSLoop() {
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
+        if (ws && ws.readyState === 1) { continue; }
+        connectWS();
+    }
+}; connectWSLoop();
 async function getHeightsLoop() {
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL); });
@@ -169,9 +177,9 @@ async function getTimeLoop() {
 }; getTimeLoop();
 async function readyWS() {
     return new Promise((resolve, reject) => {
-        if (ws.readyState === 1) { resolve(); return; }
+        if (ws && ws.readyState === 1) { resolve(); return; }
         let interval = setInterval(() => {
-            if (ws.readyState === 1) {
+            if (ws && ws.readyState === 1) {
                 clearInterval(interval);
                 resolve();
             }

@@ -292,7 +292,7 @@ function renderPeersHeight (peers) {
         li.classList.add('peer-height-item');
 
         const peerSpan = document.createElement('span');
-        peerSpan.textContent = `${peerId}: `;
+        peerSpan.textContent = `${peerId.replace('12D3KooW', '')}: `;
         peerSpan.classList.add('peer-id');
 
         const heightSpan = document.createElement('span');
