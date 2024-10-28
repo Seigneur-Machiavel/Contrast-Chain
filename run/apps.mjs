@@ -182,7 +182,7 @@ export class DashboardWsApp {
         console.log(`Multi node started, account : ${multiNode.account.address}`);
         return multiNode;
     }
-    #onConnection(ws, req, localonly = true) {
+    #onConnection(ws, req, localonly = false) {
         const clientIp = req.socket.remoteAddress === '::1' ? 'localhost' : req.socket.remoteAddress;
 
         // Allow only localhost connections
