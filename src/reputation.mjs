@@ -22,7 +22,7 @@ class ReputationManager extends EventEmitter {
             offenseScoreMap: {},
             maxScore: 100,
             // Spam Detection Configurations
-            spamMaxActions: 200, // Maximum allowed actions within the time window
+            spamMaxActions: 1000, // Maximum allowed actions within the time window
             spamTimeWindow: 60 * 1000, // Time window in milliseconds (e.g., 1 minute)
             spamCleanupInterval: 5 * 60 * 1000, // Interval to clean up old actions (e.g., 5 minutes)
             saveInterval: 5 * 60 * 1000, // Save every 1 minute
