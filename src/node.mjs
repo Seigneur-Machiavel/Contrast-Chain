@@ -405,7 +405,6 @@ export class Node {
         if (!finalizedBlock) { throw new Error('Invalid block candidate'); }
         if (!this.roles.includes('validator')) { throw new Error('Only validator can process PoW block'); }
         if (this.syncHandler.isSyncing && !isSync) { throw new Error("Node is syncing, can't process block"); }
-        const nbOfPeers = isSync ? 0 : this.#waitSomePeers();
        
         const startTime = Date.now();
         
@@ -480,6 +479,7 @@ export class Node {
 
         if (!broadcastNewCandidate) { return true; }
         
+        const nbOfPeers = isSync ? 0 : this.#waitSomePeers();
         if (await nbOfPeers < 1) { throw new Error('!sync! No peer to broadcast the new block candidate'); }
         this.blockCandidate = await this.#createBlockCandidate();
         try {
