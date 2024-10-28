@@ -20,6 +20,7 @@
     "@libp2p/kad-dht": "^14.0.1",
     "@libp2p/mdns": "^11.0.8",
     "@libp2p/mplex": "^11.0.8",
+    "@libp2p/ping": "^2.0.10",
     "@libp2p/tcp": "^10.0.9",
     "@libp2p/websockets": "^9.0.8",
     "@msgpack/msgpack": "^3.0.0-beta2",
