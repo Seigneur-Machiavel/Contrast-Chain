@@ -72,21 +72,21 @@
   "luid-e142f758": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 176,
+    "line": 148,
     "type": "error",
     "content": "luid-e142f758 Failed to find multiaddrs for peer"
   },
   "luid-2b00a032": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 181,
+    "line": 153,
     "type": "info",
     "content": "luid-2b00a032 Dialing after discovery"
   },
   "luid-df1fa9c4": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 185,
+    "line": 157,
     "type": "error",
     "content": "luid-df1fa9c4 Failed to dial peer"
   },
@@ -203,7 +203,7 @@
     "content": "luid-d0ad52f1 luid-topic-validation Topic not allowed"
   },
   "luid-4937c817": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 309,
     "type": "debug",
@@ -245,7 +245,7 @@
     "content": "luid-cb6e42b1 Failed to close stream after error"
   },
   "luid-64097d47": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 383,
     "type": "debug",
@@ -294,21 +294,21 @@
     "content": "luid-07277de5 Stream is undefined; cannot close stream"
   },
   "luid-0f2f018d": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 433,
     "type": "debug",
     "content": "luid-0f2f018d Subscribing to topic"
   },
   "luid-6ddfdefb": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 440,
     "type": "debug",
     "content": "luid-6ddfdefb Subscribed to topic"
   },
   "luid-fc18ad60": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 442,
     "type": "error",
@@ -322,14 +322,14 @@
     "content": "luid-7c191bc3 Attempting to unsubscribe from a topic that was not subscribed to"
   },
   "luid-4d686b67": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 461,
     "type": "debug",
     "content": "luid-4d686b67 Unsubscribed from topic"
   },
   "luid-fb112b3b": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 463,
     "type": "error",
@@ -413,7 +413,7 @@
     "content": "luid-f04b2516 Invalid request type"
   },
   "luid-7d739b5d": {
-    "active": true,
+    "active": false,
     "file": "src\\sync.mjs",
     "line": 121,
     "type": "info",
@@ -490,7 +490,7 @@
     "content": "luid-8085b169 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight} compared to highestPeerHeight: ${highestPeerHeight}"
   },
   "luid-c2de8bdd": {
-    "active": true,
+    "active": false,
     "file": "src\\sync.mjs",
     "line": 196,
     "type": "debug",
@@ -623,7 +623,7 @@
     "content": "luid-f1def041 [SYNC] (#getMissingBlocks: while()) Failed to get peer height"
   },
   "luid-69db154c": {
-    "active": true,
+    "active": false,
     "file": "src\\sync.mjs",
     "line": 390,
     "type": "debug",
