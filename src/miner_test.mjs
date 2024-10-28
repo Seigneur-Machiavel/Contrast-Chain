@@ -30,7 +30,7 @@ export class Miner {
 
         // Worker management
         this.workers = new Map(); // Map<number, Worker>
-        this.targetWorkerCount = 1;
+        this.nbOfWorkers = 1;
 
         // Performance tracking
         this.hashRate = 0;
@@ -67,8 +67,8 @@ export class Miner {
                 const id = this.workers.size;
 
                 worker.on('message', (message) => this.handleWorkerMessage(id, message));
-                worker.on('error', (error) => this.handleWorkerError(id, error));
-                worker.on('exit', (code) => this.handleWorkerExit(id, code));
+                //worker.on('error', (error) => this.handleWorkerError(id, error));
+                //worker.on('exit', (code) => this.handleWorkerExit(id, code));
 
                 this.workers.set(id, {
                     instance: worker,
@@ -166,7 +166,7 @@ export class Miner {
      */
     updateHashRate() {
         this.hashStats.count++;
-        const hashesBeforeUpdate = 10;
+        const hashesBeforeUpdate = 25;
 
         if (this.hashStats.count < hashesBeforeUpdate) {
             return;
@@ -197,13 +197,13 @@ export class Miner {
     async manageWorkers() {
         const currentWorkerCount = this.workers.size;
 
-        if (currentWorkerCount < this.targetWorkerCount) {
-            const workersToAdd = this.targetWorkerCount - currentWorkerCount;
+        if (currentWorkerCount < this.nbOfWorkers) {
+            const workersToAdd = this.nbOfWorkers - currentWorkerCount;
             for (let i = 0; i < workersToAdd; i++) {
                 await this.initializeWorker();
             }
-        } else if (currentWorkerCount > this.targetWorkerCount) {
-            const workersToRemove = currentWorkerCount - this.targetWorkerCount;
+        } else if (currentWorkerCount > this.nbOfWorkers) {
+            const workersToRemove = currentWorkerCount - this.nbOfWorkers;
             const workerIds = Array.from(this.workers.keys()).slice(-workersToRemove);
 
             for (const id of workerIds) {
