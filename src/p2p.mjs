@@ -13,7 +13,8 @@ import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
-import { autoNAT } from '@libp2p/autonat'
+import { autoNAT } from '@libp2p/autonat';
+import { ping } from '@libp2p/ping';
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -107,6 +108,7 @@ class P2PNetwork extends EventEmitter {
                 pubsub: gossipsub(),
                 dht: kadDHT(),
                 autoNAT: autoNAT(),
+                ping: ping()
             },
             
             peerDiscovery,
