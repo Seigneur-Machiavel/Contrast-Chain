@@ -64,7 +64,7 @@ class ReputationManager extends EventEmitter {
             this.offenseScoreMap = { ...this.offenseScoreMap, ...this.options.offenseScoreMap };
         }
 
-        this.loadScoresFromDisk();
+        // this.loadScoresFromDisk();
 
         this.associationCleanupInterval = setInterval(
             () => this.cleanupOldAssociations(),
@@ -86,10 +86,10 @@ class ReputationManager extends EventEmitter {
         );
 
         // Initialize periodic saving of scores
-        this.scoreSaveInterval = setInterval(
+        /* this.scoreSaveInterval = setInterval(
             () => this.saveScoresToDisk(),
             this.options.saveInterval
-        );
+        ); */
     }
 
     static OFFENSE_TYPES = {
