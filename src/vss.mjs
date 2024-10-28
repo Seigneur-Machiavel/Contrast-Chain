@@ -193,7 +193,7 @@ export class Vss {
         this.legitimacies = roundLegitimacies;
         this.currentRoundHash = blockHash;
 
-        console.log(`[VSS] <-- Calculated round legitimacies in ${((Date.now() - startTimestamp)/1000).toFixed(2)}s. -->`);
+        console.log(`[VSS] <-- Calculated round legitimacies in ${((Date.now() - startTimestamp)/1000).toFixed(2)}s. | ${i} iterations. -->`);
     }
     /** @param {string} address */
     getAddressLegitimacy(address) {

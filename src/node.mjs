@@ -525,6 +525,7 @@ export class Node {
                 case 'new_block_candidate':
                     if (!this.roles.includes('miner')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { return; } // avoid processing old blocks
+                    if (data.index > this.blockchain.currentHeight + 1) { return; } // avoid processing future blocks
                     if (this.roles.includes('validator')) { // check legitimacy
                         await this.vss.calculateRoundLegitimacies(data.hash);
                         const validatorAddress = data.Txs[0].inputs[0].split(':')[0];

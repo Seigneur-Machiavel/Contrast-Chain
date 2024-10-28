@@ -208,14 +208,14 @@ function displayNodeInfo(data) {
     eHTML.hashRate.textContent = data.minerHashRate ? data.minerHashRate.toFixed(2) : 0;
 
     // Update Global Information
-    eHTML.peersConnected.textContent = data.peersConnected ? data.peersConnected : 0;
+    eHTML.peersConnected.textContent = data.peersConnecte;
     eHTML.lastBlockInfo.textContent = data.lastBlockInfo ? data.lastBlockInfo : 'No Block Info';
-    eHTML.txInMempool.textContent = data.txInMempool ? data.txInMempool : 0;
+    eHTML.txInMempool.textContent = data.txInMempool;
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId : 'No Peer ID';
     eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
     eHTML.listenAddress.textContent = data.listenAddress ? data.listenAddress : 'No Listen Address';
-    eHTML.lastLegitimacy.textContent = data.lastLegitimacy ? data.lastLegitimacy : 'No Legitimacy';
+    eHTML.lastLegitimacy.textContent = data.lastLegitimacy;
     if (Array.isArray(data.peerIds)) {
         renderPeers(data.peerIds);
     } else {
