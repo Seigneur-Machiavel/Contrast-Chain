@@ -28,8 +28,10 @@ export class spectrumFunctions {
         const keys = Object.keys(spectrum);
         if (keys.length === 0) { return 0; }
 
-        keys.sort((a, b) => parseInt(a) - parseInt(b));
-        
+        //keys.sort((a, b) => parseInt(a) - parseInt(b));
+        //return parseInt(keys[keys.length - 1]);
+
+        // just return the last key
         return parseInt(keys[keys.length - 1]);
     }
     /** 
@@ -70,6 +72,31 @@ export class spectrumFunctions {
     
             if (hashInt < maxAcceptableValue) {
                 return Number(hashInt % BigInt(maxRange));
+            } else {
+                nonce++; // Increment the nonce to try a new hash
+            }
+        }
+    
+        throw new Error("Max attempts reached. Consider increasing maxAttempts or revising the method.");
+    }
+
+    /** Will return a number between 0 and maxRange from a blockHash - makes sure the result is unbiased
+     * @param {string} blockData
+     * @param {number} maxRange
+     * @param {number} maxAttempts */
+    static async hashToIntWithRejection_v2(blockHash, lotteryRound = 0, maxRange = 1000000, maxAttempts = 1000) {
+        let nonce = 0;
+        for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const hash = await HashFunctions.SHA256(`${lotteryRound}${blockHash}${nonce}`);
+            const troncatedHash = hash.slice(0, 8); // 4 bytes = 8 characters = 32 bits
+            const hashInt = parseInt(troncatedHash, 16);
+
+            // Calculate the maximum acceptable range to avoid bias
+            const maxAcceptableValue = 2**32 / maxRange * maxRange;
+    
+            if (hashInt < maxAcceptableValue) {
+                const result = hashInt % maxRange;
+                return result;
             } else {
                 nonce++; // Increment the nonce to try a new hash
             }
@@ -134,16 +161,19 @@ export class Vss {
     async calculateRoundLegitimacies(blockHash, maxResultingArrayLength = 100) {
         if (blockHash === this.currentRoundHash) { return; } // already calculated
 
+        const startTimestamp = Date.now();
         /** @type {StakeReference[]} */
         const roundLegitimacies = [];
         const spectrumLength = Object.keys(this.spectrum).length;
 
-        for (let i = 0; i < maxResultingArrayLength * 4; i++) {
+        let i = 0;
+        for (i; i < maxResultingArrayLength; i++) {
             const maxRange = spectrumFunctions.getHighestUpperBound(this.spectrum);
             // everyone has considered 0 legitimacy when not enough stakes
             if (maxRange < 999_999) { this.legitimacies = roundLegitimacies; return; }
             
-            const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
+            //const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
+            const winningNumber = await spectrumFunctions.hashToIntWithRejection_v2(blockHash, i, maxRange);
             // can't be existing winner
             const stakeReference = spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber);
             if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
@@ -156,6 +186,8 @@ export class Vss {
 
         this.legitimacies = roundLegitimacies;
         this.currentRoundHash = blockHash;
+
+        console.log(`[VSS] <-- Calculated round legitimacies in ${((Date.now() - startTimestamp)/1000).toFixed(2)}s. -->`);
     }
     /** @param {string} address */
     getAddressLegitimacy(address) {

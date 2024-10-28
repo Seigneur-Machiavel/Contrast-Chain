@@ -11,10 +11,7 @@ import utils from './utils.mjs';
  */
 
 export class Miner {
-    /**
-     * @param {Account} address
-     * @param {P2PNetwork} p2pNetwork
-     */
+    /** @param {Account} address @param {P2PNetwork} p2pNetwork */
     constructor(address, p2pNetwork, roles = ['miner'], opStack = null, timeSynchronizer = null) {
         this.terminated = false;
         this.version = 1;
@@ -24,6 +21,9 @@ export class Miner {
         this.address = address;
         /** @type {BlockData[]} */
         this.candidates = [];
+        /** @type {BlockData | null} */
+        this.bestCandidate = null;
+        this.bestCandidateChanged = false;
         this.addressOfCandidatesBroadcasted = [];
         /** @type {P2PNetwork} */
         this.p2pNetwork = p2pNetwork;
@@ -46,7 +46,10 @@ export class Miner {
 
         this.roles = roles;
         this.canProceedMining = true;
+        this.hashPeriodStart = 0;
+        this.hashCount = 0;
         this.hashTimings = [];
+        this.hashRates = [];
         this.hashRate = 0; // hash rate in H/s
         /** @type {OpStack} */
         this.opStack = opStack; // only for multiNode (validator + miner)
@@ -84,12 +87,18 @@ export class Miner {
             this.addressOfCandidatesBroadcasted = [];
         }
 
-        //console.info(`[MINER] New block candidate pushed (Height: ${blockCandidate.index}) | Diff = ${blockCandidate.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(blockCandidate.coinBase)}`);
         console.info(`[MINER] New block candidate pushed (Height: ${blockCandidate.index} | validator: ${validatorAddress.slice(0,6)})`);
         this.candidates.push(blockCandidate);
 
-        if (this.version === 1) { return; }
-        this.assignTaskToIdleWorkers();
+        const mostLegBlockCandidate = this.#getMostLegitimateBlockCandidate();
+        if (!mostLegBlockCandidate) { return console.info(`[MINER] No legitimate block candidate found`); }
+
+        const changed = this.#setBestCandidateIfChanged(mostLegBlockCandidate);
+        if (!changed) { return; }
+
+        if (this.wsCallbacks.onBestBlockCandidateChange) {
+            this.wsCallbacks.onBestBlockCandidateChange.execute(mostLegBlockCandidate);
+        }
     }
     /** @param {BlockData} blockCandidate */
     async #prepareBlockCandidateBeforeMining(blockCandidate) {
@@ -136,8 +145,27 @@ export class Miner {
         const sortedCandidates = filteredCandidates.sort((a, b) => a.legitimacy - b.legitimacy);
         return sortedCandidates[0];
     }
+    #setBestCandidateIfChanged(bestCandidate) {
+        if (this.bestCandidate !== null) {
+            const candidateValidatorAddress = bestCandidate.Txs[0].inputs[0].split(':')[0];
+            const bestCandidateValidatorAddress = this.bestCandidate.Txs[0].inputs[0].split(':')[0];
+
+            const bestCandidateIndexChanged = this.bestCandidate.index !== bestCandidate.index;
+            const bestCandidateValidatorAddressChanged = bestCandidateValidatorAddress !== candidateValidatorAddress;
+            if (!bestCandidateIndexChanged && !bestCandidateValidatorAddressChanged) { return false; }
+        }
+
+        console.info(`[MINER] Best block candidate changed:
+from #${this.bestCandidate ? this.bestCandidate.index : null} | leg: ${this.bestCandidate ? this.bestCandidate.legitimacy : null}
+to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
+
+        this.bestCandidate = bestCandidate;
+        this.bestCandidateChanged = true;
+
+        return true;
+    }
     /** @param {number} hashTime - ms */
-    #hashRateNew(hashTime = 50, hashBeforeAveraging = 20) {
+    #hashRateNew(hashTime = 50, hashBeforeAveraging = 20) { // DEPRECATED
         this.hashTimings.push(hashTime);
         if (this.hashTimings.length < hashBeforeAveraging) { return; } // wait for 10 hash timings to be collected
 
@@ -148,8 +176,23 @@ export class Miner {
         this.hashTimings = [];
         if (this.wsCallbacks.onHashRateUpdated) { this.wsCallbacks.onHashRateUpdated.execute(hashRate); }
     }
+    #hashRateNewHash(hashBeforeAveraging = 10, nbOfHashrateToKeepForAverage = 1) {//this.nbOfWorkers) {
+        this.hashCount++;
+        //console.log(`count: ${this.hashCount} | nbOfWorkers: ${this.workers.length}`);
+        if (this.hashCount < hashBeforeAveraging) { return; }
+
+        const timeSpent = (Date.now() - this.hashPeriodStart) / 1000;
+        const hashRate = this.hashCount / timeSpent;
+
+        this.hashRates.push(hashRate);
+        this.hashRate = this.hashRates.reduce((acc, rate) => acc + rate, 0) / this.hashRates.length;
+
+        if (this.hashRates.length > nbOfHashrateToKeepForAverage) { this.hashRates.shift(); }
+        this.hashCount = 0;
+        this.hashPeriodStart = Date.now();
+    }
     /** @param {BlockData} finalizedBlock */
-    async #broadcastBlockCandidate(finalizedBlock) {
+    async broadcastBlockCandidate(finalizedBlock) {
         // Avoid sending the block pow if a higher block candidate is available to be mined
         if (this.highestBlockIndex > finalizedBlock.index) { return; }
         const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
@@ -169,7 +212,7 @@ export class Miner {
         this.addressOfCandidatesBroadcasted.push(validatorAddress);
         await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
 
-        if (this.roles.includes('validator')) { this.opStack.push('digestPowProposal', finalizedBlock); };
+        if (this.roles.includes('validator')) { this.opStack.pushFirst('digestPowProposal', finalizedBlock); };
         if (this.wsCallbacks.onBroadcastFinalizedBlock) { this.wsCallbacks.onBroadcastFinalizedBlock.execute(BlockUtils.getBlockHeader(finalizedBlock)); }
     }
     async #createMissingWorkers(workersStatus = []) {
@@ -180,6 +223,9 @@ export class Miner {
             worker.on('message', (message) => {
                 try {
                     if (message.error) { throw new Error(message.error); }
+                    this.#hashRateNewHash();
+                    if (message.type === 'hash') { return; }
+
                     /** @type {BlockData} */
                     const finalizedBlock = message.blockCandidate;
                     const { conform } = utils.mining.verifyBlockHashConformToDifficulty(message.bitsArrayAsString, finalizedBlock);
@@ -197,7 +243,7 @@ export class Miner {
                     }
 
                     if (finalizedBlock.timestamp <= this.timeSynchronizer.getCurrentTime()) { // if block is ready to be broadcasted
-                        this.#broadcastBlockCandidate(finalizedBlock);
+                        this.broadcastBlockCandidate(finalizedBlock);
                     } else { // if block is not ready to be broadcasted (pre-shoted)
                         this.preshotedPowBlock = finalizedBlock;
                         this.bets[finalizedBlock.index] = 1; // avoid betting on the same block
@@ -207,138 +253,125 @@ export class Miner {
                 }
                 workersStatus[message.id] = 'free';
             });
-            worker.on('exit', (code) => { console.log(`Worker stopped with exit code ${code}`); });
-            worker.on('close', () => { console.log('Worker closed'); });
+            worker.on('exit', (code) => { console.log(`[MINER] Worker stopped with exit code ${code}`); });
+            worker.on('close', () => { console.log('[MINER] Worker closed'); });
 
             this.workers.push(worker);
             workersStatus.push('free');
-            console.log(`Worker ${this.workers.length} started`);
+            console.log(`[MINER] Worker ${this.workers.length} started`);
+        }
+    }
+    async #stopWorkersIfNotNeeded(workersStatus = []) {
+        const nbOfWorkers = this.nbOfWorkers;
+        const workersLength = this.workers.length;
+        if (workersLength <= nbOfWorkers) { return; }
+
+        for (let i = nbOfWorkers; i < workersLength; i++) {
+            const worker = this.workers[i];
+            worker.postMessage({ type: 'terminate' });
+            this.workers.splice(i, 1);
+            workersStatus.splice(i, 1);
+            console.log(`Worker ${i} terminated`);
         }
     }
     /** DON'T AWAIT THIS FUNCTION */
-    async startWithWorker() {
+    async startWithWorker() { // DEPRECATED
         const workersStatus = [];
-        let lastHashTime = this.timeSynchronizer.getCurrentTime();
         while (!this.terminated) {
+            const startTimestamp = Date.now();
             const delayBetweenMining = this.roles.includes('validator') ? 20 : 10;
             await new Promise((resolve) => setTimeout(resolve, delayBetweenMining));
 
             const preshotedPowReadyToSend = this.preshotedPowBlock ? this.preshotedPowBlock.timestamp <= this.timeSynchronizer.getCurrentTime() : false;
             if (preshotedPowReadyToSend) {
-                this.#broadcastBlockCandidate(this.preshotedPowBlock);
+                this.broadcastBlockCandidate(this.preshotedPowBlock);
                 this.preshotedPowBlock = null;
             }
 
             if (!this.canProceedMining) { continue; }
 
             await this.#createMissingWorkers(workersStatus);
-            const usableWorkersStatus = workersStatus.slice(0, this.nbOfWorkers);
-            for (let i = 0; i < usableWorkersStatus.length; i++) {
-                const id = usableWorkersStatus.indexOf('free');
+
+            const id = workersStatus.slice(0, this.nbOfWorkers).indexOf('free');
+            if (id === -1) { continue; }
+
+            const blockCandidate = this.#getMostLegitimateBlockCandidate();
+            if (!blockCandidate) { continue; }
+
+            this.#setBestCandidateIfChanged(blockCandidate);
+            workersStatus[id] = 'busy';
+            
+            const { signatureHex, nonce, clonedCandidate } = await this.#prepareBlockCandidateBeforeMining(blockCandidate);
+            this.workers[id].postMessage({ type: 'mine', blockCandidate: clonedCandidate, signatureHex, nonce, id, useDevArgon2: this.useDevArgon2 });
+            
+            const endTimestamp = Date.now();
+            const timeSpent = endTimestamp - startTimestamp;
+            console.info(`[MINER-${this.address.slice(0, 6)}] timeSpent: ${timeSpent}ms`);
+        }
+
+        console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);
+    }
+    async startWithAutoWorker() {
+        const workersStatus = [];
+        let pausedWorkers = [];
+        let workersPaused = false;
+        while (!this.terminated) {
+            const delayBetweenMining = this.roles.includes('validator') ? 20 : 10;
+            await new Promise((resolve) => setTimeout(resolve, delayBetweenMining));
+
+            const preshotedPowReadyToSend = this.preshotedPowBlock ? this.preshotedPowBlock.timestamp <= this.timeSynchronizer.getCurrentTime() : false;
+            if (preshotedPowReadyToSend) {
+                this.broadcastBlockCandidate(this.preshotedPowBlock);
+                this.preshotedPowBlock = null;
+            }
+
+            if (!this.bestCandidate) { continue; }
+
+            /*if (!this.canProceedMining) {
+                if (pausedWorkers.length !== 0) { continue; }
+                for (let i = 0; i < this.workers.length; i++) {
+                    const worker = this.workers[i];
+                    worker.postMessage({ type: 'pause' });
+                    pausedWorkers.push(i);
+                }
+                continue;
+            }
+
+            for (let i = 0; i < pausedWorkers.length; i++) {
+                const worker = this.workers[pausedWorkers[i]];
+                worker.postMessage({ type: 'resume' });
+            }
+
+            pausedWorkers = [];*/
+            await this.#createMissingWorkers(workersStatus);
+            await this.#stopWorkersIfNotNeeded(workersStatus);
+            
+            if (this.bestCandidateChanged) {
+                for (let i = 0; i < this.workers.length; i++) {
+                    this.workers[i].postMessage({ id: i, type: 'newCandidate', blockCandidate: this.bestCandidate });
+                }
+                this.bestCandidateChanged = false;
+            }
+
+            while(true) {
+                const id = workersStatus.slice(0, this.nbOfWorkers).indexOf('free');
                 if (id === -1) { break; }
 
-                const blockCandidate = this.#getMostLegitimateBlockCandidate();
-                if (!blockCandidate) { continue; }
-
-                this.#hashRateNew(this.timeSynchronizer.getCurrentTime() - lastHashTime);
-                lastHashTime = this.timeSynchronizer.getCurrentTime();
                 workersStatus[id] = 'busy';
-
-                const { signatureHex, nonce, clonedCandidate } = await this.#prepareBlockCandidateBeforeMining(blockCandidate);
-                this.workers[id].postMessage({ type: 'mine', blockCandidate: clonedCandidate, signatureHex, nonce, id, useDevArgon2: this.useDevArgon2 });
+                this.workers[id].postMessage({
+                    id,
+                    type: 'mineUntilValid',
+                    rewardAddress: this.address,
+                    bet: this.bets[this.bestCandidate.index],
+                    timeOffset: this.timeSynchronizer.offset,
+                    blockCandidate: this.bestCandidate
+                });
             }
         }
 
         console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);
     }
 
-    /** Event based operations */ // NOT GOOD !
-    start_v2(nbOfWorkers = 1) {
-        this.version = 2;
-        this.setNbOfThreads(nbOfWorkers);
-    }
-    async assignTaskToIdleWorkers() {
-        if (this.idleWorkers.length === 0) { return; }
-
-        const prepared = await this.#prepareNextBlock();
-        if (!prepared) { return; }
-        
-        while (this.idleWorkers.length > 0) {
-            const worker = this.idleWorkers.shift();
-            const { signatureHex, nonce, clonedCandidate } = prepared;
-            worker.postMessage({ type: 'mine&verify', blockCandidate: clonedCandidate, signatureHex, nonce, useDevArgon2: this.useDevArgon2 });
-            //await new Promise((resolve) => setTimeout(resolve, 10));
-        }
-    }
-    /** @param {BlockData} block */
-    #removeBlockFromCandidates(block) {
-        const validatorAddress = block.Txs[1].inputs[0].split(':')[0];
-        const index = this.candidates.findIndex(
-            candidate => candidate.index === finalizedBlock.index &&
-            candidate.Txs[0].inputs[0].split(':')[0] === validatorAddress);
-
-        if (index === -1) { return; }
-        
-        this.candidates.splice(index, 1);
-    }
-    async #prepareNextBlock() {
-        const blockCandidate = this.#getMostLegitimateBlockCandidate();
-        if (!blockCandidate) { return false; }
-
-        return this.#prepareBlockCandidateBeforeMining(blockCandidate);
-    }
-    newWorker() {
-        const worker = utils.newWorker('../workers/miner-worker-nodejs.mjs');
-        worker.on('message', async (message) => {
-            const conform = message.conform;
-            const finalizedBlock = message.finalizedBlock;
-            const error = message.error;
-
-            /** @type {BlockData} */
-            this.#removeBlockFromCandidates(finalizedBlock);
-
-            setTimeout(async () => {
-                const preparedPromise = await this.#prepareNextBlock();
-                if (!preparedPromise) { this.idleWorkers.push(worker); return; }
-
-                worker.postMessage({
-                    type: 'mine&verify',
-                    blockCandidate: preparedPromise.clonedCandidate,
-                    signatureHex: preparedPromise.signatureHex,
-                    nonce: preparedPromise.nonce,
-                    useDevArgon2: this.useDevArgon2
-                });
-            }, 0);
-
-            if (error) { console.error(error); return; }
-            if (!conform) { return; }
-
-            // if block isn't ready to be broadcasted - avoid betting on the same block
-            if (finalizedBlock.timestamp > this.timeSynchronizer.getCurrentTime()) { this.bets[finalizedBlock.index] = 1; }
-            setTimeout(() => { this.#broadcastBlockCandidate(finalizedBlock); }, finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime());
-        });
-
-        worker.on('exit', (code) => { console.log(`MinerWorker stopped with exit code ${code}`); });
-        worker.on('close', () => { console.log('MinerWorker closed'); });
-
-        this.workers.push(worker);
-        this.idleWorkers.push(worker);
-    }
-    setNbOfThreads(nbOfWorkers = 1) {
-        const existingNbOfWorkers = this.workers.length;
-        if (existingNbOfWorkers === nbOfWorkers) { return; }
-
-        if (existingNbOfWorkers < nbOfWorkers) {
-            for (let i = existingNbOfWorkers; i < nbOfWorkers; i++) { this.newWorker(); }
-        } else {
-            // terminate workers from the last to the first
-            for (let i = existingNbOfWorkers - 1; i >= nbOfWorkers; i--) {
-                this.workers[i].postMessage({ type: 'terminate' });
-                this.workers.splice(i, 1);
-            }
-        }
-        console.log(`Worker ${this.workers.length} started, state: idle`);
-    }
     terminate() {
         this.terminated = true;
         for (let i = 0; i < this.workers.length; i++) {

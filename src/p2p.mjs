@@ -308,7 +308,7 @@ class P2PNetwork extends EventEmitter {
             if (error.message === "PublishError.NoPeersSubscribedToTopic") {
                 return error;
             }
-            this.logger.error('luid-8e340d55 Broadcast error', { component: 'P2PNetwork', topic, error: error.message });
+            this.logger.error('luid-8e340d55 Broadcast error', { component: 'P2PNetwork', topic, error: error });
             return error;
         }
     }

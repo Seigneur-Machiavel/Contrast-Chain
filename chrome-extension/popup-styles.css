@@ -60,13 +60,18 @@ h1, h2 {
     opacity: 0;
     filter: blur(4px);
     transition: opacity 1.2s ease-in-out, filter .6s .6s ease-in-out;
+
+    /* TEST MORPHING */
+    transition: background-image 1s ease-in-out, transform .6s ease-in-out;
+    background-repeat: no-repeat;
+    background-position: 50%;
 }
 #welcomeCanvas2 {
     position: fixed;
     /*top: 10px;*/
     top: 0;
 }
-#loginForm {
+#loginForm, #passwordCreationForm {
     position: relative;
     z-index: 1;
 }
@@ -861,7 +866,6 @@ button.classy.clicked:not(.disabled) {
     align-items: flex-start;
     margin: 0 30px 20px;
     width: auto;
-    color: #c1c1c1;
 }
 .inlineRange {
     display: flex;
@@ -870,7 +874,6 @@ button.classy.clicked:not(.disabled) {
     padding: 10px;
     width: -webkit-fill-available;
     border-radius: 6px;
-    filter: drop-shadow(2px 3px 4px rgba(0, 0, 0, .4));
 }
 .inlineRange label {
     font-size: medium;
@@ -910,8 +913,9 @@ button.classy.clicked:not(.disabled) {
     filter: brightness(1.2);
 }
 #centerScreenBtnWrap.active {
-    pointer-events: all;
-    cursor: pointer;
+    pointer-events: none;
+    /*pointer-events: all;
+    cursor: pointer;*/
 }
 #centerScreenBtnWrap.active:hover {
     filter: blur(.3px) brightness(1.02);

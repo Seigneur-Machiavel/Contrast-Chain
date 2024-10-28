@@ -263,7 +263,7 @@ class Logger {
                 const color = this.getColorForType(type);
                 const timestamp = new Date().toISOString();
                 const coloredLogMessage = `${color}[${timestamp}] [${type.toUpperCase()}] ${consoleMessage}${colors.reset}`;
-                console[type](coloredLogMessage);
+                //console[type](coloredLogMessage);
             } else {
                 console.log(consoleMessage);
             }

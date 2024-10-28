@@ -37,9 +37,6 @@ async function getArgon2Lib() {
 };
 const argon2Lib = await getArgon2Lib();
 
-//import Compressor from '../externalLibs/gzip.min.js'; -> not used anymore
-//import Decompressor from '../externalLibs/gunzip.min.js'; -> not used anymore
-
 /**
 * @typedef {import("./block.mjs").Block} Block
 * @typedef {import("./block.mjs").BlockData} BlockData

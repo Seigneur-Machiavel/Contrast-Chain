@@ -9,7 +9,7 @@ import { cryptoLight } from './cryptoLight.js';
 
 cryptoLight.argon2 = argon2;
 
-let pow = new Pow(argon2, "http://localhost:4340");
+let pow = new Pow(argon2);
 const sanitizer = new Sanitizer();
 const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
@@ -34,17 +34,19 @@ const transactionsByReference = {};
 async function getTransactionFromMemoryOrSendRequest(txReference, address = undefined) {
     let comply = true;
     const fromMemory = transactionsByReference[txReference];
+    if (fromMemory === 'request sent') { return 'request sent'; }
     if (fromMemory && address) { comply = fromMemory.balanceChange !== undefined; }
     if (fromMemory && comply) { return fromMemory; }
 
     await readyWS();
-    console.log(`requesting tx data: ${txReference}`);
+    //console.log(`requesting tx data: ${txReference}`);
     if (address) {
         ws.send(JSON.stringify({ type: 'get_transaction_with_balanceChange_by_reference', data: { txReference, address } }));
     } else {
         ws.send(JSON.stringify({ type: 'get_transaction_by_reference', data: txReference }));
     }
     
+    transactionsByReference[txReference] = 'request sent';
     return 'request sent';
 }
 
@@ -60,18 +62,13 @@ function connectWS() {
     ws.onopen = function() {
         console.log('Connection opened');
         //console.log(ws);
+        ws.send(JSON.stringify({ type: 'get_best_block_candidate' }));
+        ws.send(JSON.stringify({ type: 'subscribe_best_block_candidate_change' }));
     };
     ws.onclose = function() {
         console.info('Connection closed');
         setTimeout( () => {
-            console.info('--- reseting blockExplorerWidget >>>');
-
-            /*const clonedData = blockExplorerWidget.getCloneBeforeReset();
-            blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
-
-            if (!clonedData.modalContainer) { return; }
-
-            blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);*/
+            connectWS();
         }, SETTINGS.RECONNECT_INTERVAL);
     };
     ws.onmessage = async function(event) {
@@ -80,6 +77,11 @@ function connectWS() {
         const data = message.data;
         let remainingAttempts = 10;
         switch (message.type) {
+            case 'current_time':
+                const timeOffset = data - Date.now();
+                pow.timeOffset = timeOffset;
+                console.log(`[BACKGROUND] set timeOffset: ${timeOffset}`);
+                break;
             case 'address_exhaustive_data_requested':
                 //console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
                 //console.log('data:', data);
@@ -113,20 +115,33 @@ function connectWS() {
 
                 chrome.runtime.sendMessage({ action: 'transaction_requested', transactionWithDetails });
                 break;
+            case 'best_block_candidate_requested':
+                if (!data) { console.info('[BACKGROUND] Received best_block_candidate_requested with no data!'); return; }
+                console.log(`[BACKGROUND] best_block_candidate_requested: ${data.index} - ${data.legitimacy}`);
+                pow.bestCandidate = data;
+                break;
             case 'transaction_broadcast_result':
                 console.log('[BACKGROUND] transaction_broadcast_result:', data);
-                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
+                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', transaction: data.transaction, txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
                 break;
             case 'subscribed_balance_update':
                 subscriptions.balanceUpdates[data] = true;
                 console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
                 break;
+            case 'subscribed_best_block_candidate_change':
+                console.log(`[BACKGROUND] subscribed_best_block_candidate_change`);
+                break;
             case 'balance_updated':
                 if (!subscriptions.balanceUpdates[trigger]) { return; }
-                console.log(`[BACKGROUND] balance_updated: ${trigger}`);
+                //console.log(`[BACKGROUND] balance_updated: ${trigger}`);
                 ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
                 break;
             case 'new_block_confirmed':
+                break;
+            case 'best_block_candidate_changed':
+                if (!data) { console.info('[BACKGROUND] Received best_block_candidate_changed with no data!'); return; }
+                console.log(`[BACKGROUND] best_block_candidate_changed: ${data.index} - ${data.legitimacy}`);
+                pow.bestCandidate = data;
                 break;
             case 'current_height':
                 break;
@@ -145,6 +160,13 @@ async function getHeightsLoop() {
         try { ws.send(JSON.stringify({ type: 'get_height' })) } catch (error) {};
     }
 }; getHeightsLoop();
+async function getTimeLoop() {
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, 60_000 * 60); });
+        if (!ws || ws.readyState !== 1) { continue; }
+        try { ws.send(JSON.stringify({ type: 'get_current_time' })) } catch (error) {};
+    }
+}; getTimeLoop();
 async function readyWS() {
     return new Promise((resolve, reject) => {
         if (ws.readyState === 1) { resolve(); return; }
@@ -163,7 +185,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     
     switch (request.action) {
         case 'get_transaction_with_balanceChange_by_reference':
-            console.log(`[BACKGROUND] get_transaction_with_balanceChange_by_reference: ${request.txReference}, from: ${request.address}`);
+            //console.log(`[BACKGROUND] get_transaction_with_balanceChange_by_reference: ${request.txReference}, from: ${request.address}`);
             const transactionWithDetails = await getTransactionFromMemoryOrSendRequest(request.txReference, request.address);
             if (transactionWithDetails === 'request sent') { return; }
 
@@ -217,35 +239,39 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             // open popup for authentication
             chrome.runtime.sendMessage({action: "openPage", data: {password: request.data.password}});
             break;
-        case "startMining":
-            //console.log('Starting mining 1...');
-            pow.startMining();
-            break;
-        case "stopMining":
-            //console.log('Stopping mining 1...');
-            pow.stopMining();
-            break;
         default:
             console.log(`[BACKGROUND] Unknown request: ${request}`);
             break;
     }
 });
-chrome.storage.onChanged.addListener(function(changes, namespace) {
+chrome.storage.onChanged.addListener(async function(changes, namespace) {
     for (let key in changes) {
         if (key === 'miningIntensity') {
             console.log(`Mining intensity changed to ${changes[key].newValue}`);
-            pow.intensity = changes[key].newValue;
+            pow.miningIntensity = changes[key].newValue;
+        }
+        if (key === 'blockFinalized') {
+            if (!changes[key].newValue) { return; }
+            console.log(`Block finalized received in background!`);
+            const blockFinalized = changes[key].newValue;
+            console.log(blockFinalized);
+            //chrome.storage.local.set({blockFinalized: undefined});
+
+            await readyWS();
+            ws.send(JSON.stringify({ type: 'broadcast_finalized_block', data: blockFinalized }));
         }
     }
 });
 (async () => { // INIT FUNCTION
     console.log('Background script starting...');
-    
-    // if not initialized, initialize mining state
-    const miningState = await chrome.storage.local.get('miningState');
-    if (!miningState || !miningState.miningState) {
-        await chrome.storage.local.set({miningState: 'disabled'});
+
+    const miningIntensity = await chrome.storage.local.get('miningIntensity');
+    if (!miningIntensity || !miningIntensity.miningIntensity) {
+        await chrome.storage.local.set({miningIntensity: 0});
     }
+    pow.miningIntensity = miningIntensity.miningIntensity;
+    console.log(`Mining intensity set: ${pow.miningIntensity}`);
+
     console.log('Background script started!');
 })();
 

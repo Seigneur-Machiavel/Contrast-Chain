@@ -57,7 +57,7 @@ export class CallBackManager {
                 //utxoCache: [`onBalanceUpdated:${this.node.miner.address}`],
             },
             observer: {
-                node: ['onBroadcastNewCandidate:all',  'onBlockConfirmed:all'],
+                node: ['onBroadcastNewCandidate:all', 'onBlockConfirmed:all']
             },
         }
     }
@@ -179,6 +179,22 @@ const CALLBACKS_FUNCTIONS = {
         */
         onBroadcastFinalizedBlock: (blockHeader, wsClients = [], trigger = '') => {
             sendToClients({ type: 'broadcast_finalized_block', data: blockHeader, trigger }, wsClients);
+        },
+        /** send the block candidate when the local miner receive it
+         * @param {BlockData} blockData
+         * @param {WebSocket[]} wsClients
+         * @emits msgSent: { type: 'receive_block_candidate', data: blockData, trigger }
+         */
+        onReceiveBlockCandidate: (blockData, wsClients = [], trigger = '') => {
+            sendToClients({ type: 'receive_block_candidate', data: blockData, trigger }, wsClients);
+        },
+        /** send the best block candidate when the local miner update it
+         * @param {BlockData} blockData
+         * @param {WebSocket[]} wsClients
+         * @emits msgSent: { type: 'best_block_candidate_changed', data: blockData, trigger }
+         */
+        onBestBlockCandidateChange: (blockData, wsClients = [], trigger = '') => {
+            sendToClients({ type: 'best_block_candidate_changed', data: blockData, trigger }, wsClients);
         },
         /** send the local miner hashRate to the clients
          * @param {number} hashRate - hash rate of the miner

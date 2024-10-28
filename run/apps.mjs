@@ -216,6 +216,11 @@ export class DashboardWsApp {
             node.minerAddress = associatedMinerAddress;
             node.miner.address = associatedMinerAddress;
         }
+
+        const associatedMinerThreads = this.#nodesSettings[nodeId].minerThreads;
+        if (associatedMinerThreads) { 
+            node.miner.nbOfWorkers = associatedMinerThreads;
+        }
     }
 
     #hardResetAndClose() {
@@ -340,6 +345,9 @@ export class DashboardWsApp {
                 console.log(`Setting miner threads to ${data}`);
                 if (!this.node) { console.error('No active node'); break; }
                 this.node.miner.nbOfWorkers = data;
+
+                this.#nodesSettings[this.node.id].minerThreads = data;
+                this.#saveNodeSettings();
                 break;
             case 'new_unsigned_transaction':
                 console.log(`signing transaction ${data.id}`);
@@ -460,6 +468,9 @@ export class ObserverWsApp {
         const startHeight = toHeight - nbOfBlocks < 0 ? 0 : toHeight - nbOfBlocks;
         const last5BlocksInfo = this.node.blockchain.lastBlock ? await this.node.getBlocksInfo(startHeight, toHeight) : [];
         ws.send(JSON.stringify({ type: 'last_confirmed_blocks', data: last5BlocksInfo }));
+
+        const time = this.node.timeSynchronizer.getCurrentTime();
+        ws.send(JSON.stringify({ type: 'current_time', data: time }));
     }
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
@@ -470,6 +481,9 @@ export class ObserverWsApp {
             const data = parsedMessage.data;
             let exhaustiveBlockData;
             switch (parsedMessage.type) {
+                case 'get_current_time':
+                    ws.send(JSON.stringify({ type: 'current_time', data: this.node.timeSynchronizer.getCurrentTime() }));
+                    break;
                 case 'get_height':
                     ws.send(JSON.stringify({ type: 'current_height', data: this.node.blockchain.currentHeight }));
                     break;
@@ -530,16 +544,34 @@ export class ObserverWsApp {
                     const { transaction, balanceChange, inAmount, outAmount, fee } = await this.node.getTransactionByReference(data.txReference, data.address);
                     if (!transaction) { console.error(`[OBSERVER] Transaction not found: ${data.txReference}`); return; }
                     ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, inAmount, outAmount, fee, txReference: data.txReference } }));
+                    break;
+                case 'get_best_block_candidate':
+                    const bestBlockCandidate = this.node.miner.bestCandidate;
+                    ws.send(JSON.stringify({ type: 'best_block_candidate_requested', data: bestBlockCandidate }));
+                    break;
                 case 'subscribe_balance_update':
                     this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, [ws]);
                     ws.send(JSON.stringify({ type: 'subscribed_balance_update', data }));
+                    break;
+                case 'subscribe_best_block_candidate_change':
+                    this.callBackManager.attachWsCallBackToModule('miner', 'onBestBlockCandidateChange', [ws]);
+                    ws.send(JSON.stringify({ type: 'subscribed_best_block_candidate_change' }));
                     break;
                 case 'broadcast_transaction':
                     //const deserializeTx = contrast.utils.serializerFast.deserialize.transaction(data);
                     const { broadcasted, pushedInLocalMempool, error } = await this.node.pushTransaction(data.transaction);
                     if (error) { console.error('Error broadcasting transaction', error); }
 
-                    ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
+                    ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { transaction: data.transaction, txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
+                    break;
+                case 'broadcast_finalized_block':
+                    console.log(`--- Broadcasting finalized block from observer ---`);
+                    //try {
+                        await this.node.p2pNetwork.broadcast('new_block_finalized', data);
+                        if (this.node.roles.includes('validator')) { this.node.opStack.pushFirst('digestPowProposal', data); };
+                    //} catch (error) {
+                        //console.error(`Error broadcasting finalized block: ${error.message}`);
+                    //}
                     break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: `unknown message type: ${parsedMessage.type}` }));

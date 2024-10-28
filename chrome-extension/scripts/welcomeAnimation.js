@@ -28,7 +28,7 @@ class ParticleAnimation {
         amplitude: 8,
     };
     particleConfig = {
-        number: 256,
+        number: 128,
         radius: 64,
         sizeCategories: {
             probabilities: {

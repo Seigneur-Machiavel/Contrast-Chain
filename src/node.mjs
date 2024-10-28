@@ -109,8 +109,8 @@ export class Node {
 
         await this.p2pNetwork.start(); // start the libp2p network
         await this.syncHandler.start(this.p2pNetwork);
-        if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
-        //if (this.roles.includes('miner')) { this.miner.start_v2(); }
+        //if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
+        if (this.roles.includes('miner')) { this.miner.startWithAutoWorker(); }
         await this.#waitSomePeers();
 
         console.log('P2P network is ready - we are connected baby!');
@@ -214,10 +214,10 @@ export class Node {
         let alreadyLog = false;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             if (abort) { break; }
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${this.p2pNetwork.getConnectedPeers().length} peer${this.p2pNetwork.getConnectedPeers().length > 1 ? 's' : ''}`);
+            //await new Promise(resolve => setTimeout(resolve, 1000));
+            //console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${this.p2pNetwork.getConnectedPeers().length} peer${this.p2pNetwork.getConnectedPeers().length > 1 ? 's' : ''}`);
             
-            const peersIds = this.p2pNetwork.getConnectedPeers();
+            let peersIds = this.p2pNetwork.getConnectedPeers();
             let peerCount = peersIds.length;
             
             const myPeerId = this.p2pNetwork.p2pNode.peerId.toString();
@@ -227,12 +227,19 @@ export class Node {
             if (peerCount >= nbOfPeers) { return peerCount; }
 
             await this.p2pNetwork.connectToBootstrapNodes();
-            if (alreadyLog) { continue; }
+
             // Just find a peer to connect to -> sync
-            if (this.p2pNetwork.getConnectedPeers().length > 0) {
+            peersIds = this.p2pNetwork.getConnectedPeers();
+            peerCount = peersIds.length;
+            if (peersIds.includes(myPeerId)) { peerCount--; }
+            if (peerCount >= nbOfPeers) {
                 this.opStack.pushFirst('syncWithKnownPeers', null);
+                console.log(`Connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
+                return peerCount;
             }
             
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            if (alreadyLog) { continue; }
             alreadyLog = true;
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
         }
@@ -530,7 +537,7 @@ export class Node {
                     if (!this.roles.includes('validator')) { break; }
                     const lastBlockIndex = this.blockchain.currentHeight;
                     const isSynchronized = data.index === 0 || lastBlockIndex + 1 >= data.index;
-                    if (isSynchronized) { this.opStack.push('digestPowProposal', message); break; }
+                    if (isSynchronized) { this.opStack.pushFirst('digestPowProposal', message); break; }
 
                     // if we are late, we ask for the missing blocks by p2p streaming
                     this.opStack.pushFirst('syncWithKnownPeers', null);

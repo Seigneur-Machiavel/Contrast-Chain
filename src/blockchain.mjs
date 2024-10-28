@@ -340,16 +340,19 @@ export class Blockchain {
         } catch (error) {}; //console.error(error);
 
         const txsRefsDupiCounter = {};
-        const txsRefsWithDuplicates = [];
+        const txsRefsWithoutDuplicates = [];
         let duplicate = 0;
         for (let i = 0; i < txsRefs.length; i++) {
             const txRef = txsRefs[i];
-            if (txsRefsDupiCounter[txRef]) { duplicate++; }
+            if (txsRefsDupiCounter[txRef]) {
+                duplicate++;
+                continue;
+            }
             
             txsRefsDupiCounter[txRef] = true;
-            txsRefsWithDuplicates.push(txRef);
+            txsRefsWithoutDuplicates.push(txRef);
         }
-        txsRefs = txsRefsWithDuplicates
+        txsRefs = txsRefsWithoutDuplicates
         if (duplicate > 0) {
              console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
 

@@ -547,15 +547,15 @@ class Miner {
 	* @param {CenterScreenBtn} centerScreenBtn
 	* @param {Communication} communication
 	*/
-	constructor(centerScreenBtn, communication) {
-		this.connectionState = null;
-		this.sanitizer = new Sanitizer();
+	constructor(centerScreenBtn) {
 		this.centerScreenBtn = centerScreenBtn;
-		this.communication = communication;
+		this.connectionState = 'connected';
+		this.paused = false;
+
+		this.miningAnimationLoop();
 	}
 
-	async init() {
-		this.connectionState = await this.getConnectionStateFromStorage();
+	async init() { // DEPRECATED
 		const miningIsActive = await this.isMiningActive();
         if (miningIsActive) { // continue mining
             console.log(`popup send: startMining (from previous state)`);
@@ -563,20 +563,7 @@ class Miner {
             this.centerScreenBtn.pickAxe.classList.remove('invisible');
         }
 
-		this.initListeners();
-        const intensity = await this.getIntensityFromStorage();
-        this.setIntensityRangeValue(intensity);
         this.miningAnimationLoop();
-	}
-	async toogleMining() {
-		const miningIsActive = await this.isMiningActive();
-		if (miningIsActive) {
-			console.log(`popup send: stopMining`);
-			await chrome.runtime.sendMessage({action: "stopMining"});
-		} else {
-			console.log(`popup send: startMining`);
-			await chrome.runtime.sendMessage({action: "startMining"});
-		}
 	}
 	async miningAnimationLoop() {
 		const pickAxe = this.centerScreenBtn.pickAxe;
@@ -659,63 +646,16 @@ class Miner {
 	}
 	/** @return {Promise<boolean>} - true if mining is active */
 	async isMiningActive() {
-		const result = await chrome.storage.local.get(['miningState']);
-		if (!result) { return; }
+		const miningIntensity = await chrome.storage.local.get('miningIntensity');
+		if (!miningIntensity || !miningIntensity.miningIntensity || miningIntensity.miningIntensity === 0) {
+			return false;
+		}
 
-		const miningState = sanitizer.sanitize(result.miningState);
-		return miningState === 'enabled';
+		return true;
 	}
-	async getConnectionStateFromStorage() {
-		const result = await chrome.storage.local.get(['connectionState']);
-		if (!result) { return; }
-	
-		return sanitizer.sanitize(result.connectionState);
-	}
-	async getIntensityFromStorage() {
-		const result = await chrome.storage.local.get(['miningIntensity']);
-		if (!result) { return; }
-	
-		return sanitizer.sanitize(result.miningIntensity);
-	}
-	setIntensityRangeValue(value = 1) {
-		const rangeInput = document.getElementsByName('intensity')[0];
-		rangeInput.value = value;
-	
-		const rangeSpan = document.getElementById('intensityValueStr');
-		rangeSpan.innerText = value;
-	}
-	getIntensityFromSpan() { // MERGE TO MINER CLASSE
+	getIntensityFromSpan() {
 		const rangeSpan = document.getElementById('intensityValueStr');
 		return parseInt(rangeSpan.innerText);
-	}
-	initListeners() {
-		chrome.storage.onChanged.addListener((changes, namespace) => {
-			//console.log(`storage listener received: ${JSON.stringify(changes)}`);
-			for (let key in changes) {
-				switch (key) {
-					case 'hashRate':
-						const hashRate = this.sanitizer.sanitize(changes[key].newValue);
-						const hashRateElmnt = document.getElementById('hashRateValueStr');
-						hashRateElmnt.innerText = hashRate.toFixed(2);
-						break;
-					case 'miningIntensity':
-						const intensity = this.sanitizer.sanitize(changes[key].newValue);
-						this.setIntensityRangeValue(intensity);
-						break;
-					case 'connectionState':
-						//console.log(`connectionState listener received: ${changes[key].newValue}`);
-						const connectionState = this.sanitizer.sanitize(changes[key].newValue);
-						this.connectionState = connectionState;
-						break;
-					default:
-						break;
-				}
-			}
-		});
-
-		this.centerScreenBtn.centerScreenBtnWrap.addEventListener('click', async () => {
-			await this.toogleMining();
-		});
 	}
 }
 //#endregion

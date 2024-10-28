@@ -1,4 +1,3 @@
-
 if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const anime = require("./anime.min.js");
     const PatternGenerator = require("./pattern-generator.js");
@@ -13,8 +12,8 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
 
 /**
 * @typedef {import("../contrast/src/transaction.mjs").UTXO} UTXO
-* @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
 * @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
+* @typedef {import("../contrast/front/explorerScript.mjs").BlockExplorerWidget} BlockExplorerWidget
 */
 
 /** @type {BlockExplorerWidget} */
@@ -139,6 +138,12 @@ const eHTML = {
     //? mnemonicOverviewForm: document.getElementById('mnemonicOverviewForm'),
 
     settingsForm: document.getElementById('settingsForm'),
+    mining: {
+        form: document.getElementById('miningForm'),
+        intensityInput: document.getElementsByName('intensity')[0],
+        intensityValueStr: document.getElementById('intensityValueStr'),
+        hashRateValueStr: document.getElementById('hashRateValueStr'),
+    },
 
     walletForm: document.getElementById('walletForm'),
     spendableBalanceStr: document.getElementById('spendableBalanceStr'),
@@ -218,14 +223,9 @@ function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     });
 }
 
-async function setMiningIntensityFromLocalStorage() {
-    const miningIntensity = await chrome.storage.local.get('miningIntensity');
-    const intensity = miningIntensity.miningIntensity || 1;
-    document.getElementsByName('intensity')[0].value = intensity;
-    document.getElementById('intensityValueStr').innerText = intensity;
-}
 function setVisibleForm(formId, applyBLur = true) {
     //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    miner.paused = true;
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
@@ -245,6 +245,7 @@ function setVisibleForm(formId, applyBLur = true) {
 
     centerScreenBtn.centerScreenBtnWrap.classList.remove('active');
     eHTML.welcomeCanvas.classList.add('hidden');
+    eHTML.welcomeCanvas2.classList.add('hidden');
     eHTML.centerScreenBtnContrainer.classList.add('hidden');
 
     const forms = document.getElementsByTagName('form');
@@ -256,10 +257,12 @@ function setVisibleForm(formId, applyBLur = true) {
     if (formId === "passwordCreationForm" || formId === "loginForm") {
         //eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         eHTML.welcomeCanvas.classList.remove('hidden');
+        eHTML.welcomeCanvas2.classList.remove('hidden');
         eHTML.bottomBar.classList.add('hidden');
         eHTML.appTitle.classList.remove('hidden');
         eHTML.popUpContent.classList.remove('large');
         popUpSize = 'small';
+        if (formId === "passwordCreationForm") { eHTML.welcomeCanvas.style.marginBottom = "-156px"; }
     }
 
     if (formId === "walletForm") {
@@ -276,11 +279,20 @@ function setVisibleForm(formId, applyBLur = true) {
     }
 
     if (formId === "miningForm") {
+        miner.paused = false;
         eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         centerScreenBtn.centerScreenBtnWrap.classList.add('active');
         eHTML.miningBtn.classList.remove('active');
         eHTML.miningBtn.classList.add('selected');
-        setTimeout(async () => { setMiningIntensityFromLocalStorage() }, 100);
+        setTimeout(async () => {
+            const miningIntensity = await chrome.storage.local.get('miningIntensity');
+            const intensity = miningIntensity.miningIntensity || 0;
+            eHTML.mining.intensityInput.value = intensity;
+            eHTML.mining.intensityValueStr.innerText = intensity;
+
+            const hashRate = await chrome.storage.local.get('hashRate');
+            eHTML.mining.hashRateValueStr.innerText = hashRate.hashRate.toFixed(3) || '0';
+        }, 100);
     }
 
     if (formId === "settingsForm") {
@@ -420,17 +432,36 @@ async function initUI() {
     eHTML.welcomeCanvas.style.opacity = '1';
     eHTML.welcomeCanvas.style.filter = 'blur(0px)';
 
-    const particleAnimation = new ParticleAnimation();
+    eHTML.welcomeCanvas2.width = 360;
+    eHTML.welcomeCanvas2.height = 400;
+
+    /*const particleAnimation = new ParticleAnimation();
     particleAnimation.particleConfig.sizeRange = [10, 30];
     particleAnimation.init(eHTML.welcomeCanvas);
 
-    eHTML.welcomeCanvas2.width = 360;
-    eHTML.welcomeCanvas2.height = 400;
     const particleAnimation2 = new ParticleAnimation();
     particleAnimation2.particleConfig.radius = 256;
-    particleAnimation2.init(eHTML.welcomeCanvas2);
+    particleAnimation2.particleConfig.number = 64;
+    particleAnimation2.init(eHTML.welcomeCanvas2);*/
 
-    //setTimeout(() => { welcomeCanvas2Animation(); }, 400);
+    welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
+    setTimeout(async () => {
+        const dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
+        for (let i = 0; i < 50; i++) {
+            welcomeCanvasAnimationDocNewBubble(eHTML.welcomeCanvas, 1);
+            const rndDelay = Math.random() * 2000;
+            const delay = dotAppearTimings[i] || rndDelay;
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+
+        /*const dataURL = eHTML.welcomeCanvas.toDataURL();
+        ob = [];
+        eHTML.welcomeCanvas.style.backgroundImage = `url(${dataURL})`;
+        
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // set barre img
+        eHTML.welcomeCanvas.style.backgroundImage = 'url("../images/contrast128.png")';*/
+    }, 1000);
 
     // TITLE APPEAR ANIMATION
     const titleMl3 = eHTML.appTitle.getElementsByClassName('ml3')[0];
@@ -438,8 +469,7 @@ async function initUI() {
 
     const letterElmnts = titleMl3.getElementsByClassName('letter');
     const nbOfLetters = letterElmnts.length;
-    for (let i = 0; i < nbOfLetters; i++) {
-        
+    for (let i = 0; i < nbOfLetters; i++) { 
         const rndScale = Math.random() * 2;
         letterElmnts[i].style.transform = `scale(${rndScale})`;
         letterElmnts[i].style.filter = `blur(2px)`;
@@ -456,42 +486,48 @@ async function initUI() {
             opacity: 1,
             scale: 1,
             filter: 'blur(0px)',
-            duration: 200,
+            duration: 120,
             easing: 'easeInOutQuad'
         });
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 120));
     }
 }
-function welcomeCanvas2Animation() {
-    let ctx,count,tx,ty,ob;
+let ob = [];
+function welcomeCanvasAnimationDocNewBubble(canvasElement = eHTML.welcomeCanvas, amount = 1) {
+    let a,b,c,d;
+    let tx = canvasElement.width/2;
+    let ty = canvasElement.height/2;
 
-    let a,b;
-    ctx = eHTML.welcomeCanvas2.getContext('2d');
-    eHTML.welcomeCanvas2.width=eHTML.welcomeCanvas2.height=302;
-    count=0;
-    tx=eHTML.welcomeCanvas2.width/2;
-    ty=eHTML.welcomeCanvas2.height/2;
-    
-    ob=[];
-    for(a=0;a<27;a++){
+    for(a=0;a<amount;a++){
         b={};
         c=Math.PI*2*Math.random();
-        d=Math.random()*7000;
+        d=Math.random()*1000;
         b.x=tx+Math.cos(c)*d;
         b.y=ty+Math.sin(c)*d;
         b.rx=b.ry=0;
         b.typ=(Math.random()*360)|0;
         ob.push(b);
     }
+}
+function welcomeCanvasAnimationDocStart(canvasElement = eHTML.welcomeCanvas) {
+    let ctx,count,tx,ty;
+
+    ctx = canvasElement.getContext('2d');
+    canvasElement.width = 302;
+    canvasElement.height = 400;
+    count=0;
+    tx=canvasElement.width/2;
+    ty=canvasElement.height/2;
+
     aaa();
 
     function aaa(){
         let a,b,c,d,e,f,g,h,x,y,abs,pe,tim;
         ctx.globalCompositeOperation = "source-over";
 
-        ctx.clearRect(0, 0, eHTML.welcomeCanvas2.width, eHTML.welcomeCanvas2.height);
+        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
-        tim=count/12;
+        tim=count/270;
         abs=Math.abs;
         pe=1.2+Math.sin(tim/14.7)*0.87;
         
@@ -536,8 +572,8 @@ function welcomeCanvas2Animation() {
             x=b.x-tx;
             y=b.y-ty;
             e=Math.pow(x*x+y*y,0.5);
-            b.rx-=x*e/2750;
-            b.ry-=y*e/2750;
+            b.rx-=x*e/2000; // 2750
+            b.ry-=y*e/2000; // 2750
             b.x+=b.rx;
             b.y+=b.ry;
         }
@@ -733,7 +769,6 @@ function fillTxHistoryWithActiveAddressData(maxTxs = 16) {
     
     // FILLING THE ADDRESS TXS HISTORY
     const txsReferences = addressExhaustiveData.addressTxsReferences || [];
-    //for (const txReference of txsReferences) {
     let shownTxs = 0;
     let shownTxsReferences = [];
     for (let i = txsReferences.length; i > 0; i--) {
@@ -747,7 +782,7 @@ function fillTxHistoryWithActiveAddressData(maxTxs = 16) {
         shownTxsReferences.push(txReference);
         
         shownTxs++;
-        console.log(`shownTxs: ${shownTxs} / ${maxTxs}`);
+        //console.log(`shownTxs: ${shownTxs} / ${maxTxs}`);
         if (shownTxs >= maxTxs) { break; }
     }
     
@@ -784,7 +819,7 @@ function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
     return element;
 }
 function holdBtnMouseUp(target, duration = 1000) {
-    const initialBackground = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
+    const initialBackground = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
 
     return anime({
         targets: target,
@@ -799,13 +834,13 @@ function holdBtnMouseUp(target, duration = 1000) {
 function holdBtnMouseDown(target, completeFnc, duration = 2000) {
     const computedStyle = getComputedStyle(target);
     const bImage = computedStyle.backgroundImage;
-    const perc1 = bImage.split('%')[0].split(' ')[bImage.split('%')[0].split(' ').length - 1];
-    const perc2 = bImage.split('%')[1].split(' ')[bImage.split('%')[1].split(' ').length - 1];
-    target.style.background = `linear-gradient(90deg, var(--background-color1) ${perc1}%, var(--background-color2) ${perc2}%)`;
+    const perc1 = bImage === 'none' ? 0 : bImage.split('%')[0].split(' ')[bImage.split('%')[0].split(' ').length - 1];
+    const perc2 = bImage === 'none' ? 0 : bImage.split('%')[1].split(' ')[bImage.split('%')[1].split(' ').length - 1];
+    target.style.background = `linear-gradient(90deg, var(--color2) ${perc1}%, var(--color1) ${perc2}%)`;
 
     return anime({
         targets: target,
-        background: 'linear-gradient(90deg, var(--background-color1) 100%, var(--background-color2) 102%)',
+        background: 'linear-gradient(90deg, var(--color2) 100%, var(--color1) 102%)',
         duration,
         easing: 'easeInOutQuad',
         complete: () => { completeFnc(); }
@@ -969,49 +1004,6 @@ async function loadWalletGeneratedAccounts(walletInfo) {
     const nbOfAccounts = activeWallet.accounts[activeAddressPrefix].length;
     console.log(`[POPUP] wallet accounts loaded: ${nbOfAccounts}`);
 }
-async function addPendingAnchorsRelatedToAddress(address, anchors = []) {
-    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
-    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses || {};
-    if (!pendingAnchorsByAddresses[address]) { pendingAnchorsByAddresses[address] = []; }
-
-    pendingAnchorsByAddresses[address].push(...anchors);
-    await chrome.storage.local.set({ pendingAnchorsByAddresses });
-}
-async function getAllPendingAnchorsRelatedToAddress(address) {
-    const pendingAnchors = [];
-    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
-    if (!loadedPendingAnchors || !loadedPendingAnchors.pendingAnchorsByAddresses) { return pendingAnchors; }
-
-    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses;
-    if (!pendingAnchorsByAddresses[address]) { return pendingAnchors; }
-    for (const anchors of pendingAnchorsByAddresses[address]) {
-        pendingAnchors.push(anchors);
-    }
-
-    return pendingAnchors;
-}
-async function removePendingAnchorsRelatedToAddress(address, anchors = []) {
-    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
-    if (!loadedPendingAnchors || !loadedPendingAnchors.pendingAnchorsByAddresses) { console.error('No pending anchors'); return; }
-
-    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses;
-    if (!pendingAnchorsByAddresses[address]) { console.error('Address has no pending anchors'); return; }
-
-    const pendingAnchors = pendingAnchorsByAddresses[address];
-    for (const anchor of anchors) {
-        const index = pendingAnchors.indexOf(anchor);
-        if (index === -1) { console.error('Anchor not pending'); continue; }
-        pendingAnchors.splice(index, 1);
-    }
-
-    await chrome.storage.local.set({ pendingAnchorsByAddresses });
-}
-async function setPendingAnchorsRelatedToAddress(address, anchors = []) {
-    const loadedPendingAnchors = await chrome.storage.local.get('pendingAnchorsByAddresses');
-    const pendingAnchorsByAddresses = loadedPendingAnchors.pendingAnchorsByAddresses || {};
-    pendingAnchorsByAddresses[address] = anchors;
-    await chrome.storage.local.set({ pendingAnchorsByAddresses });
-}
 /** @param {UTXO[]} utxos */
 async function extractDataFromAccountUTXOs(address, utxos) {
     let balance = 0;
@@ -1019,17 +1011,14 @@ async function extractDataFromAccountUTXOs(address, utxos) {
     let stakedBalance = 0;
     const spendableUTXOs = [];
 
-    const pendingAnchors = await getAllPendingAnchorsRelatedToAddress(address); // pending anchors
-    const updatedPendingAnchors = [];
     for (const utxo of utxos) {
         balance += utxo.amount;
         //if (address === 'WYnwjFkgumbp3jBCUoz5') console.log(`utxo: ${utxo.amount} ${utxo.rule} ${utxo.anchor}`);
         if (utxo.rule === 'sigOrSlash') { stakedBalance += utxo.amount; continue; }
-        if (pendingAnchors.includes(utxo.anchor)) { updatedPendingAnchors.push(utxo.anchor); continue; }
+
         spendableUTXOs.push(utxo);
         spendableBalance += utxo.amount;
     }
-    await setPendingAnchorsRelatedToAddress(address, updatedPendingAnchors);
 
     return { balance, spendableBalance, stakedBalance, spendableUTXOs };
 }
@@ -1282,7 +1271,7 @@ document.addEventListener('mousedown', function(e) { // hold click
                 
                 console.log('transaction:', createdSignedTx.signedTx);
                 chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
-                e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
+                e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
                 animations.sendBtn = null;
             });
             break;
@@ -1312,7 +1301,7 @@ document.addEventListener('mousedown', function(e) { // hold click
         
                     console.log('transaction:', signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
-                    e.target.style.background = 'linear-gradient(90deg, var(--background-color1) 0%, var(--background-color2) 0%)';
+                    e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
             });
             break;
         default:
@@ -1423,7 +1412,7 @@ document.addEventListener('click', async function(e) {
             //console.log(`clicked: ${target.id}`);
             break;
     }
-    console.log(`clicked: ${target.className}`);
+
     switch (target.className) {
         case 'accountImgWrap':
             //console.log('accountImgWrap clicked');
@@ -1473,6 +1462,7 @@ document.addEventListener('input', async (event) => {
     if (isIntensityRange) {
         const rangeValue = event.target.value;
         const valueAsNumber = parseInt(rangeValue);
+        document.getElementById('intensityValueStr').innerText = rangeValue;
         chrome.storage.local.set({miningIntensity: valueAsNumber});
         //console.log(`intensity set to ${rangeValue}`);
     }
@@ -1583,14 +1573,14 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
         case 'transaction_requested':
             /** @type {TransactionWithDetails} */
             const txWithDetails = request.transactionWithDetails;
-            console.log(`[POPUP] received transaction_requested: ${JSON.stringify(txWithDetails)}`);
+            //console.log(`[POPUP] received transaction_requested: ${JSON.stringify(txWithDetails)}`);
 
             fillInfoOfTxInHistory(txWithDetails);
             break;
         case 'address_exhaustive_data_requested':
             //data.addressUTXOs.UTXOs, data.addressTxsReferences);
             //console.log(`[POPUP] received address_exhaustive_data_requested: ${request.address}`);
-            console.log(request);
+            //console.log(request);
             const targetAccountAddressPrefix = request.address.slice(0, 1);
             targetAccountIndex = getWalletAccountIndexByAddress(request.address);
             if (targetAccountIndex === -1) { console.error(`No account corresponding to address: ${request.address}`); return; }
@@ -1622,14 +1612,13 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             console.log(`[POPUP] received address_utxos_requested: ${request.address}`);
             break;
         case 'transaction_broadcast_result':
-            // chrome.runtime.sendMessage({action: 'transaction_broadcast_result', txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error, data.error, success: data.success});
+            // chrome.runtime.sendMessage({action: 'transaction_broadcast_result', transaction: data.transaction, txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error, data.error, success: data.success});
             if (!request.success) {
                 textInfo(eHTML.walletForm, `Transaction broadcast failed: ${request.error}`, 5000, true);
                 console.error('Transaction broadcast failed');
                 return; 
             }
-            await addPendingAnchorsRelatedToAddress(request.senderAddress, request.consumedAnchors);
-
+            
             chrome.runtime.sendMessage({action: "get_address_exhaustive_data", address: request.senderAddress });
             textInfo(eHTML.walletForm, `Transaction sent! (id: ${request.txId})`, 5000, true);
             break;
@@ -1638,5 +1627,14 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
             break;
         default:
             break;
+    }
+});
+
+chrome.storage.onChanged.addListener(function(changes, namespace) {
+    for (let key in changes) {
+        if (key === 'hashRate') {
+            //console.log(`hashRate changed to ${changes[key].newValue}`);
+            eHTML.mining.hashRateValueStr.innerText = changes[key].newValue.toFixed(3);
+        }
     }
 });
