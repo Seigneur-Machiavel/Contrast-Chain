@@ -181,11 +181,11 @@ export class DashboardWsApp {
         console.log(`Multi node started, account : ${multiNode.account.address}`);
         return multiNode;
     }
-    #onConnection(ws, req) {
+    #onConnection(ws, req, localonly = false) {
         const clientIp = req.socket.remoteAddress === '::1' ? 'localhost' : req.socket.remoteAddress;
 
-                // Allow only localhost connections
-        if (clientIp !== '127.0.0.1' && clientIp !== '::1') {
+        // Allow only localhost connections
+        if (localonly && (clientIp !== '127.0.0.1' && clientIp !== '::1')) {
             console.warn(`[DASHBOARD] Connection attempt from unauthorized IP: ${clientIp}`);
             ws.close(1008, 'Unauthorized'); // 1008: Policy Violation
             return;
