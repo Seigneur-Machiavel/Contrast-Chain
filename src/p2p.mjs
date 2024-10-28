@@ -13,6 +13,7 @@ import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
+import { autoNAT } from '@libp2p/autonat'
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -105,7 +106,9 @@ class P2PNetwork extends EventEmitter {
                 identify: identify(),
                 pubsub: gossipsub(),
                 dht: kadDHT(),
+                autoNAT: autoNAT(),
             },
+            
             peerDiscovery,
 
             connectionManager: {},
@@ -143,7 +146,7 @@ class P2PNetwork extends EventEmitter {
         this.logger.info('luid-dd80c851 Peer discovered', { peerId, isBanned });
 
         const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
-        const ma = peerId.multiaddrs ?? peerInfo.multiaddrs;
+        const ma = event.detail.multiaddrs ?? peerInfo.multiaddrs;
         if (!ma) {
             this.logger.error('luid-e142f758 Failed to find multiaddrs for peer', { component: 'P2PNetwork', peerId });
             return;
