@@ -81,7 +81,7 @@ export class Miner {
         // check if block is higher than the highest block
         if (blockCandidate.index > this.highestBlockIndex) {
             this.preshotedPowBlock = null; // reset preshoted block
-            this.bets[blockCandidate.index] = this.useBetTimestamp ? this.#betOnTimeToPow(blockCandidate.index) : 0; // bet on time to pow
+            this.bets[blockCandidate.index] = this.useBetTimestamp ? this.#betOnTimeToPow() : 0; // bet on time to pow
             this.highestBlockIndex = blockCandidate.index;
             this.#cleanupCandidates();
             this.addressOfCandidatesBroadcasted = [];
@@ -234,7 +234,7 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
                     // remove the block from the candidates
                     const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
                     const index = this.candidates.findIndex(candidate => candidate.index === finalizedBlock.index && candidate.Txs[0].inputs[0].split(':')[0] === validatorAddress);
-                    if (index !== -1) { 
+                    if (index !== -1) {
                         this.candidates.splice(index, 1);
                     } else {
                         console.info(`[MINER] POW found for block (Height: ${finalizedBlock.index}, validator: ${validatorAddress}) but already found one, aborting...`);
@@ -277,7 +277,11 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
     /** DON'T AWAIT THIS FUNCTION */
     async startWithWorker() { // DEPRECATED
         const workersStatus = [];
+        //let loopIteration = 0;
         while (!this.terminated) {
+            //loopIteration++;
+            // if modulo 100
+            //if (loopIteration % 100 === 0) { console.info(`[MINER-${this.address.slice(0, 6)}] Loop iteration: ${loopIteration}`); }
             const startTimestamp = Date.now();
             const delayBetweenMining = this.roles.includes('validator') ? 20 : 10;
             await new Promise((resolve) => setTimeout(resolve, delayBetweenMining));

@@ -109,8 +109,8 @@ export class Node {
 
         await this.p2pNetwork.start(); // start the libp2p network
         await this.syncHandler.start(this.p2pNetwork);
-        //if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
-        if (this.roles.includes('miner')) { this.miner.startWithAutoWorker(); }
+        if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
+        //if (this.roles.includes('miner')) { this.miner.startWithAutoWorker(); }
         await this.#waitSomePeers();
 
         console.log('P2P network is ready - we are connected baby!');
