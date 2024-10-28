@@ -211,7 +211,7 @@ export class Node {
         let abort = false;
         setTimeout(() => { abort = true; }, timeOut);
 
-        let alreadyLog = false;
+        //let alreadyLog = false;
         for (let attempt = 0; attempt < maxAttempts; attempt++) {
             if (abort) { break; }
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -227,13 +227,14 @@ export class Node {
             if (peerCount >= nbOfPeers) { return peerCount; }
 
             await this.p2pNetwork.connectToBootstrapNodes();
-            if (alreadyLog) { continue; }
             // Just find a peer to connect to -> sync
             if (this.p2pNetwork.getConnectedPeers().length > 0) {
                 this.opStack.pushFirst('syncWithKnownPeers', null);
+                return peerCount;
             }
             
-            alreadyLog = true;
+            //if (alreadyLog) { continue; }
+            //alreadyLog = true;
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
         }
 
