@@ -208,7 +208,7 @@ function displayNodeInfo(data) {
     eHTML.hashRate.textContent = data.minerHashRate ? data.minerHashRate.toFixed(2) : 0;
 
     // Update Global Information
-    eHTML.peersConnected.textContent = data.peersConnecte;
+    eHTML.peersConnected.textContent = data.peersConnected ? data.peersConnected : 0;
     eHTML.lastBlockInfo.textContent = data.lastBlockInfo ? data.lastBlockInfo : 'No Block Info';
     eHTML.txInMempool.textContent = data.txInMempool;
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
