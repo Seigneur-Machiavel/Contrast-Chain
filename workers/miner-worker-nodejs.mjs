@@ -85,8 +85,8 @@ const minerVars = {
 	paused: false
 };
 parentPort.on('message', async (task) => {
-	console.log('miner-worker-nodejs', task);
-	
+	//console.log('miner-worker-nodejs', task);
+
 	const id = task.id;
 	const response = { id };
 	let mined;
