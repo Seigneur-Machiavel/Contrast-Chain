@@ -285,7 +285,7 @@ export class DashboardWsApp {
             case 'reset_wallet':    
                 console.log('Resetting wallet');
                 await this.#modifyAccountAndRestartNode(this.node.id, data);
-            break;
+                break;
             case 'update_git':
                 this.#updateAndClose();
                 break;
@@ -360,21 +360,18 @@ export class DashboardWsApp {
                 ws.send(JSON.stringify({ type: 'transaction_broadcasted', data: { broadcasted, pushedInLocalMempool } }));
                 console.log('Transaction sent');
                 break;
-
             case 'disconnect_peer':
                 console.log(`Disconnecting peer ${data}`);
                 this.node.p2pNetwork.closeConnection(data);
-
+                break;
             case 'ask_sync_peer':
                 console.log(`Asking peer ${data} to sync`);
                 this.node.syncHandler.syncWithPeer(data);
                 break;
-
             case 'ban_peer':
                 console.log(`Banning peer ${data}`);
                 this.node.p2pNetwork.reputationManager.banIdentifier(data);
                 break;
-
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
                 break;
@@ -422,6 +419,9 @@ export class ObserverWsApp {
             await new Promise(resolve => setTimeout(resolve, 1000));
         }
 
+        if (!this.node.roles.includes('validator')) { throw new Error('ObserverWsApp must be used with a validator node'); }
+        if (!this.node.roles.includes('observer')) { throw new Error('ObserverWsApp must be used with an observer node'); }
+
         this.app.use(express.static(APPS_VARS.__parentDirname));
         
         this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/explorer.html'); });
@@ -429,9 +429,6 @@ export class ObserverWsApp {
         
         this.wss = new WebSocketServer({ server });
         this.wss.on('connection', this.#onConnection.bind(this));
-        
-        if (!this.node.roles.includes('validator')) { throw new Error('ObserverWsApp must be used with a validator node'); }
-        if (!this.node.roles.includes('observer')) { throw new Error('ObserverWsApp must be used with an observer node'); }
         
         this.callBackManager = new CallBackManager(this.node);
         this.callBackManager.initAllCallbacksOfMode('observer', this.wss.clients);
