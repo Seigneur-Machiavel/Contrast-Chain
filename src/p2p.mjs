@@ -13,9 +13,9 @@ import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
-import { autoNAT } from '@libp2p/autonat';
-import { ping } from '@libp2p/ping';
-import { enable } from '@libp2p/logger';
+import { peerIdFromCID, peerIdFromMultihash, peerIdFromPrivateKey, peerIdFromString } from '@libp2p/peer-id';
+import { generateKeyPair } from '@libp2p/crypto/keys';
+
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -69,8 +69,30 @@ class P2PNetwork extends EventEmitter {
         'new_block_finalized',
     ]);
 
-    async start() {
-        //enable('libp2p:kad-dht*')
+    async start(keyPair) {
+        console.log(keyPair);
+
+        const privateKeyUint8Array = this.toUint8Array(keyPair.privKey);
+        const publicKeyUint8Array = this.toUint8Array(keyPair.pubKey);
+        let concatenatedArrays = new Uint8Array(privateKeyUint8Array.length + publicKeyUint8Array.length);
+        concatenatedArrays.set(privateKeyUint8Array);
+        concatenatedArrays.set(publicKeyUint8Array, privateKeyUint8Array.length);
+        console.log(concatenatedArrays);
+
+        // just to see the structure of a 'privatekey' object
+        const key = await generateKeyPair("Ed25519");
+
+        const privateKeyObject = {
+            publicKey: {
+                type: "Ed25519",
+                raw: publicKeyUint8Array,
+            },
+            raw: concatenatedArrays,
+            type: "Ed25519",
+        };
+        const peer = peerIdFromPrivateKey(privateKeyObject);
+        //const peerFromString = peerIdFromString(keyPair.pubKey);
+        console.log(peer);
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();
@@ -82,6 +104,17 @@ class P2PNetwork extends EventEmitter {
             this.logger.error('luid-c2967a8b Failed to start P2P network', { component: 'P2PNetwork', error: error.message });
             throw error;
         }
+    }
+
+    toUint8Array (hex) {
+        if (hex.length % 2 !== 0) { throw new Error("The length of the input is not a multiple of 2."); }
+
+        const length = hex.length / 2;
+        const uint8Array = new Uint8Array(length);
+
+        for (let i = 0, j = 0; i < length; ++i, j += 2) { uint8Array[i] = parseInt(hex.substring(j, j + 2), 16); }
+
+        return uint8Array;
     }
     async stop() {
         if (this.p2pNode) {
@@ -107,13 +140,11 @@ class P2PNetwork extends EventEmitter {
             connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
-                pubsub: gossipsub(),
-                autoNAT: autoNAT()
+                pubsub: gossipsub()
             },
-            
             peerDiscovery,
-
             connectionManager: {},
+            autoNAT: autoNAT()
             
         });
     }
@@ -144,7 +175,7 @@ class P2PNetwork extends EventEmitter {
 
     #handlePeerDiscovery = async (event) => {
         const peerId = event.detail.id + " " + event.detail.multiaddrs.toString();
-        const isBanned = this.reputationManager.isPeerBanned({ peerId: event.detail.id });
+        const isBanned = this.reputationManager.isPeerBanned({ peerId: event.detail.id});
         this.logger.info('luid-dd80c851 Peer discovered', { peerId, isBanned });
 
         //const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);

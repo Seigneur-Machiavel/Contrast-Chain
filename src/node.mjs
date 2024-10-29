@@ -108,7 +108,7 @@ export class Node {
         const bootstrapNodes = this.configManager.getBootstrapNodes();
         this.p2pNetwork.options.bootstrapNodes = bootstrapNodes;
 
-        await this.p2pNetwork.start(); // start the libp2p network
+        await this.p2pNetwork.start(keyPair); // start the libp2p network
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
         //if (this.roles.includes('miner')) { this.miner.start_v2(); }
@@ -230,6 +230,7 @@ export class Node {
             await this.p2pNetwork.connectToBootstrapNodes();
             // Just find a peer to connect to -> sync
             if (this.p2pNetwork.getConnectedPeers().length > 0) {
+                console.log(`----Connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
                 this.opStack.pushFirst('syncWithKnownPeers', null);
                 return peerCount;
             }
