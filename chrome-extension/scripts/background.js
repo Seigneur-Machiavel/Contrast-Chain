@@ -155,10 +155,16 @@ function connectWS() {
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
 }
 async function connectWSLoop() {
+    let connecting = false;
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
-        if (ws) { continue; }
-        connectWS();
+        if (connecting || ws) { continue; }
+        try {
+            connecting = true;
+            connectWS();
+        } catch (error) {
+            connecting = false;
+        }
     }
 }; connectWSLoop();
 async function getHeightsLoop() {
