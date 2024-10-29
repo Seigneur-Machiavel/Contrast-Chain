@@ -301,10 +301,11 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
             const id = workersStatus.slice(0, this.nbOfWorkers).indexOf('free');
             if (id === -1) { continue; }
 
-            const blockCandidate = this.#getMostLegitimateBlockCandidate();
+            //const blockCandidate = this.#getMostLegitimateBlockCandidate();
+            const blockCandidate = this.bestCandidate;
             if (!blockCandidate) { continue; }
 
-            this.#setBestCandidateIfChanged(blockCandidate);
+            //this.#setBestCandidateIfChanged(blockCandidate);
             workersStatus[id] = 'busy';
             
             const { signatureHex, nonce, clonedCandidate } = await this.#prepareBlockCandidateBeforeMining(blockCandidate);

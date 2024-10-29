@@ -302,6 +302,10 @@ export class Node {
 
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
+        const minerAddress = finalizedBlock.Txs[0].outputs[0].address;
+        if ('CpkQiTemFSZH1zyGUKsM' === minerAddress) {
+            console.log('minerAddress:', minerAddress);
+        }
         this.blockchainStats.state = "validating block";
         
         performance.mark('validation start');
@@ -396,7 +400,6 @@ export class Node {
         if ('CpkQiTemFSZH1zyGUKsM' === minerAddress) {
             console.log('minerAddress:', minerAddress);
         }
-
 
         this.blockchainStats.state = "digesting finalized block";
         if (this.restartRequested) { return; }
