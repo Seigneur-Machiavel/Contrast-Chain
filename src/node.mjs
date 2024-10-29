@@ -89,7 +89,6 @@ export class Node {
     }
 
     async start(startFromScratch = false) {
-        const keyPair = this.account.getKeyPair();
         await this.logger.initializeLogger();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
@@ -108,7 +107,8 @@ export class Node {
         const bootstrapNodes = this.configManager.getBootstrapNodes();
         this.p2pNetwork.options.bootstrapNodes = bootstrapNodes;
 
-        await this.p2pNetwork.start(keyPair); // start the libp2p network
+        const uniqueHash = await this.account.getUniqueHash(64);
+        await this.p2pNetwork.start(uniqueHash); // start the libp2p network
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
         //if (this.roles.includes('miner')) { this.miner.start_v2(); }

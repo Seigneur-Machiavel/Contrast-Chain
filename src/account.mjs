@@ -1,4 +1,4 @@
-import { AsymetricFunctions } from './conCrypto.mjs';
+import { AsymetricFunctions, HashFunctions } from './conCrypto.mjs';
 
 /**
 * @typedef {import("../src/transaction.mjs").Transaction} Transaction
@@ -54,7 +54,11 @@ export class Account {
         this.spendableBalance = spendableBalance;
     }
 
-    getKeyPair() {
+    /*getKeyPair() {
         return { privKey: this.#privKey, pubKey: this.#pubKey };
+    }*/
+    async getUniqueHash(length = 64) {
+        const hash = await HashFunctions.SHA256(this.#pubKey + this.#privKey);
+        return hash.substring(0, length);
     }
 }
