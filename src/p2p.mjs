@@ -14,7 +14,7 @@ import ReputationManager from './reputation.mjs'; // Import the ReputationManage
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
 import { peerIdFromCID, peerIdFromMultihash, peerIdFromPrivateKey, peerIdFromString } from '@libp2p/peer-id';
-import { generateKeyPair } from '@libp2p/crypto/keys';
+import { generateKeyPair, generateKeyPairFromSeed } from '@libp2p/crypto/keys';
 
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
@@ -73,25 +73,18 @@ class P2PNetwork extends EventEmitter {
         console.log(keyPair);
 
         const privateKeyUint8Array = this.toUint8Array(keyPair.privKey);
-        const publicKeyUint8Array = this.toUint8Array(keyPair.pubKey);
+        /*const publicKeyUint8Array = this.toUint8Array(keyPair.pubKey);
         let concatenatedArrays = new Uint8Array(privateKeyUint8Array.length + publicKeyUint8Array.length);
         concatenatedArrays.set(privateKeyUint8Array);
         concatenatedArrays.set(publicKeyUint8Array, privateKeyUint8Array.length);
-        console.log(concatenatedArrays);
+        console.log(concatenatedArrays);*/
 
         // just to see the structure of a 'privatekey' object
         const key = await generateKeyPair("Ed25519");
 
-        const privateKeyObject = {
-            publicKey: {
-                type: "Ed25519",
-                raw: publicKeyUint8Array,
-            },
-            raw: concatenatedArrays,
-            type: "Ed25519",
-        };
+        // test doc
+        const privateKeyObject = await generateKeyPairFromSeed("Ed25519", privateKeyUint8Array);
         const peer = peerIdFromPrivateKey(privateKeyObject);
-        //const peerFromString = peerIdFromString(keyPair.pubKey);
         console.log(peer);
         try {
             this.p2pNode = await this.#createLibp2pNode();
