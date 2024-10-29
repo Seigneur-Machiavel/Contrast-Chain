@@ -101,6 +101,7 @@ function connectWS() {
                 }
                 break;
             case 'last_confirmed_blocks':
+                if (!data || !data[data.length - 1]) { return; }
                 //console.log(`last_confirmed_block from ${data[0].header.index} to ${data[data.length - 1].header.index}`);
                 //console.log('last_confirmed_block', data[data.length - 1]);
                 displayLastConfirmedBlock(data[data.length - 1].header);

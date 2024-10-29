@@ -537,10 +537,7 @@ export class Node {
         localStorage_v1.saveBlockDataLocally(this.id, clone, 'bin');
     } // Used by developer to check the block data manually
 
-    /**
-     * @param {string} topic
-     * @param {object} message
-     */
+    /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // { content: parsedMessage, from, byteLength }
         if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
@@ -588,10 +585,7 @@ export class Node {
             console.error(`[P2P-HANDLER] ${topic} -> Failed! `, error);
         }
     }
-    /**
-     * @param {string} topic
-     * @param {any} message
-     */
+    /** @param {string} topic @param {any} message */
     async p2pBroadcast(topic, message) { return await this.p2pNetwork.broadcast(topic, message); }
 
     // API -------------------------------------------------------------------------

@@ -1640,6 +1640,30 @@ const serializerFast = {
                 uint8Result.set(fastConverter.addressBase58ToUint8Array(pubkeyAddresses[pubKeys[i]]), i * 48 + 32);
             }
             return uint8Result;
+        },
+
+        /** @param {BlockData} blockData */
+        blockHeader_finalized(blockData) {
+            try {
+                const elementsLenght = {
+                    index: null
+                }
+                /*const blockHeaderAsArray = [
+                    convert.number.toUint8Array(blockData.index), // safe type: number
+                    convert.number.toUint8Array(blockData.supply), // safe type: number
+                    convert.number.toUint8Array(blockData.coinBase), // safe type: number
+                    convert.number.toUint8Array(blockData.difficulty), // safe type: number
+                    convert.number.toUint8Array(blockData.legitimacy), // safe type: number
+                    convert.hex.toUint8Array(blockData.prevHash), // safe type: hex
+                    convert.number.toUint8Array(blockData.posTimestamp), // safe type: number
+                    convert.number.toUint8Array(blockData.timestamp), // safe type: number
+                    convert.hex.toUint8Array(blockData.hash), // safe type: hex
+                    convert.hex.toUint8Array(blockData.nonce) // safe type: hex
+                ];*/
+                
+            } catch (error) {
+                
+            }
         }
     },
     deserialize: {
