@@ -4,7 +4,7 @@ import { tcp } from '@libp2p/tcp';
 import { noise } from '@chainsafe/libp2p-noise';
 import { gossipsub } from '@chainsafe/libp2p-gossipsub';
 import { identify } from '@libp2p/identify';
-import { kadDHT } from '@libp2p/kad-dht';
+import { autoNAT } from '@libp2p/autonat';
 import { mdns } from '@libp2p/mdns';
 import { bootstrap } from '@libp2p/bootstrap';
 import { lpStream } from 'it-length-prefixed-stream';
