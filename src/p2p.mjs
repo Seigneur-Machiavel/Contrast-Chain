@@ -108,7 +108,6 @@ class P2PNetwork extends EventEmitter {
             services: {
                 identify: identify(),
                 pubsub: gossipsub(),
-                dht: kadDHT(),
                 autoNAT: autoNAT()
             },
             
@@ -148,8 +147,8 @@ class P2PNetwork extends EventEmitter {
         const isBanned = this.reputationManager.isPeerBanned({ peerId: event.detail.id });
         this.logger.info('luid-dd80c851 Peer discovered', { peerId, isBanned });
 
-        const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
-        const ma = event.detail.multiaddrs ?? peerInfo.multiaddrs;
+        //const peerInfo = await this.p2pNode.peerRouting.findPeer(event.detail.id);
+        const ma = event.detail.multiaddrs;
         if (!ma) {
             this.logger.error('luid-e142f758 Failed to find multiaddrs for peer', { component: 'P2PNetwork', peerId });
             return;
