@@ -70,24 +70,12 @@ class P2PNetwork extends EventEmitter {
     ]);
 
     async start(keyPair) {
-        console.log(keyPair);
-
         const privateKeyUint8Array = this.toUint8Array(keyPair.privKey);
-        /*const publicKeyUint8Array = this.toUint8Array(keyPair.pubKey);
-        let concatenatedArrays = new Uint8Array(privateKeyUint8Array.length + publicKeyUint8Array.length);
-        concatenatedArrays.set(privateKeyUint8Array);
-        concatenatedArrays.set(publicKeyUint8Array, privateKeyUint8Array.length);
-        console.log(concatenatedArrays);*/
-
-        // just to see the structure of a 'privatekey' object
-        const key = await generateKeyPair("Ed25519");
-
-        // test doc
         const privateKeyObject = await generateKeyPairFromSeed("Ed25519", privateKeyUint8Array);
         const peer = peerIdFromPrivateKey(privateKeyObject);
-        console.log(peer);
+
         try {
-            this.p2pNode = await this.#createLibp2pNode();
+            this.p2pNode = await this.#createLibp2pNode(peer);
             await this.p2pNode.start();
             this.logger.info('luid-b4d2ba42 P2P network started', { peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress });
 
@@ -119,7 +107,7 @@ class P2PNetwork extends EventEmitter {
     }
 
     /** @returns {Promise<Libp2p>} */
-    async #createLibp2pNode() {
+    async #createLibp2pNode(peerIdObject) {
         const peerDiscovery = [mdns()];
 
         if (this.options.bootstrapNodes.length > 0) {
@@ -127,18 +115,18 @@ class P2PNetwork extends EventEmitter {
         }
 
         return createLibp2p({
+            peerId: peerIdObject,
             addresses: { listen: [this.options.listenAddress] },
             transports: [tcp()],
             streamMuxers: [yamux()],
             connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
-                pubsub: gossipsub()
+                pubsub: gossipsub(),
+                autoNAT: autoNAT(),
             },
             peerDiscovery,
             connectionManager: {},
-            autoNAT: autoNAT()
-            
         });
     }
 
