@@ -108,7 +108,6 @@ class P2PNetwork extends EventEmitter {
             services: {
                 identify: identify(),
                 pubsub: gossipsub(),
-                dht: kadDHT(),
                 autoNAT: autoNAT()
             },
             
