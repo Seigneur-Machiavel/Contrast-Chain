@@ -89,6 +89,7 @@ export class Node {
     }
 
     async start(startFromScratch = false) {
+        const keyPair = this.account.getKeyPair();
         await this.logger.initializeLogger();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
@@ -311,11 +312,11 @@ export class Node {
         if (Number.isInteger(finalizedBlock.index) === false) { throw new Error('Invalid block index'); }
         if (finalizedBlock.index > lastBlockIndex + 1) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 1} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-            throw new Error(`Rejected: #${finalizedBlock.index} > ${lastBlockIndex + 1}`);
+            throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 1}`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-            throw new Error(`Rejected: #${finalizedBlock.index} <= ${lastBlockIndex}`);
+            throw new Error(`Rejected: #${finalizedBlock.index} <= #${lastBlockIndex}`);
         }
         // The only possible case is: finalizedBlock.index === lastBlockIndex + 1
 

@@ -53,4 +53,8 @@ export class Account {
         this.UTXOs = UTXOs;
         this.spendableBalance = spendableBalance;
     }
+
+    getKeyPair() {
+        return { privKey: this.#privKey, pubKey: this.#pubKey };
+    }
 }

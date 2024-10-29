@@ -83,6 +83,11 @@ class Pow {
                 await new Promise(resolve => setTimeout(resolve, 1000));
                 chrono.waiting = true;
             }
+            while (!this.rewardAddress) {
+                console.info('[MINER] Waiting for reward address');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                chrono.waiting = true;
+            }
 
             if (chrono.waiting) {
                 chrono.updateStart = 0;
@@ -131,7 +136,7 @@ class Pow {
 
         const powReward = blockCandidate.powReward;
         delete clonedCandidate.powReward;
-        const coinbaseTx = await Pow.createCoinbase(coinbaseNonce, this.address, powReward);
+        const coinbaseTx = await Pow.createCoinbase(coinbaseNonce, this.rewardAddress, powReward);
         Pow.setCoinbaseTransaction(clonedCandidate, coinbaseTx);
 
         const signatureHex = await Pow.getBlockSignature(clonedCandidate);
@@ -158,7 +163,10 @@ class Pow {
             outputs
         };
         
-        transaction.id = await Pow.hashId(transaction);
+        const inputsStr = JSON.stringify(transaction.inputs);
+        const outputsStr = JSON.stringify(transaction.outputs);
+        const versionStr = JSON.stringify(transaction.version);
+        transaction.id = Pow.hashId(`${inputsStr}${outputsStr}${versionStr}`);
 
         return transaction;
     }
@@ -206,13 +214,22 @@ class Pow {
 
         return await Pow.SHA256(signatureStr);
     }
-    /** @param {Transaction} transaction */
-    static async hashId(transaction, hashHexLength = 8) {
+    static hashId(input = 'toto', hashHexLength = 8) {
+        /* XXHASH32 */
+        /*const hashNumber = xxHash32(input);
+        const hashHex = hashNumber.toString(16);
+        const padding = '0'.repeat(minLength - hashHex.length);
+        return `${padding}${hashHex}`;*/
+
+        /* HASHID
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
 
-        const hashNumber = xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
+        const hashHex = HashFunctions.xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
+        return hashHex.slice(0, hashHexLength);*/
+
+        const hashNumber = xxHash32(input);
         const hashHex = hashNumber.toString(16);
         const padding = '0'.repeat(hashHexLength - hashHex.length);
         const finalHashHex = `${padding}${hashHex}`;
@@ -391,9 +408,9 @@ const PRIME32_2 = 2246822519;
 const PRIME32_3 = 3266489917;
 const PRIME32_4 = 668265263;
 const PRIME32_5 = 374761393;
-let encoder;
 /** @param input - byte array or string @param seed - optional seed (32-bit unsigned); */
 function xxHash32(input, seed = 0) {
+    let encoder;
     const buffer = typeof input === 'string' ? (encoder ??= new TextEncoder()).encode(input) : input;
     const b = buffer;
     let acc = (seed + PRIME32_5) & 0xffffffff;

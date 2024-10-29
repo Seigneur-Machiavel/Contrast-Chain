@@ -191,7 +191,7 @@ export class Transaction_Builder {
         const outputs = [coinbaseOutput];
 
         const transaction = Transaction(inputs, outputs);
-        transaction.id = await Transaction_Builder.hashId(transaction);
+        transaction.id = Transaction_Builder.hashId(transaction);
 
         return transaction;
     }
@@ -211,7 +211,7 @@ export class Transaction_Builder {
         const outputs = [posOutput];
 
         const transaction = Transaction(inputs, outputs);
-        transaction.id = await Transaction_Builder.hashId(transaction);
+        transaction.id = Transaction_Builder.hashId(transaction);
 
         return transaction;
     }
@@ -370,7 +370,7 @@ export class Transaction_Builder {
         return { fee, change };
     }
     /** @param {Transaction} transaction */
-    static async hashId(transaction, hashHexLength = 8) {
+    static hashId(transaction, hashHexLength = 8) {
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);

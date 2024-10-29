@@ -86,7 +86,7 @@ export class HashFunctions {
 
 export class AsymetricFunctions {
     /** @param {string} privKeyHex - Hexadecimal representation of the private key */
-    static async generateKeyPairFromHash (privKeyHex) {
+    static async generateKeyPairFromHash(privKeyHex) {
         if (privKeyHex.length !== 64) { console.error('Hash must be 32 bytes long (hex: 64 chars)'); return false; }
         
         // Calculer la clé publique à partir de la clé privée

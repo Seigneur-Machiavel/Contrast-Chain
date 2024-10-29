@@ -3,6 +3,7 @@ import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
 import { cryptoLight } from './cryptoLight.js';
 
 /**
+* @typedef {import("../contrast/src/block.mjs").BlockData} BlockData
 * @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
 */
@@ -261,6 +262,7 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
 });
 chrome.storage.onChanged.addListener(async function(changes, namespace) {
     let alreadyWaitingForWS = false;
+    let lastBlockFinalizedHash;
     for (let key in changes) {
         if (key === 'miningIntensity') {
             console.log(`Mining intensity changed to ${changes[key].newValue}`);
@@ -269,8 +271,13 @@ chrome.storage.onChanged.addListener(async function(changes, namespace) {
         if (key === 'blockFinalized') {
             if (alreadyWaitingForWS) { return; }
             if (!changes[key].newValue) { return; }
-            console.log(`Block finalized received in background!`);
+            
+            /** @type {BlockData} */
             const blockFinalized = changes[key].newValue;
+            if (lastBlockFinalizedHash === blockFinalized.hash) { return; }
+            lastBlockFinalizedHash = blockFinalized.hash;
+
+            console.log(`[BACKGROUND] New [Block finalized] to broadcast!`);
             console.log(blockFinalized);
             //chrome.storage.local.set({blockFinalized: undefined});
 

@@ -76,7 +76,7 @@ export class OpStack {
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
                     try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false }, byteLength);
                     } catch (error) {
-                        if (error.message.includes('!ban!')) { 
+                        if (error.message.includes('!ban!')) {
                            if (task.data.from !== undefined) {
                             this.node.p2pNetwork.reputationManager.applyOffense(
                                 {peerId : task.data.from},
@@ -95,6 +95,8 @@ export class OpStack {
                             await this.node.syncHandler.handleSyncFailure();
                             return;
                         }
+
+                        console.error(error.stack);
                     }
                     
                     // reset the timeout for the sync
