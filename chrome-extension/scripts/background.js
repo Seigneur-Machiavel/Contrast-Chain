@@ -141,7 +141,7 @@ function connectWS() {
                 break;
             case 'best_block_candidate_changed':
                 if (!data) { console.info('[BACKGROUND] Received best_block_candidate_changed with no data!'); return; }
-                console.log(`[BACKGROUND] best_block_candidate_changed: ${data.index} - ${data.legitimacy}`);
+                console.log(`[BACKGROUND] best_block_candidate_changed: #${data.index} - ${data.legitimacy}`);
                 pow.bestCandidate = data;
                 break;
             case 'current_height':
@@ -153,18 +153,19 @@ function connectWS() {
     }
 
     ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
+
+    return ws;
 }
 async function connectWSLoop() {
     let connecting = false;
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (connecting || ws) { continue; }
+        connecting = true;
         try {
-            connecting = true;
             connectWS();
-        } catch (error) {
-            connecting = false;
-        }
+        } catch (error) {}
+        connecting = false;
     }
 }; connectWSLoop();
 async function getHeightsLoop() {
@@ -259,20 +260,24 @@ chrome.runtime.onMessage.addListener(async function(request, sender, sendRespons
     }
 });
 chrome.storage.onChanged.addListener(async function(changes, namespace) {
+    let alreadyWaitingForWS = false;
     for (let key in changes) {
         if (key === 'miningIntensity') {
             console.log(`Mining intensity changed to ${changes[key].newValue}`);
             pow.miningIntensity = changes[key].newValue;
         }
         if (key === 'blockFinalized') {
+            if (alreadyWaitingForWS) { return; }
             if (!changes[key].newValue) { return; }
             console.log(`Block finalized received in background!`);
             const blockFinalized = changes[key].newValue;
             console.log(blockFinalized);
             //chrome.storage.local.set({blockFinalized: undefined});
 
+            alreadyWaitingForWS = true;
             await readyWS();
             ws.send(JSON.stringify({ type: 'broadcast_finalized_block', data: blockFinalized }));
+            alreadyWaitingForWS = false;
         }
     }
 });
