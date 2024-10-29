@@ -392,6 +392,12 @@ export class Node {
      * @param {boolean} [options.storeAsFiles] - default: false
      */
     async digestFinalizedBlock(finalizedBlock, options = {}, byteLength) {
+        const minerAddress = finalizedBlock.Txs[0].outputs[0].address;
+        if ('CpkQiTemFSZH1zyGUKsM' === minerAddress) {
+            console.log('minerAddress:', minerAddress);
+        }
+
+
         this.blockchainStats.state = "digesting finalized block";
         if (this.restartRequested) { return; }
         const blockBytes = byteLength ? byteLength : utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;

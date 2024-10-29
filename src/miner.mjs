@@ -136,7 +136,8 @@ export class Miner {
     #cleanupCandidates(heightTolerance = 6) {
         // remove candidates with height tolerance, to avoid memory leak
         const minimumHeight = this.highestBlockIndex - heightTolerance;
-        this.candidates = this.candidates.filter(candidate => candidate.index >= minimumHeight);
+        const cleanedCandidates = this.candidates.filter(candidate => candidate.index >= minimumHeight);
+        this.candidates = cleanedCandidates;
     }
     #getMostLegitimateBlockCandidate() {
         if (this.candidates.length === 0) { return null; }

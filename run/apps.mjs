@@ -566,7 +566,7 @@ export class ObserverWsApp {
                     console.log(`--- Broadcasting finalized block from observer ---`);
                     //try {
                     await this.node.p2pNetwork.broadcast('new_block_finalized', data);
-                    if (this.node.roles.includes('validator')) { this.node.opStack.pushFirst('digestPowProposal', data); };
+                    if (this.node.roles.includes('validator')) { this.node.opStack.push('digestPowProposal', data); };
                     //} catch (error) {
                         //console.error(`Error broadcasting finalized block: ${error.message}`);
                     //}

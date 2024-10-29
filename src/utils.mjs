@@ -1646,8 +1646,19 @@ const serializerFast = {
         blockHeader_finalized(blockData) {
             try {
                 const elementsLenght = {
-                    index: null
+                    indexBytes: 4,
+                    supplyBytes: 8,
+                    coinBaseBytes: 4,
+                    difficultyBytes: 4,
+                    legitimacyBytes: 2,
+                    prevHashBytes: 32,
+                    posTimestampBytes: 4,
+                    timestampBytes: 4,
+                    hashBytes: 32,
+                    nonceBytes: 4
                 }
+                
+                const serializedHeader = new ArrayBuffer();
                 /*const blockHeaderAsArray = [
                     convert.number.toUint8Array(blockData.index), // safe type: number
                     convert.number.toUint8Array(blockData.supply), // safe type: number
