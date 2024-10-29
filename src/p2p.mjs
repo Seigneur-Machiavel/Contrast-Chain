@@ -121,10 +121,7 @@ class P2PNetwork extends EventEmitter {
             connectionEncrypters: [noise()],
             services: {
                 identify: identify(),
-                pubsub: gossipsub(),
-                autoNAT: autoNAT(),
-                dcutr: dcutr(),
-                upnp: uPnPNAT()
+                pubsub: gossipsub()
             },
             peerDiscovery,
             connectionManager: {},
