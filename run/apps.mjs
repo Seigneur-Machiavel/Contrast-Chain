@@ -544,8 +544,8 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'transaction_requested', data: { transaction, balanceChange, inAmount, outAmount, fee, txReference: data.txReference } }));
                     break;
                 case 'get_best_block_candidate':
-                    const bestBlockCandidate = this.node.miner.bestCandidate;
-                    ws.send(JSON.stringify({ type: 'best_block_candidate_requested', data: bestBlockCandidate }));
+                    while(!this.node.miner.bestCandidate) { await new Promise(resolve => setTimeout(resolve, 1000)); }
+                    ws.send(JSON.stringify({ type: 'best_block_candidate_requested', data: this.node.miner.bestCandidate }));
                     break;
                 case 'subscribe_balance_update':
                     this.callBackManager.attachWsCallBackToModule('utxoCache', `onBalanceUpdated:${data}`, [ws]);

@@ -70,7 +70,7 @@ class P2PNetwork extends EventEmitter {
     ]);
 
     async start() {
-        enable('libp2p:kad-dht*')
+        //enable('libp2p:kad-dht*')
         try {
             this.p2pNode = await this.#createLibp2pNode();
             await this.p2pNode.start();

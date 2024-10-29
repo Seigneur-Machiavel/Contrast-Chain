@@ -116,6 +116,7 @@ const selectedWalletIndex = 0;
 
 const animations = {};
 const eHTML = {
+    documentVisible: true,
     appTitle: document.getElementById('appTitle'),
     welcomeCanvas: document.getElementById('welcomeCanvas'),
     welcomeCanvas2: document.getElementById('welcomeCanvas2'),
@@ -456,53 +457,61 @@ async function initUI() {
     particleAnimation2.particleConfig.number = 64;
     particleAnimation2.init(eHTML.welcomeCanvas2);*/
 
-    welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
+    // TITLE APPEAR ANIMATION
     setTimeout(async () => {
-        const dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
-        for (let i = 0; i < 50; i++) {
-            welcomeCanvasAnimationDocNewBubble(eHTML.welcomeCanvas, 1);
-            const rndDelay = Math.random() * 2000;
-            const delay = dotAppearTimings[i] || rndDelay;
-            await new Promise(resolve => setTimeout(resolve, delay));
+        const titleMl3 = eHTML.appTitle.getElementsByClassName('ml3')[0];
+        titleMl3.innerHTML = titleMl3.textContent.replace(/\S/g, "<span class='letter' style='display: inline-block'>$&</span>");
+
+        const letterElmnts = titleMl3.getElementsByClassName('letter');
+        const nbOfLetters = letterElmnts.length;
+        for (let i = 0; i < nbOfLetters; i++) { 
+            const rndScale = Math.random() * 2;
+            letterElmnts[i].style.transform = `scale(${rndScale})`;
+            letterElmnts[i].style.filter = `blur(2px)`;
         }
 
-        /*const dataURL = eHTML.welcomeCanvas.toDataURL();
-        ob = [];
-        eHTML.welcomeCanvas.style.backgroundImage = `url(${dataURL})`;
-        
-        await new Promise(resolve => setTimeout(resolve, 100));
-        // set barre img
-        eHTML.welcomeCanvas.style.backgroundImage = 'url("../images/contrast128.png")';*/
-    }, 1000);
+        const letterAppearedIndexes = [];
+        for (let i = 0; i < nbOfLetters; i++) {
+            const rnd = Math.floor(Math.random() * nbOfLetters);
+            if (letterAppearedIndexes.includes(rnd)) { i--; continue; }
 
-    // TITLE APPEAR ANIMATION
-    const titleMl3 = eHTML.appTitle.getElementsByClassName('ml3')[0];
-    titleMl3.innerHTML = titleMl3.textContent.replace(/\S/g, "<span class='letter' style='display: inline-block'>$&</span>");
+            letterAppearedIndexes.push(rnd);
+            anime({
+                targets: letterElmnts[rnd],
+                opacity: 1,
+                scale: 1,
+                filter: 'blur(0px)',
+                duration: 120,
+                easing: 'easeInOutQuad'
+            });
+            await new Promise(resolve => setTimeout(resolve, 120));
+        }
+    }, 100);
+    
+    await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const letterElmnts = titleMl3.getElementsByClassName('letter');
-    const nbOfLetters = letterElmnts.length;
-    for (let i = 0; i < nbOfLetters; i++) { 
-        const rndScale = Math.random() * 2;
-        letterElmnts[i].style.transform = `scale(${rndScale})`;
-        letterElmnts[i].style.filter = `blur(2px)`;
+    welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
+    const dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
+    for (let i = 0; i < 50; i++) {
+        if (document.visibilityState === 'hidden') {
+            await new Promise(resolve => setTimeout(resolve, 20));
+            i--;
+            continue;
+        }
+        welcomeCanvasAnimationDocNewBubble(eHTML.welcomeCanvas, 1);
+
+        const rndDelay = Math.random() * 2000;
+        const delay = dotAppearTimings[i] || rndDelay;
+        await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    const letterAppearedIndexes = [];
-    for (let i = 0; i < nbOfLetters; i++) {
-        const rnd = Math.floor(Math.random() * nbOfLetters);
-        if (letterAppearedIndexes.includes(rnd)) { i--; continue; }
-
-        letterAppearedIndexes.push(rnd);
-        anime({
-            targets: letterElmnts[rnd],
-            opacity: 1,
-            scale: 1,
-            filter: 'blur(0px)',
-            duration: 120,
-            easing: 'easeInOutQuad'
-        });
-        await new Promise(resolve => setTimeout(resolve, 120));
-    }
+    /*const dataURL = eHTML.welcomeCanvas.toDataURL();
+    ob = [];
+    eHTML.welcomeCanvas.style.backgroundImage = `url(${dataURL})`;
+    
+    await new Promise(resolve => setTimeout(resolve, 100));
+    // set barre img
+    eHTML.welcomeCanvas.style.backgroundImage = 'url("../images/contrast128.png")';*/
 }
 let ob = [];
 function welcomeCanvasAnimationDocNewBubble(canvasElement = eHTML.welcomeCanvas, amount = 1) {
@@ -531,9 +540,13 @@ function welcomeCanvasAnimationDocStart(canvasElement = eHTML.welcomeCanvas) {
     tx=canvasElement.width/2;
     ty=canvasElement.height/2;
 
-    aaa();
+    async function aaa(){
+        /*console.log(`document.visibilityState: ${document.visibilityState}`);
+        while (document.visibilityState === 'hidden') {
+            await new Promise(resolve => setTimeout(resolve, 20));
+            console.log('hidden');
+        }*/
 
-    function aaa(){
         let a,b,c,d,e,f,g,h,x,y,abs,pe,tim;
         ctx.globalCompositeOperation = "source-over";
 
@@ -600,6 +613,8 @@ function welcomeCanvasAnimationDocStart(canvasElement = eHTML.welcomeCanvas) {
         count++;
         requestAnimationFrame(aaa);
     }
+
+    requestAnimationFrame(aaa);
 }
 function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');

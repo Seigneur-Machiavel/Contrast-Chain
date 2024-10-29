@@ -55,7 +55,7 @@ class Pow {
 
         let hashRate = 0;
         const hashRateCalculInterval = 5000;
-        const chrono = { updateStart: Date.now(), iterations: 0, powStart: 0 };
+        const chrono = { updateStart: Date.now(), iterations: 0, powStart: 0, waiting: false };
 
         function updateHashRate() {
             const needUpdate = hashRateCalculInterval < (Date.now() - chrono.updateStart)
@@ -68,28 +68,28 @@ class Pow {
             }
         }
 
-        let waiting = false;
+        chrono.waiting = false;
         while (true) {
             while(this.miningIntensity === 0) {
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                if (!waiting) { continue; }
+                if (!chrono.waiting) { continue; }
                 
                 chrome.storage.local.set({hashRate: 0});
                 console.info(`[MINER] WAITING FOR MINING INTENSITY: ${this.miningIntensity}`);
                 waiting = true;
             }
-
-            if (waiting) {
-                chrono.updateStart = 0;
-                iterations = 0;
-                waiting = false; console.info(`[MINER] RESUMING MINING`);
-            }
-
-            if (!this.bestCandidate) {
-                console.info('[MINER] No block candidate to mine');
+            while (!this.bestCandidate) {
+                console.info('[MINER] Waiting for block candidate');
                 await new Promise(resolve => setTimeout(resolve, 1000));
-                continue;
+                chrono.waiting = true;
             }
+
+            if (chrono.waiting) {
+                chrono.updateStart = 0;
+                chrono.iterations = 0;
+                chrono.waiting = false; console.info(`[MINER] RESUMING MINING`);
+            }
+
             const { signatureHex, nonce, clonedCandidate } = await this.#prepareBlockCandidateBeforeMining(this.bestCandidate);
             //console.log(clonedCandidate);
 
@@ -102,12 +102,13 @@ class Pow {
             //if (!result.conform) { console.info('[MINER] Invalid POW found'); }
             if (result.conform) {
                 console.log(`[MINER] LUCKY!! VALID POW FOUND!`);
-                console.log(result);
+                console.log(`conform: ${result.conform}`);
                 console.log(clonedCandidate);
                 chrome.storage.local.set({blockFinalized: clonedCandidate});
             }
 
-            const pauseDuration = this.#calculatePauseDuration(Date.now() - chrono.powStart);
+            //const pauseDuration = this.#calculatePauseDuration(Date.now() - chrono.powStart);
+            const pauseDuration = 100;
             console.log(`[MINER] Mining duration: ${Date.now() - chrono.powStart}ms - Pause duration: ${pauseDuration}ms`);
             if (pauseDuration > 0) { await new Promise(resolve => setTimeout(resolve, pauseDuration)); }
 

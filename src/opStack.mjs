@@ -41,20 +41,24 @@ export class OpStack {
                 continue;
             }
 
-            if (this.node.miner) { this.node.miner.canProceedMining = false; }
             await new Promise(resolve => setImmediate(resolve));
 
             for (let i = 0; i < this.txBatchSize; i++) {
-                await this.#executeNextTask();
-                if (this.tasks.type !== 'pushTransaction') { break; }
+                const task = this.tasks.shift();
+                if (!task) { return; }
+
+                const taskRequireMiningPause = task.type === 'syncWithKnownPeers';
+                if (taskRequireMiningPause && this.node.miner) { this.node.miner.canProceedMining = false; }
+                await this.#executeTask(task);
+
+                if (task.type !== 'pushTransaction') { break; }
             }
         }
     }
-    async #executeNextTask() {
-        const task = this.tasks.shift();
+    async #executeTask(task) {
         if (!task) { return; }
 
-        try {
+        //try {
             const content = task.data ? task.data.content ? task.data.content : task.data : undefined;
             const byteLength = task.data ? task.data.byteLength ? task.data.byteLength : undefined : undefined;
 
@@ -128,7 +132,7 @@ export class OpStack {
                 default:
                     console.error(`[OpStack] Unknown task type: ${task.type}`);
             }
-        } catch (error) { console.error(error.stack); }
+        //} catch (error) { console.error(error.stack); }
     }
     /** @param {string} type  @param {object} data */
     push(type, data) {

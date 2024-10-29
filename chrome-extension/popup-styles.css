@@ -772,6 +772,9 @@ button.classy.clicked:not(.disabled) {
     justify-content: initial;
     min-height: 320px;
 }
+#settingsForm .textInfo {
+    margin: 0;
+}
 #settingsForm button {
     height: 32px;
     margin: 0 0 20px 0;
