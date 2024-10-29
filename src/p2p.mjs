@@ -14,7 +14,8 @@ import ReputationManager from './reputation.mjs'; // Import the ReputationManage
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
 import { generateKeyPairFromSeed } from '@libp2p/crypto/keys';
-
+import { uPnPNAT } from '@libp2p/upnp-nat';
+import { dcutr } from '@libp2p/dcutr';
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -122,6 +123,8 @@ class P2PNetwork extends EventEmitter {
                 identify: identify(),
                 pubsub: gossipsub(),
                 autoNAT: autoNAT(),
+                dcutr: dcutr(),
+                upnp: uPnPNAT()
             },
             peerDiscovery,
             connectionManager: {},
