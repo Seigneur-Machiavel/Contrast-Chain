@@ -75,7 +75,7 @@ class P2PNetwork extends EventEmitter {
         const peerIdObject = peerIdFromPrivateKey(privateKeyObject);
 
         try {
-            this.p2pNode = await this.#createLibp2pNode(peerIdObject);
+            this.p2pNode = await this.#createLibp2pNode(privateKeyObject);
             await this.p2pNode.start();
             this.logger.info('luid-b4d2ba42 P2P network started', { peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress });
 
@@ -107,7 +107,7 @@ class P2PNetwork extends EventEmitter {
     }
 
     /** @returns {Promise<Libp2p>} */
-    async #createLibp2pNode(peerIdObject) {
+    async #createLibp2pNode(privateKeyObject) {
         const peerDiscovery = [mdns()];
 
         if (this.options.bootstrapNodes.length > 0) {
@@ -115,7 +115,7 @@ class P2PNetwork extends EventEmitter {
         }
 
         return createLibp2p({
-            peerId: peerIdObject,
+            privateKey: privateKeyObject,
             addresses: { listen: [this.options.listenAddress] },
             transports: [tcp()],
             streamMuxers: [yamux()],
