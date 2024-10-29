@@ -13,8 +13,8 @@ import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs'; // Import the ReputationManager
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
-import { peerIdFromCID, peerIdFromMultihash, peerIdFromPrivateKey, peerIdFromString } from '@libp2p/peer-id';
-import { generateKeyPair, generateKeyPairFromSeed } from '@libp2p/crypto/keys';
+import { peerIdFromPrivateKey } from '@libp2p/peer-id';
+import { generateKeyPairFromSeed } from '@libp2p/crypto/keys';
 
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
@@ -72,10 +72,10 @@ class P2PNetwork extends EventEmitter {
     async start(keyPair) {
         const privateKeyUint8Array = this.toUint8Array(keyPair.privKey);
         const privateKeyObject = await generateKeyPairFromSeed("Ed25519", privateKeyUint8Array);
-        const peer = peerIdFromPrivateKey(privateKeyObject);
+        const peerIdObject = peerIdFromPrivateKey(privateKeyObject);
 
         try {
-            this.p2pNode = await this.#createLibp2pNode(peer);
+            this.p2pNode = await this.#createLibp2pNode(peerIdObject);
             await this.p2pNode.start();
             this.logger.info('luid-b4d2ba42 P2P network started', { peerId: this.p2pNode.peerId, listenAddress: this.options.listenAddress });
 
