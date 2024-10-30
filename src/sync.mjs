@@ -119,6 +119,7 @@ export class SyncHandler {
         this.node.blockchainStats.state = "syncing";
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
 
+        console.log('CONTROL --A')
         if (this.node.p2pNetwork.subscriptions.size > 0) {
             this.logger.info(`luid-7d739b5d [SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics`);
             for (const topic of uniqueTopics) { await this.node.p2pNetwork.unsubscribe(topic); }
@@ -126,24 +127,25 @@ export class SyncHandler {
 
         this.isSyncing = true;
         this.logger.info(`luid-ba6712a8 [SYNC] Starting syncWithKnownPeers at #${this.node.blockchain.currentHeight}`);
-        
+        console.log('CONTROL --B')
         const peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
         if (peerStatuses === null || peerStatuses.length === 0) { // Restart node if no peers are available
             this.logger.error(`luid-b1baf98f [SYNC] unable to get peersStatus -> handleSyncFailure()`);
+            console.log('CONTROL --HSF')
             await this.handleSyncFailure();
             return false;
         }
-
+        console.log('CONTROL --C')
         // Sort peers by currentHeight in descending order
         peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
         const highestPeerHeight = peerStatuses[0].currentHeight;
-
+        console.log('CONTROL --D')
         if (highestPeerHeight === undefined) {
             this.logger.error(`luid-daa18cf7 [SYNC] highestPeerHeight is undefined -> handleSyncFailure()`);
             //await this.handleSyncFailure();
             return false;
         }
-
+        console.log('CONTROL --E')
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
             this.isSyncing = false;
@@ -152,7 +154,7 @@ export class SyncHandler {
         }
 
         this.logger.info(`luid-dbad0072 [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
-
+        console.log('CONTROL --F')
         // Attempt to sync with peers in order
         for (const peerInfo of peerStatuses) {
             const { peerId, address, currentHeight } = peerInfo;
@@ -173,20 +175,20 @@ export class SyncHandler {
                 if (error instanceof SyncRestartError) {
                     this.logger.error('luid-5abadb62 Sync restart error occurred',{ error: error.message });
                     await this.handleSyncFailure();
-                    return false;
+                    return true;
                 }
                 break;
             } 
         }
-        
+        console.log('CONTROL --G')
         if (highestPeerHeight > this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-1b356e8a [SYNC] Need to sync more blocks, restarting sync process`);
             return false;
         }
-
+        console.log('CONTROL --H')
         this.isSyncing = false;
         await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
-
+        console.log('CONTROL --I')
         this.logger.debug(`luid-8085b169 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight} compared to highestPeerHeight: ${highestPeerHeight}`);
         return true;
     }
@@ -322,7 +324,7 @@ export class SyncHandler {
         }
         const lastSnapshotHeight = snapshotHeights[snapshotHeights.length - 1];
         let eraseUntilHeight = currentHeight - 10;
-        if (!isNaN(lastSnapshotHeight)) {
+        if (typeof lastSnapshotHeight === 'number') {
             eraseUntilHeight = Math.min(currentHeight -10, lastSnapshotHeight - 10);
             this.node.snapshotSystemDoc.eraseSnapshotsHigherThan(eraseUntilHeight);
         }
