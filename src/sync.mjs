@@ -131,9 +131,10 @@ export class SyncHandler {
         const peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
         if (peerStatuses === null || peerStatuses.length === 0) { // Restart node if no peers are available
             this.logger.error(`luid-b1baf98f [SYNC] unable to get peersStatus -> handleSyncFailure()`);
-            console.log('CONTROL --HSF')
+            console.log('CONTROL --HSF1')
             await this.handleSyncFailure();
-            return false;
+            console.log('CONTROL --HSF2')
+            return true; // false
         }
         console.log('CONTROL --C')
         // Sort peers by currentHeight in descending order
@@ -141,15 +142,18 @@ export class SyncHandler {
         const highestPeerHeight = peerStatuses[0].currentHeight;
         console.log('CONTROL --D')
         if (highestPeerHeight === undefined) {
+            console.log('CONTROL --HSF3')
             this.logger.error(`luid-daa18cf7 [SYNC] highestPeerHeight is undefined -> handleSyncFailure()`);
-            //await this.handleSyncFailure();
-            return false;
+            await this.handleSyncFailure();
+            console.log('CONTROL --HS4')
+            return true; // false
         }
         console.log('CONTROL --E')
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
             this.isSyncing = false;
             await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+            
             return true;
         }
 
@@ -175,7 +179,7 @@ export class SyncHandler {
                 if (error instanceof SyncRestartError) {
                     this.logger.error('luid-5abadb62 Sync restart error occurred',{ error: error.message });
                     await this.handleSyncFailure();
-                    return true;
+                    return true; // false
                 }
                 break;
             } 
