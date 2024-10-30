@@ -504,12 +504,13 @@ export class Node {
                     break;
                 case 'new_block_finalized':
                     if (!this.roles.includes('validator')) { break; }
-                    const lastBlockIndex = this.blockchain.currentHeight;
-                    const isSynchronized = data.index === 0 || lastBlockIndex + 1 >= data.index;
-                    if (isSynchronized) { this.opStack.push('digestPowProposal', message); break; }
+                    this.opStack.push('digestPowProposal', message);
+                    //const lastBlockIndex = this.blockchain.currentHeight;
+                    //const isSynchronized = data.index === 0 || lastBlockIndex + 1 >= data.index;
+                    //if (isSynchronized) { this.opStack.push('digestPowProposal', message); break; }
 
                     // if we are late, we ask for the missing blocks by p2p streaming
-                    this.opStack.pushFirst('syncWithKnownPeers', null);
+                    //this.opStack.pushFirst('syncWithKnownPeers', null);
                     break;
                 case 'test':
                     console.warn(`[TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}`);
