@@ -4,7 +4,6 @@ import { tcp } from '@libp2p/tcp';
 import { noise } from '@chainsafe/libp2p-noise';
 import { gossipsub } from '@chainsafe/libp2p-gossipsub';
 import { identify } from '@libp2p/identify';
-import { autoNAT } from '@libp2p/autonat';
 import { mdns } from '@libp2p/mdns';
 import { bootstrap } from '@libp2p/bootstrap';
 import { lpStream } from 'it-length-prefixed-stream';
@@ -14,8 +13,7 @@ import ReputationManager from './reputation.mjs'; // Import the ReputationManage
 import { yamux } from '@chainsafe/libp2p-yamux';
 import { Logger } from './logger.mjs';
 import { generateKeyPairFromSeed } from '@libp2p/crypto/keys';
-import { uPnPNAT } from '@libp2p/upnp-nat';
-import { dcutr } from '@libp2p/dcutr';
+
 /**
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -41,6 +39,7 @@ class P2PNetwork extends EventEmitter {
         this.peers = new Map();
         this.subscriptions = new Set();
         this.logger = logger;
+
         if (this.logger === undefined) {
             this.logger = new Logger ();
         }
@@ -96,6 +95,7 @@ class P2PNetwork extends EventEmitter {
 
         return uint8Array;
     }
+
     async stop() {
         if (this.p2pNode) {
             await this.p2pNode.stop();
@@ -124,7 +124,6 @@ class P2PNetwork extends EventEmitter {
                 pubsub: gossipsub()
             },
             peerDiscovery,
-            connectionManager: {},
         });
     }
 
