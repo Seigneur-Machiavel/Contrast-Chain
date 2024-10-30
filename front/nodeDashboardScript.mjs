@@ -786,7 +786,7 @@ function togglePasswordVisibility(inputElement, toggleButton) {
         toggleButton.textContent = 'Show';
     }
 }
-function adjustInputValue(targetInput, delta, min = 1, max = 16) {
+function adjustInputValue(targetInput, delta, min = 1, max = 4) {
     const currentValue = parseInt(targetInput.value);
     if (isNaN(currentValue)) {
         targetInput.value = min;
