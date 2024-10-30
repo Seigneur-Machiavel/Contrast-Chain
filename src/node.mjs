@@ -286,7 +286,7 @@ export class Node {
         if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
         if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
         const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
-        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffPos} > timestamp_diff_tolerance: 1`); }
+        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
         if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
@@ -447,8 +447,9 @@ export class Node {
 
         if (!broadcastNewCandidate) { return true; }
 
-        const nbOfPeers = isSync ? 0 : this.#waitSomePeers();
-        if (await nbOfPeers < 1) { throw new Error('!sync! No peer to broadcast the new block candidate'); }
+        const nbOfPeers = isSync ? 0 : await this.#waitSomePeers();
+        if (nbOfPeers < 1) { throw new Error ('!sync! No peer to broadcast the new block candidate'); }
+
         this.blockCandidate = await this.#createBlockCandidate();
         try {
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
