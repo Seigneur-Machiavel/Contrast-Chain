@@ -47,9 +47,6 @@ export class OpStack {
             for (let i = 0; i < this.txBatchSize; i++) {
                 const task = this.tasks.shift();
                 if (!task) { break; }
-
-                const taskRequireMiningPause = task.type === 'syncWithKnownPeers';
-                if (taskRequireMiningPause && this.node.miner) { this.node.miner.canProceedMining = false; }
                 
                 this.lastExecutedTask = task;
                 await this.#executeTask(task);
@@ -116,14 +113,15 @@ export class OpStack {
                     }, this.delayWithoutConfirmationBeforeSync);
                     break;
                 case 'syncWithKnownPeers':
+                    if (this.node.miner) { this.node.miner.canProceedMining = false; }
+
                     console.warn(`[NODE-${this.node.id.slice(0, 6)} - OPSTACK] SyncWithKnownPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     const syncSuccessful = await this.node.syncHandler.syncWithKnownPeers();
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                        //this.syncRequested = false;
-                        //this.pushFirst( 'syncWithKnownPeers', null );
-                        this.tasks.unshift(task);
+                        //this.tasks.unshift(task);
+                        this.terminate();
                         break;
                     }
 
