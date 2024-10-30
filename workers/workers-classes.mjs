@@ -161,6 +161,8 @@ export class MinerWorker {
     async updateCandidate(blockCandidate) {
         if (this.terminate) { return; }
         if (this.#isSameBlockCandidate(blockCandidate)) { return; }
+
+        this.blockCandidate = blockCandidate;
         this.worker.postMessage({ type: 'newCandidate', blockCandidate });
 
         // await 200 ms to allow the worker to process the new candidate

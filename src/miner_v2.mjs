@@ -184,7 +184,10 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
         this.powBroadcastState.foundHeight = finalizedBlock.index;
         this.powBroadcastState.sentTryCount++;
 
-        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized (Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)} | validatorAddress: ${validatorAddress}`);
+        const validatorId = validatorAddress.slice(0, 6);
+        const minerId = this.address.slice(0, 6);
+        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized, validator: ${validatorId} | miner: ${minerId}
+(Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)}`);
         
         this.addressOfCandidatesBroadcasted.push(validatorAddress);
         await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
@@ -238,14 +241,27 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
                 continue;
             }
             
-            const startTimestamp = Date.now();
+            const timings = {
+                start: Date.now(),
+                workersUpdate: 0,
+                updateInfo: 0
+            }
 
             for (let i = 0; i < readyWorkers; i++) {
-                const blockBet = this.bets && this.bets[this.highestBlockIndex] ? this.bets[this.highestBlockIndex][i] : 0;
                 const worker = this.workers[i];
                 await worker.updateCandidate(blockCandidate);
+            }
+            timings.workersUpdate = Date.now();
+            
+            for (let i = 0; i < readyWorkers; i++) {
+                const worker = this.workers[i];
+                const blockBet = this.bets && this.bets[this.highestBlockIndex] ? this.bets[this.highestBlockIndex][i] : 0;
                 await worker.updateInfo(this.address, blockBet, this.timeSynchronizer.offset);
+            }
+            timings.updateInfo = Date.now();
 
+            for (let i = 0; i < readyWorkers; i++) {
+                const worker = this.workers[i];
                 if (worker.isWorking) { continue; }
                 if (worker.result !== null) {
                     const finalizedBlock = worker.getResultAndClear();
@@ -258,10 +274,12 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
             }
             
             const endTimestamp = Date.now();
-            const timeSpent = endTimestamp - startTimestamp;
+            const timeSpent = endTimestamp - timings.start;
             if (timeSpent < 1000) { continue; }
 
-            console.info(`[MINER-${this.address.slice(0, 6)}] Abnormal time spent: ${timeSpent}ms`);
+            console.info(`[MINER-${this.address.slice(0, 6)}] Abnormal time spent: ${timeSpent}ms
+            - workersUpdate: ${timings.workersUpdate - timings.start}ms
+            - updateInfo: ${timings.updateInfo - timings.workersUpdate}ms`);
         }
 
         console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);

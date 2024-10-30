@@ -191,16 +191,16 @@
   "luid-be3516e1": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 301,
+    "line": 283,
     "type": "warn",
-    "content": "luid-be3516e1 luid-topic-validation Invalid topic type"
+    "content": "luid-be3516e1 Invalid topic type"
   },
   "luid-d0ad52f1": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 306,
+    "line": 288,
     "type": "warn",
-    "content": "luid-d0ad52f1 luid-topic-validation Topic not allowed"
+    "content": "luid-d0ad52f1 Topic not allowed"
   },
   "luid-4937c817": {
     "active": false,
