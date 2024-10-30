@@ -244,7 +244,7 @@ export class Node {
     async createBlockCandidateAndBroadcast() {
         this.blockchainStats.state = "creating block candidate";
         try {
-            if (this.p2pNetwork.getConnectedPeers() > 1) { return; }
+            if (this.p2pNetwork.getConnectedPeers().length >= 1) { return; }
 
             if (!this.roles.includes('validator')) { throw new Error('Only validator can create a block candidate'); }
 
