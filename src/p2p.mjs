@@ -280,12 +280,12 @@ class P2PNetwork extends EventEmitter {
      */
     validateTopic(topic) {
         if (typeof topic !== 'string') {
-            this.logger.warn('luid-be3516e1 luid-topic-validation Invalid topic type', { topic, reason: 'Topic must be a string' });
+            this.logger.warn('luid-be3516e1 Invalid topic type', { topic, reason: 'Topic must be a string' });
             return false;
         }
 
         if (!P2PNetwork.ALLOWED_TOPICS.has(topic)) {
-            this.logger.warn('luid-d0ad52f1 luid-topic-validation Topic not allowed', { topic });
+            this.logger.warn('luid-d0ad52f1 Topic not allowed', { topic });
             return false;
         }
 
