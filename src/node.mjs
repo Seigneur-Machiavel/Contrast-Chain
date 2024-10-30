@@ -242,7 +242,7 @@ export class Node {
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
         if (finalizedBlock.index > lastBlockIndex + 1) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 1} | validator: ${validatorId} | miner: ${minerId}`);
-            throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 1}`);
+            throw new Error(`!sync! Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 1}`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
