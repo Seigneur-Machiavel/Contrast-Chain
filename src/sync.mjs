@@ -271,8 +271,10 @@ export class SyncHandler {
 
         const peersRelatedToPromises = [];
         const statusPromises = [];
+        console.log('CONTROL --#getAllPeersStatus A')
         for (const [peerId, peerData] of peersToSync) {
             const address = peerData.address;
+            console.log('CONTROL --#getAllPeersStatus B')
             if (!address) {
                 console.log('Peer address is missing');
                 return null;
@@ -281,31 +283,45 @@ export class SyncHandler {
             // Attempt to create a multiaddr; skip if invalid
             let ma;
             try {
+                console.log('CONTROL --#getAllPeersStatus C')
                 ma = multiaddr(address);
             } catch (err) {
                 this.logger.error('luid-35e1f975 Invalid multiaddr for peer',{ address, error: err.message });
                 continue; // Skip this peer
             }
+            console.log('CONTROL --#getAllPeersStatus D')
             statusPromises.push(this.#getPeerStatus(p2pNetwork, ma , peerId));
             peersRelatedToPromises.push({ peerId, address });
         }
 
+        console.log('CONTROL --#getAllPeersStatus E')
         // Execute all status retrievals in parallel
-        const results = await Promise.allSettled(statusPromises);
+        //const results = await Promise.allSettled(statusPromises);
+        
+        let timeOut = setTimeout(() => { 
+            console.log('--#getAllPeersStatus TIMEOUT')
+            return allStatus; 
+        }, 5000);
 
         // Process the results
-       for (let i = 0; i < results.length; i++) {
+        for (let i = 0; i < statusPromises.length; i++) {
+            const result = await Promise.race(statusPromises);
+            statusPromises.splice(statusPromises.indexOf(result), 1);
+
             const address = peersRelatedToPromises[i].address;
             const peerId = peersRelatedToPromises[i].peerId;
-            const result = results[i];
-            if (result.status === 'fulfilled' && result.value) {
+            console.log('CONTROL --#getAllPeersStatus F')
+            if (result.status === 'success' && result) {
                 allStatus.push({ 
                     peerId,
                     address,
-                    currentHeight: result.value.currentHeight,
-                    latestBlockHash: result.value.latestBlockHash
+                    currentHeight: result.currentHeight,
+                    latestBlockHash: result.latestBlockHash
                 });
             }
+
+            timeOut = clearTimeout(timeOut);
+            timeOut = setTimeout(() => { return allStatus; }, 5000);
         }
         return allStatus;
     }
