@@ -313,9 +313,14 @@ export class SyncHandler {
     /** Handles synchronization failure by rolling back to snapshot and requesting a restart handled by the factory. */
     async handleSyncFailure() {
         this.logger.error(`luid-33c856d9 [SYNC] Sync failure occurred, restarting sync process`);
-        if (this.node.restartRequested) { return; }
+        if (this.node.restartRequested) {
+            this.isSyncing = false;
+            return;
+        }
+
         if (this.node.blockchain.currentHeight === -1) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - blockchain currentHeight is -1');
+            this.isSyncing = false;
             return;
         }
                 
@@ -324,6 +329,7 @@ export class SyncHandler {
         
         if (snapshotHeights.length === 0) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - no snapshots available');
+            this.isSyncing = false;
             return;
         }
         const lastSnapshotHeight = snapshotHeights[snapshotHeights.length - 1];
@@ -337,6 +343,7 @@ export class SyncHandler {
         
         this.logger.info(`luid-cd98e436 [SYNC-${this.node.id.slice(0, 6)}] Snapshot erased until #${eraseUntilHeight}, waiting for restart...`);
         this.logger.info(`luid-3ef67123 [SYNC] Blockchain restored and reloaded. Current height: ${this.node.blockchain.currentHeight}`);
+        this.isSyncing = false;
     }
     /**
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
