@@ -64,7 +64,6 @@ export class Node {
         /** @type {number} */
         this.version = version;
 
-        this.utxoCacheSnapshots = [];
         /** @type {Miner} */
         this.miner = null;
         /** @type {string} */
