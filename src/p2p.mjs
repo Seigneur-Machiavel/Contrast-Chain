@@ -403,25 +403,57 @@ class P2PNetwork extends EventEmitter {
      * @param {Object} message - The message object to send.
      * @returns {Promise<Object>} - The response from the peer.
      */
-    async sendOverStream(stream, message) {
+    async sendOverStream(stream, message, timeoutMs = 1000) {
+        const createTimeout = (ms) => {
+            return new Promise((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`Operation timed out after ${ms}ms`));
+                }, ms);
+            });
+        };
+    
         try {
             const lp = lpStream(stream);
             const serialized = utils.serializer.rawData.toBinary_v1(message);
-            await lp.write(serialized);
-            this.logger.info('luid-e99e2dac Message written to stream', { component: 'P2PNetwork', length: serialized.length });
-
-            const res = await lp.read();
-            if (!res) { throw new Error('No response received (unexpected end of input)'); }
-            this.logger.info('luid-d7de89d1 Response read from stream', { component: 'P2PNetwork', response_bytes: res.length });
-
+            
+            // Write with timeout
+            await Promise.race([
+                lp.write(serialized),
+                createTimeout(timeoutMs)
+            ]);
+            
+            this.logger.info('luid-e99e2dac Message written to stream', { 
+                component: 'P2PNetwork', 
+                length: serialized.length 
+            });
+    
+            // Read with timeout
+            const res = await Promise.race([
+                lp.read(),
+                createTimeout(timeoutMs)
+            ]);
+    
+            if (!res) { 
+                throw new Error('No response received (unexpected end of input)'); 
+            }
+            
+            this.logger.info('luid-d7de89d1 Response read from stream', { 
+                component: 'P2PNetwork', 
+                response_bytes: res.length 
+            });
+    
             const response = utils.serializer.rawData.fromBinary_v1(res.subarray());
             if (response.status !== 'error') {
                 return response;
             }
-
+    
             throw new Error(response.message);
         } catch (error) {
-            this.logger.error('luid-a0932f5f Error during sendOverStream', { component: 'P2PNetwork', error: error.message });
+            this.logger.error('luid-a0932f5f Error during sendOverStream', { 
+                component: 'P2PNetwork', 
+                error: error.message,
+                timeout: timeoutMs 
+            });
             throw error;
         }
         finally {
@@ -429,7 +461,9 @@ class P2PNetwork extends EventEmitter {
                 try {
                     stream.close();
                 } catch (closeErr) {
-                    this.logger.error('luid-d0cd7dc0 Failed to close stream', { error: closeErr.message });
+                    this.logger.error('luid-d0cd7dc0 Failed to close stream', { 
+                        error: closeErr.message 
+                    });
                 }
             } else {
                 this.logger.warn('luid-07277de5 Stream is undefined; cannot close stream');
