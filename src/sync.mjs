@@ -9,6 +9,7 @@ import {Logger} from './logger.mjs';
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
  * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
+ * @typedef {import("./logger.mjs").Logger} Logger
  */
 const MAX_BLOCKS_PER_REQUEST = 4;
 const DELAY_BETWEEN_PEERS = 1000; // 2 seconds
@@ -27,6 +28,7 @@ export class SyncHandler {
         this.p2pNetworkMaxMessageSize = 0;
         this.syncFailureCount = 0;
         this.maxBlocksToRemove = 100; // Set a maximum limit to prevent removing too many blocks
+        /** @type {Logger} */
         this.logger = logger;
         this.isSyncing = false;
         this.peerHeights = new Map();
@@ -265,7 +267,11 @@ export class SyncHandler {
         const statusPromises = [];
         for (const [peerId, peerData] of peersToSync) {
             const address = peerData.address;
-            if (!address) { reject(new Error('Peer address is missing')); }
+            if (!address) {
+                console.log('Peer address is missing');
+                return null;
+            }
+
             // Attempt to create a multiaddr; skip if invalid
             let ma;
             try {
