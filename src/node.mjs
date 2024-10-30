@@ -111,8 +111,7 @@ export class Node {
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
         //if (this.roles.includes('miner')) { this.miner.start_v2(); }
-        await this.#waitSomePeers();
-
+     
         console.log('P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
@@ -204,50 +203,6 @@ export class Node {
         return [...new Set(topicsToSubscribe)];
     }
 
-    async #waitSomePeers(nbOfPeers = 1, maxAttempts = 60, timeOut = 30000) {
-        const checkPeerCount = () => {
-            const peersIds = this.p2pNetwork.getConnectedPeers();
-            const myPeerId = this.p2pNetwork.p2pNode.peerId.toString();
-            return peersIds.length - (peersIds.includes(myPeerId) ? 1 : 0);
-        };
-    
-        const attemptConnection = async () => {
-            for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                if (attempt > 0) await new Promise(resolve => setTimeout(resolve, 1000));
-                
-                let peerCount = checkPeerCount();
-                if (peerCount >= nbOfPeers) {
-                    console.info(`luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
-                    return peerCount;
-                }
-    
-                await this.p2pNetwork.connectToBootstrapNodes();
-                peerCount = checkPeerCount();
-                
-                if (peerCount >= nbOfPeers) {
-                    console.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
-                    this.opStack.pushFirst('syncWithKnownPeers', null);
-                    return peerCount;
-                }
-    
-                console.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
-            }
-            //throw new Error(`Failed to connect to ${nbOfPeers} peers within ${maxAttempts} attempts`);
-            return false;
-        };
-    
-        //try {
-        return await Promise.race([
-            attemptConnection(),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error(`P2P network failed to find peers within ${timeOut / 1000} seconds`)), timeOut)
-            )
-        ]);
-        //} catch (error) {
-        //    console.warn(error.message);
-        //    return false;
-        //}
-    }
 
     async createBlockCandidateAndBroadcast() {
         this.blockchainStats.state = "creating block candidate";
@@ -460,9 +415,6 @@ export class Node {
         if (!isLoading) { await this.#saveSnapshot(finalizedBlock); }
 
         if (!broadcastNewCandidate) { return true; }
-
-        const nbOfPeers = isSync ? 0 : await this.#waitSomePeers();
-        if (nbOfPeers < 1) { throw new Error ('!sync! No peer to broadcast the new block candidate'); }
 
         this.blockCandidate = await this.#createBlockCandidate();
         try {
