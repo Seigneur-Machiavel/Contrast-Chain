@@ -88,7 +88,7 @@ export class NodeFactory {
         targetNode.timeSynchronizer.stop = true;
         await new Promise(resolve => setTimeout(resolve, 1000));
         
-        targetNode.miner.terminate();
+        await targetNode.miner.terminate();
         for (const worker of targetNode.workers) { await worker.terminateAsync(); }
         await new Promise(resolve => setTimeout(resolve, 1000));
 

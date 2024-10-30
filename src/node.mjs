@@ -6,7 +6,7 @@ import { MemPool } from './memPool.mjs';
 import { UtxoCache } from './utxoCache.mjs';
 import { BlockData, BlockUtils } from './block.mjs';
 import { Transaction_Builder, TxIO_Builder } from './transaction.mjs';
-import { Miner } from './miner.mjs';
+import { Miner } from './miner_v2.mjs';
 import P2PNetwork from './p2p.mjs';
 import utils from './utils.mjs';
 import { Blockchain } from './blockchain.mjs';

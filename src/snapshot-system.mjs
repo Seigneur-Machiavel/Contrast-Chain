@@ -55,6 +55,7 @@ export default class SnapshotSystemDoc {
 			snapshotsHeights.sort((a, b) => a - b);
 			return snapshotsHeights;			
 		} catch (error) {
+			console.error(error.stack);
 			return [];
 		}
 	}

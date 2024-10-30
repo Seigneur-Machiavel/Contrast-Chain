@@ -218,8 +218,8 @@ export class DashboardWsApp {
             node.miner.address = associatedMinerAddress;
         }
 
-        const associatedMinerThreads = this.#nodesSettings[nodeId].minerThreads;
-        if (associatedMinerThreads) { 
+        const associatedMinerThreads = Number(this.#nodesSettings[nodeId].minerThreads);
+        if (associatedMinerThreads && !isNaN(associatedMinerThreads)) {
             node.miner.nbOfWorkers = associatedMinerThreads;
         }
     }

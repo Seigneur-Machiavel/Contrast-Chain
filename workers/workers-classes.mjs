@@ -1,5 +1,9 @@
 import utils from '../src/utils.mjs';
 
+/**
+ * @typedef {import("../src/block.mjs").BlockData} BlockData
+ */
+
 // CLASS FOR EASY USAGE OF THE WORKER
 export class ValidationWorker {
     constructor (id = 0) {
@@ -92,6 +96,119 @@ export class ValidationWorker_v2 {
             });
             this.worker.on('exit', (code) => {
                 console.log(`ValidationWorker ${this.id} stopped with exit code ${code}`);
+                resolve();
+            });
+        });
+    }
+}
+
+export class MinerWorker {
+    constructor (rewardAddress = '', bet = 0, timeOffset = 0) {
+        this.terminate = false;
+        this.rewardAddress = rewardAddress;
+        this.bet = bet;
+        this.timeOffset = timeOffset;
+        /** @type {BlockData} */
+        this.blockCandidate = null;
+        
+        /** @type {BlockData} */
+        this.result = null;
+        this.isWorking = false;
+        this.hashRate = 0;
+        //this.totalHashCount = 0;
+        this.startTime = Date.now();
+
+        /** @type {Worker} worker */
+        this.worker = utils.newWorker('../workers/miner-worker-nodejs-v2.mjs');
+        this.worker.on('close', () => { console.log('MinerWorker closed'); });
+        this.worker.on('message', (message) => {
+            if (message.hashCount) {
+                const upTime = Date.now() - this.startTime;
+                const hashRate = message.hashCount / upTime * 1000;
+                this.hashRate = hashRate;
+
+                this.startTime = Date.now();
+                //this.totalHashCount += message.hashCount;
+                //console.log(`MinerWorker totalHashCount: ${this.totalHashCount}`);
+                return;
+            }
+
+            if (message.result.error) {
+                console.error(message.result.error);
+            } else {
+                this.result = message.result;
+            }
+
+            this.isWorking = false;
+        });
+    }
+
+    async updateInfo(rewardAddress, bet, timeOffset) {
+        if (this.terminate) { return; }
+        const isSame = this.rewardAddress === rewardAddress && this.bet === bet && this.timeOffset === timeOffset;
+        if (isSame) { return; }
+
+        this.rewardAddress = rewardAddress;
+        this.bet = bet;
+        this.timeOffset = timeOffset;
+
+        this.worker.postMessage({ type: 'updateInfo', rewardAddress, bet, timeOffset });
+
+        // await 200 ms to allow the worker to process the new info
+        return new Promise(resolve => setTimeout(resolve, 200));
+    }
+    /** @param {BlockData} blockCandidate */
+    async updateCandidate(blockCandidate) {
+        if (this.terminate) { return; }
+        if (this.#isSameBlockCandidate(blockCandidate)) { return; }
+        this.worker.postMessage({ type: 'newCandidate', blockCandidate });
+
+        // await 200 ms to allow the worker to process the new candidate
+        await new Promise(resolve => setTimeout(resolve, 200));
+    }
+    /** @param {BlockData} blockCandidate */
+    #isSameBlockCandidate(blockCandidate) {
+        if (this.blockCandidate === null) { return false; }
+
+        const sameIndex = this.blockCandidate.index === blockCandidate.index;
+        const samePrevHash = this.blockCandidate.prevHash === blockCandidate.prevHash;
+
+        const currentCandidateValidatorAddress = this.blockCandidate.Txs[0].outputs[0].address;
+        const newCandidateValidatorAddress = blockCandidate.Txs[0].outputs[0].address;
+        const sameValidatorAddress = currentCandidateValidatorAddress === newCandidateValidatorAddress;
+
+        return sameIndex && samePrevHash && sameValidatorAddress;
+    }
+    async mineUntilValid() {
+        if (this.terminate) { return; }
+        if (this.isWorking) { return; }
+        this.isWorking = true;
+        this.result = null;
+
+        this.worker.postMessage({
+            type: 'mineUntilValid',
+            rewardAddress: this.rewardAddress,
+            bet: this.bet,
+            timeOffset: this.timeOffset
+        });
+    }
+    getResultAndClear() {
+        const finalizedBlock = this.result;
+        this.result = null;
+        return finalizedBlock;
+    }
+    pause() {
+        this.worker.postMessage({ type: 'pause' });
+    }
+    resume() {
+        this.worker.postMessage({ type: 'resume' });
+    }
+    terminateAsync() {
+        this.terminate = true;
+        this.worker.postMessage({ type: 'terminate' });
+        return new Promise((resolve, reject) => {
+            this.worker.on('exit', (code) => {
+                console.log(`MinerWorker stopped with exit code ${code}`);
                 resolve();
             });
         });

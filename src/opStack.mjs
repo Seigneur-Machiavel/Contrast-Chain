@@ -17,6 +17,7 @@ export class OpStack {
     /** @type {NodeJS.Timeout} */
     lastConfirmedBlockTimeout = null;
     delayWithoutConfirmationBeforeSync = 300_000; // 5 minutes
+    lastExecutedTask = null;
 
     /** @param {Node} node */
     static buildNewStack(node) {
@@ -33,7 +34,7 @@ export class OpStack {
     /** @param {number} delayMS */
     async #stackLoop(delayMS = 10) {
         while (true) {
-            if (this.terminated) { return; }
+            if (this.terminated) { break; }
 
             if (this.tasks.length === 0) {
                 await new Promise(resolve => setTimeout(resolve, delayMS));
@@ -45,15 +46,20 @@ export class OpStack {
 
             for (let i = 0; i < this.txBatchSize; i++) {
                 const task = this.tasks.shift();
-                if (!task) { return; }
+                if (!task) { break; }
 
                 const taskRequireMiningPause = task.type === 'syncWithKnownPeers';
                 if (taskRequireMiningPause && this.node.miner) { this.node.miner.canProceedMining = false; }
+                
+                this.lastExecutedTask = task;
                 await this.#executeTask(task);
 
                 if (task.type !== 'pushTransaction') { break; }
             }
         }
+        console.info('------------------');
+        console.info('OpStack terminated');
+        console.info('------------------');
     }
     async #executeTask(task) {
         if (!task) { return; }
@@ -81,6 +87,7 @@ export class OpStack {
                             this.node.p2pNetwork.reputationManager.applyOffense(
                                 {peerId : task.data.from},
                                 ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION); }
+                            return;
                         } //! -> Ban the peer
 
                         if (error.message.includes('Anchor not found')) {
@@ -93,6 +100,8 @@ export class OpStack {
                             this.terminate();
     
                             await this.node.syncHandler.handleSyncFailure();
+
+                            console.log(`restartRequested: ${this.node.restartRequested}`);
                             return;
                         }
 
@@ -103,7 +112,7 @@ export class OpStack {
                     clearTimeout(this.lastConfirmedBlockTimeout);
                     this.lastConfirmedBlockTimeout = setTimeout(() => {
                         this.pushFirst('syncWithKnownPeers', null);
-                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                        console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     }, this.delayWithoutConfirmationBeforeSync);
                     break;
                 case 'syncWithKnownPeers':

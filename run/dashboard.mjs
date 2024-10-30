@@ -28,7 +28,7 @@ new DashboardWsApp(factory, dashboardPort);
 new ObserverWsApp(factory, observerPort);
 
 process.on('uncaughtException', (error) => {
-    console.error('Uncatched exception:', error);
+    console.error('Uncatched exception:', error.stack);
 });
 process.on('unhandledRejection', (reason, promise) => {
     console.error('Promise rejected:', promise, 'reason:', reason);
