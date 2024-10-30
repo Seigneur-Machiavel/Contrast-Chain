@@ -30,6 +30,7 @@ export class OpStack {
         clearTimeout(this.lastConfirmedBlockTimeout);
         this.lastConfirmedBlockTimeout = null;
         this.terminated = true;
+        this.syncRequested = false;
     }
     /** @param {number} delayMS */
     async #stackLoop(delayMS = 10) {
@@ -85,7 +86,7 @@ export class OpStack {
                                 {peerId : task.data.from},
                                 ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION); }
                             return;
-                        } //! -> Ban the peer
+                        }
 
                         if (error.message.includes('Anchor not found')) {
                             console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
@@ -97,7 +98,6 @@ export class OpStack {
                             this.terminate();
     
                             await this.node.syncHandler.handleSyncFailure();
-
                             console.log(`restartRequested: ${this.node.restartRequested}`);
                             return;
                         }

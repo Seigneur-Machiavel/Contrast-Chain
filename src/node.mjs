@@ -232,20 +232,21 @@ export class Node {
     
                 console.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
             }
-            throw new Error(`Failed to connect to ${nbOfPeers} peers within ${maxAttempts} attempts`);
+            //throw new Error(`Failed to connect to ${nbOfPeers} peers within ${maxAttempts} attempts`);
+            return false;
         };
     
-        try {
-            return await Promise.race([
-                attemptConnection(),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error(`P2P network failed to find peers within ${timeOut / 1000} seconds`)), timeOut)
-                )
-            ]);
-        } catch (error) {
-            console.warn(error.message);
-            return false;
-        }
+        //try {
+        return await Promise.race([
+            attemptConnection(),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error(`P2P network failed to find peers within ${timeOut / 1000} seconds`)), timeOut)
+            )
+        ]);
+        //} catch (error) {
+        //    console.warn(error.message);
+        //    return false;
+        //}
     }
 
     async createBlockCandidateAndBroadcast() {
