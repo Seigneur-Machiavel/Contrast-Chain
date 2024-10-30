@@ -92,7 +92,7 @@ export class Node {
         await this.logger.initializeLogger();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
-        this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
+        await this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
