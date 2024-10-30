@@ -123,6 +123,8 @@ export class OpStack {
                         console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                         //this.tasks.unshift(task);
                         this.terminate();
+                        console.log(`restartRequested: ${this.node.restartRequested}`);
+                        if (!this.node.restartRequested) { this.node.requestRestart('OpStack.syncWithKnownPeers() -> force!'); }
                         break;
                     }
 
