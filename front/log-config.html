@@ -5,7 +5,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Log Configuration Tool</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/atom-one-dark.min.css">
     <style>
         /* Root Variables */
         :root {
@@ -196,6 +197,7 @@
             font-size: 0.85em;
             border: 1px solid var(--border);
         }
+
         #topBar {
             display: flex;
             justify-content: space-between;
@@ -203,6 +205,7 @@
             padding: 0 20px;
             margin-bottom: 20px;
         }
+
         /* Responsive Design */
         @media (max-width: 600px) {
             .log-entry {
@@ -239,12 +242,55 @@
                 margin-top: 4px;
             }
         }
+
+        /* Loading Spinner */
+        .loading-spinner {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--input-bg);
+            border-top: 5px solid var(--accent);
+            border-radius: 50%;
+            margin: 20px auto;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Error Message */
+        .error-message {
+            background-color: #dc2626;
+            color: white;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+        }
+
+        /* Success Message */
+        .success-message {
+            background-color: #059669;
+            color: white;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
     </style>
 </head>
 
 <body>
-    
-  
+
+
     <div id="topBar">
         <h1>Log Configuration Tool</h1>
         <div class="flex">
@@ -254,10 +300,12 @@
         </div>
     </div>
     <div class="file-input">
-        
+
         <input type="file" id="configFile" accept=".json" aria-label="Upload Log Configuration JSON">
     </div>
-
+    <button id="exportConfig" class="export-button">Export Configuration</button>
+    <div id="loadingSpinner" class="loading-spinner"></div>
+    <div id="successMessage" class="success-message">Configuration saved successfully!</div>
     <div class="controls">
 
         <input type="text" id="searchInput" placeholder="Search logs..." aria-label="Search Logs">
@@ -278,12 +326,97 @@
     </div>
 
     <div id="logConfig"></div>
-    <button id="exportConfig" class="export-button">Export Configuration</button>
+
     <!-- Highlight.js Library for Syntax Highlighting -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
     <script>
         // Initialize logConfig
         let logConfig = {};
+
+        /**
+         * Loads the log configuration from the API
+         */
+        async function loadLogConfig() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            loadingSpinner.style.display = 'block';
+
+            try {
+                const response = await fetch('/api/log-config');
+                if (!response.ok) {
+                    throw new Error('Failed to load log configuration' + response.statusText);
+                }
+
+                logConfig = await response.json();
+                displayLogConfig();
+            } catch (error) {
+                showError(`Failed to load configuration: ${error.message}`);
+                console.error('Load Error:', error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+
+        /**
+         * Saves the log configuration to the API
+         */
+        async function saveLogConfig() {
+            const loadingSpinner = document.getElementById('loadingSpinner');
+            loadingSpinner.style.display = 'block';
+            console.log('Saving log configuration:', logConfig);
+
+            try {
+                const response = await fetch('/api/log-config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(logConfig)
+                });
+
+                const result = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to save log configuration');
+                }
+
+                console.log('Save response:', result);
+                showSuccess();
+            } catch (error) {
+                showError(`Failed to save configuration: ${error.message}`);
+                console.error('Save Error:', error);
+            } finally {
+                loadingSpinner.style.display = 'none';
+            }
+        }
+        /**
+         * Shows an error message
+         */
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+
+            // Remove any existing error messages
+            document.querySelectorAll('.error-message').forEach(el => el.remove());
+
+            // Insert error message after the controls
+            const controls = document.querySelector('.controls');
+            controls.parentNode.insertBefore(errorDiv, controls.nextSibling);
+
+            // Remove after 5 seconds
+            setTimeout(() => errorDiv.remove(), 5000);
+        }
+
+        /**
+         * Shows a success message
+         */
+        function showSuccess() {
+            const successMessage = document.getElementById('successMessage');
+            successMessage.style.display = 'block';
+            setTimeout(() => {
+                successMessage.style.display = 'none';
+            }, 3000);
+        }
 
         /**
          * Event listener for file input change.
@@ -311,6 +444,7 @@
          * Applies search, filter, and sort functionalities.
          */
         function displayLogConfig() {
+            console.log('Displaying log configuration:', logConfig);
             const logConfigElement = document.getElementById('logConfig');
             logConfigElement.innerHTML = ''; // Clear previous content
 
@@ -577,17 +711,21 @@
          * Initializes the tool by adding necessary event listeners.
          */
         function initializeTool() {
+            loadLogConfig(); // Load initial config from API
             addControlListeners();
+
+            // Update export button to save to API instead
+            document.getElementById('exportConfig').textContent = 'Save Configuration';
+            document.getElementById('exportConfig').addEventListener('click', saveLogConfig);
         }
 
         // Initialize the tool on page load
         initializeTool();
-
         /**
          * Exports the current log configuration to a JSON file.
          */
         document.getElementById('exportConfig').addEventListener('click', function () {
-            if (Object.keys(logConfig).length === 0) {
+/*             if (Object.keys(logConfig).length === 0) {
                 alert('No configuration to export.');
                 return;
             }
@@ -599,7 +737,7 @@
             a.href = url;
             a.download = 'updated-log-config.json';
             a.click();
-            URL.revokeObjectURL(url);
+            URL.revokeObjectURL(url); */
         });
     </script>
 </body>
