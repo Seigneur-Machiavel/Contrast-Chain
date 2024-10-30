@@ -121,7 +121,55 @@ export class DashboardWsApp {
         if (this.app === null) {
             this.app = express();
             this.app.use(express.static(APPS_VARS.__parentDirname));
+            this.app.use(express.json({ limit: '1mb' }));
+            this.app.use(express.urlencoded({ extended: true }));
             this.app.get('/', (req, res) => { res.sendFile(APPS_VARS.__parentDirname + '/front/nodeDashboard.html'); });
+            this.app.get('/log-config', (req, res) => {
+                res.sendFile(APPS_VARS.__parentDirname + '/front/log-config.html');
+            });
+            this.app.get('/log-viewer', (req, res) => {
+                res.sendFile(APPS_VARS.__parentDirname + '/front/log-viewer.html');
+            });
+
+            // Add the API endpoints
+            this.app.get('/api/log-config', (req, res) => {
+                try {
+                    const logConfig = localStorage_v1.loadJSON('logConfig') || {};
+                    res.json(logConfig);
+                } catch (error) {
+                    console.error('Error loading log config:', error);
+                    res.status(500).json({ error: 'Failed to load log configuration' });
+                }
+            });
+
+            this.app.post('/api/log-config', (req, res) => {
+                try {
+                    console.log('Received POST request to /api/log-config');
+                    const newConfig = req.body;
+                    console.log('Received config:', newConfig);
+                    
+                    if (!newConfig || typeof newConfig !== 'object') {
+                        console.log('Invalid config format received:', newConfig);
+                        return res.status(400).json({ error: 'Invalid configuration format' });
+                    }
+            
+                    console.log('About to save config to localStorage');
+                    const saved = localStorage_v1.saveJSON('logConfig', newConfig); // Note: case sensitive!
+                    console.log('Save result:', saved);
+                    
+                    // Verify the save worked by trying to read it back
+                    const verification = localStorage_v1.loadJSON('logConfig');
+                    console.log('Verification read:', verification);
+            
+                    res.json({ success: true, message: 'Configuration saved successfully' });
+                } catch (error) {
+                    console.error('Detailed error saving log config:', error);
+                    res.status(500).json({ 
+                        error: 'Failed to save log configuration',
+                        details: error.message 
+                    });
+                }
+            });
             //const server = this.app.listen(this.port,'127.0.0.1', () => { console.log(`Server running on http://${'???'}:${this.port}`); });
             const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
             this.wss = new WebSocketServer({ server });

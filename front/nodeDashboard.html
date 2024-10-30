@@ -14,21 +14,30 @@
 <body>
     <div id="topBar">
         <h1>Contrast Node v1.0</h1>
-        <div class="adminPanelContainer">
-            <div class="btnWrap hidden">
-                <h3>roles: <span id="roles"></span></h3>
-                <div>
-                    <button id="forceRestart">Restart</button>
-                    <button id="Revalidate">Revalidate</button>
-                    <button id="resetInfo">Reset Wallet Data</button>
-                    <button id="hardReset">Hard Reset (Git)</button>
-                    <button id="updateGit">Update (Git)</button>
+        <div style="display: flex; gap: 1rem; align-items: center;">
+            <a href="/log-config" class="navigation-link">
+                <button>Logs Config</button>
+            </a>
+            <a href="/log-viewer" class="navigation-link">
+                <button>Logs Viewer</button>
+            </a>
+            <div class="adminPanelContainer">
+                <div class="btnWrap hidden">
+                    <h3>roles: <span id="roles"></span></h3>
+                    <div>
+                        <button id="forceRestart">Restart</button>
+                        <button id="Revalidate">Revalidate</button>
+                        <button id="resetInfo">Reset Wallet Data</button>
+                        <button id="hardReset">Hard Reset (Git)</button>
+                        <button id="updateGit">Update (Git)</button>
+                    </div>
                 </div>
+                <button id="toggleAdminPanel" class="toggleAdminPanelButton">Show Admin Panel</button>
             </div>
-            <button id="toggleAdminPanel" class="toggleAdminPanelButton">Show Admin Panel</button>
         </div>
     </div> 
 
+    <!-- Rest of the HTML remains exactly the same -->
     <div id="dashboard">
         <div class="dashboard-inner">
             <!-- Validator Container -->
