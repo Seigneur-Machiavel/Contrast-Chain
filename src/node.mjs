@@ -26,7 +26,8 @@ import { Logger } from './logger.mjs';
 */
 
 const obs = new PerformanceObserver((items) => { // TODO: disable in production
-    items.getEntries().forEach((entry) => { console.log(`${entry.name}: ${entry.duration.toFixed(3)}ms`); });});
+    items.getEntries().forEach((entry) => { console.log(`${entry.name}: ${entry.duration.toFixed(3)}ms`); });
+});
 obs.observe({ entryTypes: ['measure'] });
 
 export class Node {
@@ -34,7 +35,6 @@ export class Node {
     constructor(account, roles = ['validator'], p2pOptions = {}, version = 1) {
         this.logger = new Logger();
         this.timeSynchronizer = new TimeSynchronizer();
-        this.isSyncedWithNTP = false;
         this.restartRequested = false;
         /** @type {string} */
         this.id = account.address;
@@ -94,7 +94,7 @@ export class Node {
         await this.configManager.init();
         this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
-        
+
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
         this.opStack = OpStack.buildNewStack(this);
         this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack, this.timeSynchronizer);
@@ -117,7 +117,7 @@ export class Node {
         console.log('P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
-        
+
         this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);
         this.opStack.pushFirst('syncWithKnownPeers', null);
     }
@@ -126,10 +126,6 @@ export class Node {
     }
 
     getCurrentTime() {
-        if (!this.isSyncedWithNTP) {
-            console.warn("Time not yet synchronized with NTP");
-            // Decide how to handle this case (e.g., return local time, throw error, etc.)
-        }
         return this.timeSynchronizer.getCurrentTime();
     }
 
@@ -150,7 +146,7 @@ export class Node {
         const olderSnapshotHeight = snapshotsHeights[0] ? snapshotsHeights[0] : 0;
         const youngerSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
         const startHeight = isNaN(youngerSnapshotHeight) ? -1 : youngerSnapshotHeight;
-        
+
         // Cache the blocks from the last snapshot +1 to the last block
         // cacheStart : 0, 11, 21, etc...
         const cacheStart = olderSnapshotHeight > 10 ? olderSnapshotHeight - 9 : 0;
@@ -187,7 +183,7 @@ export class Node {
             await this.blockchain.persistAddressesTransactionsReferencesToDisk(this.memPool, cacheErasable.from, cacheErasable.to);
             this.blockchain.eraseCacheFromTo(cacheErasable.from, cacheErasable.to);
         }
-        
+
         await this.snapshotSystemDoc.newSnapshot(this.utxoCache, this.vss, this.memPool);
         this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - 100);
         // avoid gap between the loaded snapshot and the new one
@@ -197,11 +193,12 @@ export class Node {
         }
         this.snapshotSystemDoc.restoreLoadedSnapshot();
     }
+
     getTopicsToSubscribeRelatedToRoles() {
         const rolesTopics = {
-            validator: ['new_transaction', 'new_block_finalized', 'test'],
-            miner: ['new_block_candidate', 'test'],
-            observer: ['new_transaction', 'new_block_finalized', 'new_block_candidate', 'test']
+            validator: ['new_transaction', 'new_block_finalized'],
+            miner: ['new_block_candidate'],
+            observer: ['new_transaction', 'new_block_finalized', 'new_block_candidate']
         }
         const topicsToSubscribe = [];
         for (const role of this.roles) { topicsToSubscribe.push(...rolesTopics[role]); }
@@ -217,10 +214,10 @@ export class Node {
             if (abort) { break; }
             await new Promise(resolve => setTimeout(resolve, 1000));
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${this.p2pNetwork.getConnectedPeers().length} peer${this.p2pNetwork.getConnectedPeers().length > 1 ? 's' : ''}`);
-            
+
             const peersIds = this.p2pNetwork.getConnectedPeers();
             let peerCount = peersIds.length;
-            
+
             const myPeerId = this.p2pNetwork.p2pNode.peerId.toString();
             if (peersIds.includes(myPeerId)) { peerCount--; }
 
@@ -234,55 +231,16 @@ export class Node {
                 this.opStack.pushFirst('syncWithKnownPeers', null);
                 return peerCount;
             }
-            
+
             //if (alreadyLog) { continue; }
             //alreadyLog = true;
             console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
         }
 
-        console.warn(`P2P network failed to find peers within the expected time (${(timeOut/1000).toFixed(2)} seconds)`);
+        console.warn(`P2P network failed to find peers within the expected time (${(timeOut / 1000).toFixed(2)} seconds)`);
         return false;
     }
-    async #waitSomePeers_BUGGED(nbOfPeers = 1, maxAttempts = 60, timeOut = 30000) {
-        let abort = false;
-        setTimeout(() => { abort = true; }, timeOut);
 
-        let alreadyLog = false;
-        for (let attempt = 0; attempt < maxAttempts; attempt++) {
-            if (abort) { break; }
-            //await new Promise(resolve => setTimeout(resolve, 1000));
-            //console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${this.p2pNetwork.getConnectedPeers().length} peer${this.p2pNetwork.getConnectedPeers().length > 1 ? 's' : ''}`);
-            
-            let peersIds = this.p2pNetwork.getConnectedPeers();
-            let peerCount = peersIds.length;
-            
-            const myPeerId = this.p2pNetwork.p2pNode.peerId.toString();
-            if (peersIds.includes(myPeerId)) { peerCount--; }
-
-            // Already connected to the expected number of peers (except myself)
-            if (peerCount >= nbOfPeers) { return peerCount; }
-
-            await this.p2pNetwork.connectToBootstrapNodes();
-
-            // Just find a peer to connect to -> sync
-            peersIds = this.p2pNetwork.getConnectedPeers();
-            peerCount = peersIds.length;
-            if (peersIds.includes(myPeerId)) { peerCount--; }
-            if (peerCount >= nbOfPeers) {
-                this.opStack.pushFirst('syncWithKnownPeers', null);
-                console.log(`Connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
-                return peerCount;
-            }
-            
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            if (alreadyLog) { continue; }
-            alreadyLog = true;
-            console.log(`Waiting for ${nbOfPeers} peer${nbOfPeers > 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount > 1 ? 's' : ''}`);
-        }
-
-        console.warn(`P2P network failed to find peers within the expected time (${(timeOut/1000).toFixed(2)} seconds)`);
-        return false;
-    }
     async createBlockCandidateAndBroadcast() {
         this.blockchainStats.state = "creating block candidate";
         try {
@@ -307,7 +265,7 @@ export class Node {
             console.log('minerAddress:', minerAddress);
         }
         this.blockchainStats.state = "validating block";
-        
+
         performance.mark('validation start');
         performance.mark('validation height-timestamp-hash');
 
@@ -361,7 +319,7 @@ export class Node {
         const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
         const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
         if (validatorLegitimacy !== finalizedBlock.legitimacy) { throw new Error(`Invalid legitimacy: ${finalizedBlock.legitimacy} - expected: ${validatorLegitimacy}`); }
-        
+
         performance.mark('validation coinbase-rewards');
 
         // control coinbase amount
@@ -370,7 +328,7 @@ export class Node {
 
         // control total rewards
         const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
-        try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); } 
+        try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); }
         catch (error) { throw new Error('!ban! Invalid rewards'); }
 
         performance.mark('validation double-spending');
@@ -379,7 +337,7 @@ export class Node {
         catch (error) { throw new Error('!ban! Double spending detected'); }
 
         performance.mark('validation fullTxsValidation');
-        const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2); 
+        const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2);
         this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
         performance.mark('validation fullTxsValidation end');
         this.blockchainStats.state = "idle";
@@ -416,9 +374,9 @@ export class Node {
         if (!finalizedBlock) { throw new Error('Invalid block candidate'); }
         if (!this.roles.includes('validator')) { throw new Error('Only validator can process PoW block'); }
         if (this.syncHandler.isSyncing && !isSync) { throw new Error("Node is syncing, can't process block"); }
-       
+
         const startTime = Date.now();
-        
+
         let validationResult;
         let hashConfInfo = false;
         let totalFees = undefined; // will be recalculated if undefined by: addConfirmedBlocks()
@@ -449,12 +407,12 @@ export class Node {
         if (storeAsFiles) { this.#storeConfirmedBlock(finalizedBlock); } // Used by developer to check the block data manually
 
         performance.mark('end');
-        
+
         //#region - log
         // > 100Mo -- PERFORMANCE LOGS
         if (blockBytes > 102_400 && !skipValidation) {
             console.log(`#${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${(Date.now() - startTime)}ms`);
-            
+
             performance.measure('validation height-timestamp-hash', 'validation height-timestamp-hash', 'validation legitimacy');
             performance.measure('validation legitimacy', 'validation legitimacy', 'validation coinbase-rewards');
             performance.measure('validation coinbase-rewards', 'validation coinbase-rewards', 'validation double-spending');
@@ -470,7 +428,7 @@ export class Node {
             performance.measure('store-confirmed-block', 'store-confirmed-block', 'end');
 
             performance.measure('total', 'validation start', 'end');
-            
+
             performance.clearMarks();
         }
         const timeBetweenPosPow = ((finalizedBlock.timestamp - finalizedBlock.posTimestamp) / 1000).toFixed(2);
@@ -478,10 +436,10 @@ export class Node {
 
         //if (isLoading && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
         //if (isLoading && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
-        
+
         if (isSync && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (sync - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
         if (isSync && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
-        
+
         if (!isLoading && !isSync) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> [MINER-${minerId}] ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | gap_PosPow: ${timeBetweenPosPow}s | digest: ${((Date.now() - startTime) / 1000).toFixed(2)}s`); }
         //#endregion
 
@@ -489,7 +447,7 @@ export class Node {
         if (!isLoading) { await this.#saveSnapshot(finalizedBlock); }
 
         if (!broadcastNewCandidate) { return true; }
-        
+
         const nbOfPeers = isSync ? 0 : this.#waitSomePeers();
         if (await nbOfPeers < 1) { throw new Error('!sync! No peer to broadcast the new block candidate'); }
         this.blockCandidate = await this.#createBlockCandidate();
@@ -501,7 +459,7 @@ export class Node {
             if (this.roles.includes('miner')) { this.miner.pushCandidate(this.blockCandidate); }
             if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
         } catch (error) { console.error(`Failed to broadcast new block candidate: ${error}`); }
-        
+
         return true;
     }
     /** Aggregates transactions from mempool, creates a new block candidate, signs it and returns it */
@@ -708,7 +666,7 @@ export class Node {
                 result.outAmount += output.amount;
                 if (output.address === address) { result.balanceChange += output.amount; }
             }
-            
+
             for (const anchor of transaction.inputs) {
                 if (!utils.types.anchor.isConform(anchor)) { continue; }
                 const txRef = `${anchor.split(":")[0]}:${anchor.split(":")[1]}`;
@@ -716,7 +674,7 @@ export class Node {
                 const outputIndex = parseInt(anchor.split(":")[2]);
                 const output = utxoRelatedTx.outputs[outputIndex];
                 result.inAmount += output.amount;
-                
+
                 //if (!addressTxsReferences.includes(txRef)) { continue; }
                 if (output.address !== address) { continue; }
 
@@ -746,11 +704,11 @@ export class Node {
 
             balance += utxo.amount;
             UTXOs.push(utxo);
-            
+
             if (utxo.rule === "sigOrSlash") { continue; }
             spendableBalance += utxo.amount;
         }
-        
+
         return { spendableBalance, balance, UTXOs };
     }
     async getAddressUtxosOnly(address) {
