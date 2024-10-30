@@ -69,9 +69,12 @@ export class NodeFactory {
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
         targetNode.restarting = true;
         if (!targetNode.restartRequested) {
-            targetNode.restartRequested = true;
+            targetNode.requestRestart('NodeFactory.forceRestartNode()');
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
+
+        console.log(`Restarting node ${nodeId}, requested by ${targetNode.restartRequested}`);
+
         const nodeAccount = newAccount || targetNode.account;
         const nodeMinerAddress = newMinerAddress || targetNode.minerAddress;
         const validatorRewardAddress = newAccount ? nodeAccount.address : targetNode.validatorRewardAddress;
@@ -82,8 +85,7 @@ export class NodeFactory {
             roles: targetNode.roles,
             p2pOptions: targetNode.p2pOptions
         };
-        console.log(`Node ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
-
+        
         targetNode.opStack.terminate();
         targetNode.timeSynchronizer.stop = true;
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -91,12 +93,12 @@ export class NodeFactory {
         await targetNode.miner.terminate();
         for (const worker of targetNode.workers) { await worker.terminateAsync(); }
         await new Promise(resolve => setTimeout(resolve, 1000));
-
+        
         // stop level db
         await targetNode.blockchain.db.close();
         await targetNode.p2pNetwork.stop();
         await new Promise(resolve => setTimeout(resolve, 2000));
-
+        
         const newNode = await this.createNode(
             nodeSettings.account,
             nodeSettings.roles,
@@ -105,7 +107,8 @@ export class NodeFactory {
         );
         await newNode.start(startFromScratch);
         newNode.validatorRewardAddress = nodeSettings.validatorRewardAddress;
-
+        console.log(`Node ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+        
         this.nodes.set(nodeId, newNode);
     }
     getFirstNode() {

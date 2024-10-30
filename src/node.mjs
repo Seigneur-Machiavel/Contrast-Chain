@@ -122,6 +122,9 @@ export class Node {
     async stop() {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
+    requestRestart(from = 'unknown') {
+        this.restartRequested = from;
+    }
 
     getCurrentTime() {
         return this.timeSynchronizer.getCurrentTime();
@@ -419,12 +422,12 @@ export class Node {
         this.blockCandidate = await this.#createBlockCandidate();
         try {
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
-            //const myCandidateDelta = Date.now() - this.blockchain.lastBlock.timestamp; // TODO: PROBABLY USELESS WHEN 120s/block
-            //const avoidSelfPush = myCandidateDelta > 5000 ? true : false;
-            //if (!avoidSelfPush && this.roles.includes('miner')) { this.miner.pushCandidate(this.blockCandidate); }
             if (this.roles.includes('miner')) { this.miner.pushCandidate(this.blockCandidate); }
             if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
-        } catch (error) { console.error(`Failed to broadcast new block candidate: ${error}`); }
+        } catch (error) {
+            this.requestRestart('broadcastNewCandidate - error');
+            console.error(`Failed to broadcast new block candidate: ${error}`);
+        }
 
         return true;
     }

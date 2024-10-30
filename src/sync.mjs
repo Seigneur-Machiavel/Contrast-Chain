@@ -302,13 +302,16 @@ export class SyncHandler {
     async handleSyncFailure() {
         this.logger.error(`luid-33c856d9 [SYNC] Sync failure occurred, restarting sync process`);
         if (this.node.restartRequested) { return; }
-        if (this.node.blockchain.currentHeight === -1) { this.node.restartRequested = true; return; }
+        if (this.node.blockchain.currentHeight === -1) {
+            this.node.requestRestart('SyncHandler.handleSyncFailure() - blockchain currentHeight is -1');
+            return;
+        }
                 
         const currentHeight = this.node.blockchain.currentHeight;
         const snapshotHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
         
         if (snapshotHeights.length === 0) {
-            this.node.restartRequested = true;
+            this.node.requestRestart('SyncHandler.handleSyncFailure() - no snapshots available');
             return;
         }
         const lastSnapshotHeight = snapshotHeights[snapshotHeights.length - 1];
@@ -318,7 +321,7 @@ export class SyncHandler {
             this.node.snapshotSystemDoc.eraseSnapshotsHigherThan(eraseUntilHeight);
         }
 
-        this.node.restartRequested = true;
+        this.node.requestRestart('SyncHandler.handleSyncFailure()');
         
         this.logger.info(`luid-cd98e436 [SYNC-${this.node.id.slice(0, 6)}] Snapshot erased until #${eraseUntilHeight}, waiting for restart...`);
         this.logger.info(`luid-3ef67123 [SYNC] Blockchain restored and reloaded. Current height: ${this.node.blockchain.currentHeight}`);
