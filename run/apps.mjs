@@ -125,6 +125,9 @@ export class DashboardWsApp {
             this.app.get('/log-config', (req, res) => {
                 res.sendFile(APPS_VARS.__parentDirname + '/front/log-config.html');
             });
+            this.app.get('/log-viewer', (req, res) => {
+                res.sendFile(APPS_VARS.__parentDirname + '/front/log-viewer.html');
+            });
             //const server = this.app.listen(this.port,'127.0.0.1', () => { console.log(`Server running on http://${'???'}:${this.port}`); });
             const server = this.app.listen(this.port, () => { console.log(`Server running on http://${'???'}:${this.port}`); });
             this.wss = new WebSocketServer({ server });

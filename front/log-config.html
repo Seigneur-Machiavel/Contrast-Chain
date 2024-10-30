@@ -196,7 +196,13 @@
             font-size: 0.85em;
             border: 1px solid var(--border);
         }
-
+        #topBar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 20px;
+            margin-bottom: 20px;
+        }
         /* Responsive Design */
         @media (max-width: 600px) {
             .log-entry {
@@ -237,12 +243,23 @@
 </head>
 
 <body>
-    <h1>Log Configuration Tool</h1>
+    
+  
+    <div id="topBar">
+        <h1>Log Configuration Tool</h1>
+        <div class="flex">
+            <a href="/" class="navigation-link">
+                <button>Back to Dashboard</button>
+            </a>
+        </div>
+    </div>
     <div class="file-input">
+        
         <input type="file" id="configFile" accept=".json" aria-label="Upload Log Configuration JSON">
     </div>
 
     <div class="controls">
+
         <input type="text" id="searchInput" placeholder="Search logs..." aria-label="Search Logs">
         <select id="filterType" aria-label="Filter by Log Type">
             <option value="">All Types</option>
