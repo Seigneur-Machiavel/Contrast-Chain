@@ -235,7 +235,6 @@ class P2PNetwork extends EventEmitter {
         const isBanned = this.reputationManager.isPeerBanned({ peerId: from });
         this.reputationManager.recordAction({ peerId: from }, ReputationManager.GENERAL_ACTIONS.PUBSUB_RECEIVED + topic);
 
-        this.logger.debug('luid-b1180a7e Received pubsub message', { component: 'P2PNetwork', topic, from, isBanned });
         
         // Validate that the topic is allowed
         if (!this.validateTopic(topic)) {
@@ -250,14 +249,18 @@ class P2PNetwork extends EventEmitter {
             switch (topic) {
                 case 'new_transaction':
                     // check the size of the tx before parsing it
+                    this.logger.debug('luid-7a511836 Received new transaction', { component: 'P2PNetwork', topic, from });
+
                     if (data.byteLength > utils.SETTINGS.maxTransactionSize * 1.02) { this.logger.error('luid-ed4b8d0b Transaction size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializerFast.deserialize.transaction(data);
                     break;
                 case 'new_block_candidate':
+                    this.logger.debug('luid-a305d036 Received new block candidate', { component: 'P2PNetwork', topic, from });
                     if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-bb4b664c Block candidate size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializer.block_candidate.fromBinary_v4(data);
                     break;
                 case 'new_block_finalized':
+                    this.logger.debug('luid-3431060a Received new block finalized', { component: 'P2PNetwork', topic, from });
                     if (data.byteLength > utils.SETTINGS.maxBlockSize * 1.02) { this.logger.error('luid-d4e9de17 Block finalized size exceeds the maximum allowed size', { component: 'P2PNetwork', topic, from }); return; }
                     parsedMessage = utils.serializer.block_finalized.fromBinary_v4(data);
                     break;
