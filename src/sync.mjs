@@ -300,7 +300,7 @@ export class SyncHandler {
         //const results = await Promise.allSettled(statusPromises);
         
         setTimeout(() => { 
-            console.log('--#getAllPeersStatus TIMEOUT satus found:', allStatus.length);
+            console.log('--#getAllPeersStatus TIMEOUT satuts found:', allStatus.length);
             return allStatus;
         }, 5000);
 
@@ -312,14 +312,14 @@ export class SyncHandler {
             const address = peersRelatedToPromises[i].address;
             const peerId = peersRelatedToPromises[i].peerId;
             console.log('CONTROL --#getAllPeersStatus F')
-            if (result.status === 'success' && result) {
-                allStatus.push({ 
-                    peerId,
-                    address,
-                    currentHeight: result.currentHeight,
-                    latestBlockHash: result.latestBlockHash
-                });
-            }
+            if (!result || result.status !== 'success') { continue; }
+            
+            allStatus.push({ 
+                peerId,
+                address,
+                currentHeight: result.currentHeight,
+                latestBlockHash: result.latestBlockHash
+            });
         }
         return allStatus;
     }
