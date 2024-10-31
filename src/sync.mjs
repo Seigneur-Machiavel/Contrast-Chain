@@ -298,11 +298,6 @@ export class SyncHandler {
         console.log('CONTROL --#getAllPeersStatus E')
         // Execute all status retrievals in parallel
         //const results = await Promise.allSettled(statusPromises);
-        
-        setTimeout(() => { 
-            console.log('--#getAllPeersStatus TIMEOUT satuts found:', allStatus.length);
-            return allStatus;
-        }, 5000);
 
         // Process the results
         for (let i = 0; i < statusPromises.length; i++) {
@@ -321,6 +316,7 @@ export class SyncHandler {
                 latestBlockHash: result.latestBlockHash
             });
         }
+
         return allStatus;
     }
 
