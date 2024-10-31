@@ -615,6 +615,20 @@
     "type": "info",
     "content": "luid-e9f9d488 [SYNC] (#getMissingBlocks) Failed to get peer height"
   },
+  "luid-b93d9bf2": {
+    "active": true,
+    "file": "src\\sync.mjs",
+    "line": 388,
+    "type": "error",
+    "content": "luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks"
+  },
+  "luid-6e5c9454": {
+    "active": true,
+    "file": "src\\sync.mjs",
+    "line": 389,
+    "type": "error",
+    "content": "luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found"
+  },
   "luid-63446bae": {
     "active": true,
     "file": "src\\sync.mjs",

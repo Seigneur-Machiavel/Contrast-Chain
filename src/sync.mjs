@@ -385,8 +385,8 @@ export class SyncHandler {
         while(desiredBlock <= peerHeight) {
             const endIndex = Math.min( desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight );
             const serializedBlocks = await this.#requestBlocksFromPeer(p2pNetwork, peerMultiaddr, desiredBlock, endIndex);
-            if (!serializedBlocks) { this.logger.error(`luid-7e3f4f8f [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks`); break; }
-            if (serializedBlocks.length === 0) { this.logger.error(`luid-7e3f4f8f [SYNC] (#getMissingBlocks: while()) No blocks found`); break; }
+            if (!serializedBlocks) { this.logger.error(`luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks`); break; }
+            if (serializedBlocks.length === 0) { this.logger.error(`luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found`); break; }
             // Process blocks
             for (const serializedBlock of serializedBlocks) {
                 try {

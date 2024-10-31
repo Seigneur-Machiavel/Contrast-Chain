@@ -3286,5 +3286,32 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2024-10-31T10:05:05.704Z",
+    "diffs": [
+      {
+        "id": "luid-b93d9bf2",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\sync.mjs",
+          "line": 388,
+          "type": "error",
+          "content": "luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks"
+        }
+      },
+      {
+        "id": "luid-6e5c9454",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\sync.mjs",
+          "line": 389,
+          "type": "error",
+          "content": "luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found"
+        }
+      }
+    ]
   }
 ]
