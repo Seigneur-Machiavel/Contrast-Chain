@@ -163,17 +163,17 @@ export class Node {
             return false;
         };
     
-        //try {
-        return await Promise.race([
-            attemptConnection(),
-            new Promise((_, reject) => 
-                setTimeout(() => reject(new Error(`P2P network failed to find peers within ${timeOut / 1000} seconds`)), timeOut)
-            )
-        ]);
-        //} catch (error) {
-        //    console.warn(error.message);
-        //    return false;
-        //}
+        try {
+            return await Promise.race([
+                attemptConnection(),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error(`P2P network failed to find peers within ${timeOut / 1000} seconds`)), timeOut)
+                )
+            ]);
+        } catch (error) {
+            console.warn(error.message);
+            return false;
+        }
     }
 
     async #loadBlockchain() {
