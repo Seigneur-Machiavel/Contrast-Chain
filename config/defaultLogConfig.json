@@ -566,6 +566,13 @@
     "type": "error",
     "content": "luid-3c81f6ba [SYNC] (#updatedPeerHeight) Failed to get peer height: ${error.message}"
   },
+  "luid-1b1b1b1b": {
+    "active": true,
+    "file": "src\\sync.mjs",
+    "line": 386,
+    "type": "info",
+    "content": "luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}"
+  },
   "luid-e9f9d488": {
     "active": true,
     "file": "src\\sync.mjs",
