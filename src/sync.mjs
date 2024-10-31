@@ -300,7 +300,7 @@ export class SyncHandler {
         //const results = await Promise.allSettled(statusPromises);
         
         setTimeout(() => { 
-            console.log('--#getAllPeersStatus TIMEOUT')
+            console.log('--#getAllPeersStatus TIMEOUT satus found:', allStatus.length);
             return allStatus;
         }, 5000);
 
