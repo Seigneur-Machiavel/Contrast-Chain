@@ -472,11 +472,7 @@ class P2PNetwork extends EventEmitter {
                     const existingCallbackStr = existingCallback.toString();
 
                     if (newCallbackStr === existingCallbackStr) {
-                        this.logger.warn('luid-35577535 Attempted to bind duplicate callback to topic', {
-                            component: 'P2PNetwork',
-                            topic,
-                            callbackSource: callback.name || 'anonymous'
-                        });
+                        this.logger.warn('luid-5651c3a3 Attempted to bind duplicate callback to topic', {component: 'P2PNetwork',topic,callbackSource: callback.name || 'anonymous'});
                         return;
                     }
                 }

@@ -307,6 +307,13 @@
     "type": "warn",
     "content": "luid-07277de5 Stream is undefined; cannot close stream"
   },
+  "luid-5651c3a3": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 475,
+    "type": "warn",
+    "content": "luid-5651c3a3 Attempted to bind duplicate callback to topic"
+  },
   "luid-0f2f018d": {
     "active": false,
     "file": "src\\p2p.mjs",

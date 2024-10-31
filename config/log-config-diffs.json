@@ -3393,5 +3393,29 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2024-10-31T12:02:03.241Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-31T12:02:20.382Z",
+    "diffs": [
+      {
+        "id": "luid-5651c3a3",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 475,
+          "type": "warn",
+          "content": "luid-5651c3a3 Attempted to bind duplicate callback to topic"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-10-31T12:02:31.358Z",
+    "diffs": []
   }
 ]
