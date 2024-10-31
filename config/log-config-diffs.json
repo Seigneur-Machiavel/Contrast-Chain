@@ -3313,5 +3313,85 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2024-10-31T10:57:54.859Z",
+    "diffs": [
+      {
+        "id": "luid-7a511836",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 252,
+          "type": "debug",
+          "content": "luid-7a511836 Received new transaction"
+        }
+      },
+      {
+        "id": "luid-a305d036",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 258,
+          "type": "debug",
+          "content": "luid-a305d036 Received new block candidate"
+        }
+      },
+      {
+        "id": "luid-3431060a",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 263,
+          "type": "debug",
+          "content": "luid-3431060a Received new block finalized"
+        }
+      },
+      {
+        "id": "luid-b1180a7e",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 238,
+          "type": "debug",
+          "content": "luid-b1180a7e Received pubsub message"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-10-31T10:58:10.760Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-10-31T11:55:48.336Z",
+    "diffs": [
+      {
+        "id": "luid-6ddfdefb",
+        "action": "removed",
+        "oldValue": {
+          "active": false,
+          "file": "src\\p2p.mjs",
+          "line": 478,
+          "type": "debug",
+          "content": "luid-6ddfdefb Subscribed to topic"
+        }
+      },
+      {
+        "id": "luid-fc18ad60",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 480,
+          "type": "error",
+          "content": "luid-fc18ad60 Failed to subscribe to topic"
+        }
+      }
+    ]
   }
 ]

@@ -4,7 +4,7 @@ import P2PNetwork from './p2p.mjs';
 import * as lp from 'it-length-prefixed';
 import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './reputation.mjs';
-import {Logger} from './logger.mjs';
+import { Logger } from './logger.mjs';
 /**
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
@@ -45,9 +45,9 @@ export class SyncHandler {
     async start(p2pNetwork) {
         try {
             p2pNetwork.p2pNode.handle(P2PNetwork.SYNC_PROTOCOL, this.handleIncomingStream.bind(this));
-            this.logger.info('luid-feea692e Sync node started',{ protocol: P2PNetwork.SYNC_PROTOCOL });
+            this.logger.info('luid-feea692e Sync node started', { protocol: P2PNetwork.SYNC_PROTOCOL });
         } catch (error) {
-            this.logger.error('luid-91503910 Failed to start sync node',{ error: error.message });
+            this.logger.error('luid-91503910 Failed to start sync node', { error: error.message });
             throw error;
         }
     }
@@ -55,10 +55,10 @@ export class SyncHandler {
     /** Handles incoming streams from peers.
      * @param {Object} param0 - The stream object.
      * @param {import('libp2p').Stream} param0.stream - The libp2p stream. */
-    async handleIncomingStream( lstream ) {
-       const stream = lstream.stream;
-       const peerId = lstream.connection.remotePeer.toString();
-       this.node.p2pNetwork.reputationManager.recordAction({peerId}, ReputationManager.GENERAL_ACTIONS.SYNC_INCOMING_STREAM);
+    async handleIncomingStream(lstream) {
+        const stream = lstream.stream;
+        const peerId = lstream.connection.remotePeer.toString();
+        this.node.p2pNetwork.reputationManager.recordAction({ peerId }, ReputationManager.GENERAL_ACTIONS.SYNC_INCOMING_STREAM);
         try {
             // Decode the stream using lp.decode()
             const source = lp.decode(stream.source);
@@ -77,13 +77,13 @@ export class SyncHandler {
                 await stream.sink(encodedResponse);
             }
         } catch (err) {
-            this.logger.error('luid-0afb2862 Stream error occurred',{ error: err.message });
+            this.logger.error('luid-0afb2862 Stream error occurred', { error: err.message });
         } finally {
             if (stream) {
                 try {
                     stream.close();
                 } catch (closeErr) {
-                    this.logger.error('luid-c46e58f3 Failed to close stream',{ error: closeErr.message });
+                    this.logger.error('luid-c46e58f3 Failed to close stream', { error: closeErr.message });
                 }
             } else {
                 this.logger.warn('luid-fd5a00b6 Stream is undefined; cannot close stream');
@@ -97,9 +97,9 @@ export class SyncHandler {
     async #handleMessage(msg) {
         switch (msg.type) {
             case 'getBlocks':
-                this.logger.debug('luid-4a957975 Received getBlocks request',msg);
+                this.logger.debug('luid-4a957975 Received getBlocks request', msg);
                 const blocks = await this.node.blockchain.getRangeOfBlocksByHeight(msg.startIndex, msg.endIndex, false);
-                this.logger.debug('luid-6aa075d3 Sending blocks in response',{ count: blocks.length });
+                this.logger.debug('luid-6aa075d3 Sending blocks in response', { count: blocks.length });
                 return { status: 'success', blocks };
             case 'getStatus':
                 if (!this.node.blockchain.currentHeight) { this.logger.error(`luid-6ae382b8 [SYNC] currentHeight is: ${this.node.blockchain.currentHeight}`); }
@@ -109,7 +109,7 @@ export class SyncHandler {
                     latestBlockHash: this.node.blockchain.getLatestBlockHash(),
                 };
             default:
-                this.logger.warn('luid-f04b2516 Invalid request type',{ type: msg.type });
+                this.logger.warn('luid-f04b2516 Invalid request type', { type: msg.type });
                 throw new Error('Invalid request type');
         }
     }
@@ -118,7 +118,7 @@ export class SyncHandler {
     async syncWithKnownPeers() {
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
-        
+
         console.log('CONTROL --A')
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
         if (this.node.p2pNetwork.subscriptions.size > 0) {
@@ -166,24 +166,24 @@ export class SyncHandler {
         for (const peerInfo of peerStatuses) {
             const { peerId, address, currentHeight } = peerInfo;
             const ma = multiaddr(address);
-            this.logger.info('luid-9dc1ad9d Attempting to sync with peer',{ peerId, currentHeight });
+            this.logger.info('luid-9dc1ad9d Attempting to sync with peer', { peerId, currentHeight });
             try {
-                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight , peerId);
-                this.logger.info('luid-a373e2ca Successfully synced with peer',{ peerId });
+                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight, peerId);
+                this.logger.info('luid-a373e2ca Successfully synced with peer', { peerId });
                 if (!synchronized) { continue; }
-                
+
                 break; // Sync successful, break out of loop
             } catch (error) {
                 //continue;
 
                 await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
                 if (error instanceof SyncRestartError) {
-                    this.logger.error('luid-5abadb62 Sync restart error occurred',{ error: error.message });
+                    this.logger.error('luid-5abadb62 Sync restart error occurred', { error: error.message });
                     await this.handleSyncFailure();
                     return false; // false
                 }
                 break;
-            } 
+            }
         }
         console.log('CONTROL --G');
         if (highestPeerHeight > this.node.blockchain.currentHeight) {
@@ -223,7 +223,7 @@ export class SyncHandler {
         this.logger.info(`luid-9290410c [SYNC] Peer height: ${peerHeight}, current height: ${this.node.blockchain.currentHeight}`);
         try {
             const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, peerHeight, peerId);
-            this.logger.info('luid-94a3cd1a Successfully synced with peer',{ peerId });
+            this.logger.info('luid-94a3cd1a Successfully synced with peer', { peerId });
             this.isSyncing = false;
             if (!synchronized) { return false; }
             await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
@@ -254,70 +254,65 @@ export class SyncHandler {
 
             this.peerHeights.set(peerId, response.currentHeight);
             this.logger.debug('luid-0c8cccd8 Got peer status', { peerMultiaddr, currentHeight: response.currentHeight, id: peerId });
-            
+
             return response;
         }
         catch (error) {
-            this.logger.error('luid-c09bcb4d Failed to get peer status',{ error: error.message });
+            this.logger.error('luid-c09bcb4d Failed to get peer status', { error: error.message });
             return false;
         }
     }
-     /** Retrieves the statuses of all peers in parallel.
+    /** Retrieves the statuses of all peers in parallel with proper timeout handling.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
-     * @returns {Promise<Array<{ peerId: string, address: string, currentHeight: number }>>} 
+     * @returns {Promise<Array<{ peerId: string, address: string, currentHeight: number, latestBlockHash: string }>>} 
      * An array of peer statuses. */
     async #getAllPeersStatus(p2pNetwork) {
         const peersToSync = Array.from(p2pNetwork.peers.entries());
-        const allStatus = [];
+        // Create array of peer status promises with timeout
+        const statusPromises = peersToSync
+            .map(([peerId, peerData]) => {
+                const address = peerData.address;
+                if (!address) {
+                    this.logger.error('luid-35e1f975 Peer address is missing', { peerId });
+                    return null;
+                }
 
-        const peersRelatedToPromises = [];
-        const statusPromises = [];
-        console.log('CONTROL --#getAllPeersStatus A')
-        for (const [peerId, peerData] of peersToSync) {
-            const address = peerData.address;
-            console.log('CONTROL --#getAllPeersStatus B')
-            if (!address) {
-                console.log('Peer address is missing');
-                return null;
-            }
+                let ma;
+                try {
+                    ma = multiaddr(address);
+                } catch (err) {
+                    this.logger.error('luid-35e1f975 Invalid multiaddr for peer',
+                        { address, peerId, error: err.message });
+                    return null;
+                }
 
-            // Attempt to create a multiaddr; skip if invalid
-            let ma;
-            try {
-                console.log('CONTROL --#getAllPeersStatus C')
-                ma = multiaddr(address);
-            } catch (err) {
-                this.logger.error('luid-35e1f975 Invalid multiaddr for peer',{ address, error: err.message });
-                continue; // Skip this peer
-            }
-            console.log('CONTROL --#getAllPeersStatus D')
-            statusPromises.push(this.#getPeerStatus(p2pNetwork, ma , peerId));
-            peersRelatedToPromises.push({ peerId, address });
-        }
+                // Create a promise that rejects on timeout
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error('Timeout')), 5000);
+                });
 
-        console.log('CONTROL --#getAllPeersStatus E')
-        // Execute all status retrievals in parallel
-        //const results = await Promise.allSettled(statusPromises);
+                // Combine peer status retrieval with timeout
+                return Promise.race([
+                    this.#getPeerStatus(p2pNetwork, ma, peerId)
+                        .then(status => ({
+                            peerId,
+                            address,
+                            ...status
+                        })),
+                    timeoutPromise
+                ]).catch(error => {
+                    this.logger.warn('luid-1d4fb7c0 Failed to get peer status',
+                        { peerId, address, error: error.message });
+                    return null;
+                });
+            })
+            .filter(Boolean); // Remove null entries
 
-        // Process the results
-        for (let i = 0; i < statusPromises.length; i++) {
-            const result = await Promise.race(statusPromises);
-            statusPromises.splice(statusPromises.indexOf(result), 1);
+        // Wait for all promises to complete
+        const results = await Promise.all(statusPromises);
 
-            const address = peersRelatedToPromises[i].address;
-            const peerId = peersRelatedToPromises[i].peerId;
-            console.log('CONTROL --#getAllPeersStatus F')
-            if (!result || result.status !== 'success') { continue; }
-            
-            allStatus.push({ 
-                peerId,
-                address,
-                currentHeight: result.currentHeight,
-                latestBlockHash: result.latestBlockHash
-            });
-        }
-
-        return allStatus;
+        // Filter out failed requests and add successful ones to allStatus
+        return results.filter(Boolean);
     }
 
     /** Handles synchronization failure by rolling back to snapshot and requesting a restart handled by the factory. */
@@ -333,10 +328,10 @@ export class SyncHandler {
             //this.isSyncing = false;
             return;
         }
-                
+
         const currentHeight = this.node.blockchain.currentHeight;
         const snapshotHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
-        
+
         if (snapshotHeights.length === 0) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - no snapshots available');
             //this.isSyncing = false;
@@ -345,12 +340,12 @@ export class SyncHandler {
         const lastSnapshotHeight = snapshotHeights[snapshotHeights.length - 1];
         let eraseUntilHeight = currentHeight - 10;
         if (typeof lastSnapshotHeight === 'number') {
-            eraseUntilHeight = Math.min(currentHeight -10, lastSnapshotHeight - 10);
+            eraseUntilHeight = Math.min(currentHeight - 10, lastSnapshotHeight - 10);
             this.node.snapshotSystemDoc.eraseSnapshotsHigherThan(eraseUntilHeight);
         }
 
         this.node.requestRestart('SyncHandler.handleSyncFailure()');
-        
+
         this.logger.info(`luid-cd98e436 [SYNC-${this.node.id.slice(0, 6)}] Snapshot erased until #${eraseUntilHeight}, waiting for restart...`);
         this.logger.info(`luid-3ef67123 [SYNC] Blockchain restored and reloaded. Current height: ${this.node.blockchain.currentHeight}`);
         //this.isSyncing = false;
@@ -362,7 +357,7 @@ export class SyncHandler {
         try {
             const peerStatus = await this.#getPeerStatus(p2pNetwork, peerMultiaddr, peerId);
             if (!peerStatus || !peerStatus.currentHeight) { this.logger.info(`luid-d8e694f9 [SYNC] Failed to get peer height`); }
-            return peerStatus.currentHeight;       
+            return peerStatus.currentHeight;
         } catch (error) {
             this.logger.error(`luid-3c81f6ba [SYNC] (#updatedPeerHeight) Failed to get peer height: ${error.message}`);
             return false;
@@ -376,10 +371,10 @@ export class SyncHandler {
         this.logger.info(`luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}`);
         let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
         if (!peerHeight) { this.logger.info(`luid-e9f9d488 [SYNC] (#getMissingBlocks) Failed to get peer height`); }
-        
+
         let desiredBlock = this.node.blockchain.currentHeight + 1;
-        while(desiredBlock <= peerHeight) {
-            const endIndex = Math.min( desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight );
+        while (desiredBlock <= peerHeight) {
+            const endIndex = Math.min(desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight);
             const serializedBlocks = await this.#requestBlocksFromPeer(p2pNetwork, peerMultiaddr, desiredBlock, endIndex);
             if (!serializedBlocks) { this.logger.error(`luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks`); break; }
             if (serializedBlocks.length === 0) { this.logger.error(`luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found`); break; }
@@ -390,22 +385,22 @@ export class SyncHandler {
                         serializedBlock.header,
                         serializedBlock.txs
                     );
-                    await this.node.digestFinalizedBlock(block, {skipValidation: false, broadcastNewCandidate: false, isSync: true, persistToDisk: true});
+                    await this.node.digestFinalizedBlock(block, { skipValidation: false, broadcastNewCandidate: false, isSync: true, persistToDisk: true });
                     desiredBlock++;
                 } catch (blockError) {
-                    this.logger.error('luid-63446bae Error processing block',{ error: blockError.message, blockIndex: desiredBlock });
+                    this.logger.error('luid-63446bae Error processing block', { error: blockError.message, blockIndex: desiredBlock });
                     this.isSyncing = false;
                     throw new SyncRestartError('Sync failure occurred, restarting sync process');
                 }
             }
 
-            this.logger.info('luid-09a78e43 Synchronized blocks from peer',{count: serializedBlocks.length, nextBlock: desiredBlock });
+            this.logger.info('luid-09a78e43 Synchronized blocks from peer', { count: serializedBlocks.length, nextBlock: desiredBlock });
             // Update the peer's height when necessary
             if (peerHeight === this.node.blockchain.currentHeight) {
                 peerHeight = await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
                 if (!peerHeight) { this.logger.error(`luid-f1def041 [SYNC] (#getMissingBlocks: while()) Failed to get peer height`); }
             }
-    
+
         }
 
         if (peerHeight === this.node.blockchain.currentHeight) { return true; }
@@ -419,9 +414,9 @@ export class SyncHandler {
      * @param {number} startIndex - The starting block index.
      * @param {number} endIndex - The ending block index.
      * @returns {Promise<Array>} An array of blocks. */
-     async #requestBlocksFromPeer(p2pNetwork, peerMultiaddr, startIndex, endIndex) {
+    async #requestBlocksFromPeer(p2pNetwork, peerMultiaddr, startIndex, endIndex) {
         const message = { type: 'getBlocks', startIndex, endIndex };
-        this.logger.debug('luid-69db154c Requesting blocks from peer',{ startIndex, endIndex, peerMultiaddr });
+        this.logger.debug('luid-69db154c Requesting blocks from peer', { startIndex, endIndex, peerMultiaddr });
 
         let response;
         try {
@@ -434,7 +429,7 @@ export class SyncHandler {
         if (response.status === 'success' && Array.isArray(response.blocks)) {
             return response.blocks;
         } else {
-            this.logger.warn('luid-fd24299d Failed to get blocks from peer',{ status: response.status });
+            this.logger.warn('luid-fd24299d Failed to get blocks from peer', { status: response.status });
             throw new Error('Failed to get blocks from peer');
         }
     }

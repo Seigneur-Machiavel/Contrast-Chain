@@ -139,13 +139,6 @@
     "type": "error",
     "content": "luid-8dbfb594 Failed to create stream"
   },
-  "luid-b1180a7e": {
-    "active": false,
-    "file": "src\\p2p.mjs",
-    "line": 238,
-    "type": "debug",
-    "content": "luid-b1180a7e Received pubsub message"
-  },
   "luid-42d36d6e": {
     "active": true,
     "file": "src\\p2p.mjs",
@@ -160,6 +153,13 @@
     "type": "error",
     "content": "luid-db87846b Received non-binary data from ${from} dataset: ${data} topic: ${topic}"
   },
+  "luid-7a511836": {
+    "active": false,
+    "file": "src\\p2p.mjs",
+    "line": 252,
+    "type": "debug",
+    "content": "luid-7a511836 Received new transaction"
+  },
   "luid-ed4b8d0b": {
     "active": true,
     "file": "src\\p2p.mjs",
@@ -167,12 +167,26 @@
     "type": "error",
     "content": "luid-ed4b8d0b Transaction size exceeds the maximum allowed size"
   },
+  "luid-a305d036": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 258,
+    "type": "debug",
+    "content": "luid-a305d036 Received new block candidate"
+  },
   "luid-bb4b664c": {
     "active": true,
     "file": "src\\p2p.mjs",
     "line": 257,
     "type": "error",
     "content": "luid-bb4b664c Block candidate size exceeds the maximum allowed size"
+  },
+  "luid-3431060a": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 263,
+    "type": "debug",
+    "content": "luid-3431060a Received new block finalized"
   },
   "luid-d4e9de17": {
     "active": true,
@@ -259,7 +273,7 @@
     "content": "luid-9dee0369 Failed to acquire stream"
   },
   "luid-e99e2dac": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 425,
     "type": "info",
@@ -299,20 +313,6 @@
     "line": 471,
     "type": "debug",
     "content": "luid-0f2f018d Subscribing to topic"
-  },
-  "luid-6ddfdefb": {
-    "active": false,
-    "file": "src\\p2p.mjs",
-    "line": 478,
-    "type": "debug",
-    "content": "luid-6ddfdefb Subscribed to topic"
-  },
-  "luid-fc18ad60": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 480,
-    "type": "error",
-    "content": "luid-fc18ad60 Failed to subscribe to topic"
   },
   "luid-7c191bc3": {
     "active": true,
@@ -562,9 +562,9 @@
   "luid-35e1f975": {
     "active": true,
     "file": "src\\sync.mjs",
-    "line": 290,
+    "line": 278,
     "type": "error",
-    "content": "luid-35e1f975 Invalid multiaddr for peer"
+    "content": "luid-35e1f975 Peer address is missing"
   },
   "luid-33c856d9": {
     "active": true,
