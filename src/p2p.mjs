@@ -422,10 +422,7 @@ class P2PNetwork extends EventEmitter {
                 createTimeout(timeoutMs)
             ]);
             
-            this.logger.info('luid-e99e2dac Message written to stream', { 
-                component: 'P2PNetwork', 
-                length: serialized.length 
-            });
+            this.logger.info('luid-e99e2dac Message written to stream', { component: 'P2PNetwork', length: serialized.length  });
     
             // Read with timeout
             const res = await Promise.race([
@@ -437,10 +434,7 @@ class P2PNetwork extends EventEmitter {
                 throw new Error('No response received (unexpected end of input)'); 
             }
             
-            this.logger.info('luid-d7de89d1 Response read from stream', { 
-                component: 'P2PNetwork', 
-                response_bytes: res.length 
-            });
+            this.logger.info('luid-d7de89d1 Response read from stream', { component: 'P2PNetwork', response_bytes: res.length });
     
             const response = utils.serializer.rawData.fromBinary_v1(res.subarray());
             if (response.status !== 'error') {
@@ -449,11 +443,7 @@ class P2PNetwork extends EventEmitter {
     
             throw new Error(response.message);
         } catch (error) {
-            this.logger.error('luid-a0932f5f Error during sendOverStream', { 
-                component: 'P2PNetwork', 
-                error: error.message,
-                timeout: timeoutMs 
-            });
+            this.logger.error('luid-c50b7bfb Error during sendOverStream', { component: 'P2PNetwork', error: error.message,timeout: timeoutMs });
             throw error;
         }
         finally {
@@ -461,9 +451,7 @@ class P2PNetwork extends EventEmitter {
                 try {
                     stream.close();
                 } catch (closeErr) {
-                    this.logger.error('luid-d0cd7dc0 Failed to close stream', { 
-                        error: closeErr.message 
-                    });
+                    this.logger.error('luid-d0cd7dc0 Failed to close stream', { error: closeErr.message });
                 }
             } else {
                 this.logger.warn('luid-07277de5 Stream is undefined; cannot close stream');
@@ -586,9 +574,7 @@ class P2PNetwork extends EventEmitter {
             
             if (identifier === peerId || identifier === ip) {
                 this.p2pNode.components.connectionManager.closeConnections(peerId);
-                this.logger.info('luid-9d42e1f5 Disconnected peer', 
-                    { identifier });
-            }
+                this.logger.info('luid-9d42e1f5 Disconnected peer', { identifier });}
         }
     }
 }
