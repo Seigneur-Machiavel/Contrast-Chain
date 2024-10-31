@@ -3366,5 +3366,32 @@
   {
     "timestamp": "2024-10-31T10:58:10.760Z",
     "diffs": []
+  },
+  {
+    "timestamp": "2024-10-31T11:55:48.336Z",
+    "diffs": [
+      {
+        "id": "luid-6ddfdefb",
+        "action": "removed",
+        "oldValue": {
+          "active": false,
+          "file": "src\\p2p.mjs",
+          "line": 478,
+          "type": "debug",
+          "content": "luid-6ddfdefb Subscribed to topic"
+        }
+      },
+      {
+        "id": "luid-fc18ad60",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\p2p.mjs",
+          "line": 480,
+          "type": "error",
+          "content": "luid-fc18ad60 Failed to subscribe to topic"
+        }
+      }
+    ]
   }
 ]

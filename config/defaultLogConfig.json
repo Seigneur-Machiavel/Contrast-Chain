@@ -314,20 +314,6 @@
     "type": "debug",
     "content": "luid-0f2f018d Subscribing to topic"
   },
-  "luid-6ddfdefb": {
-    "active": false,
-    "file": "src\\p2p.mjs",
-    "line": 478,
-    "type": "debug",
-    "content": "luid-6ddfdefb Subscribed to topic"
-  },
-  "luid-fc18ad60": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 480,
-    "type": "error",
-    "content": "luid-fc18ad60 Failed to subscribe to topic"
-  },
   "luid-7c191bc3": {
     "active": true,
     "file": "src\\p2p.mjs",
@@ -576,9 +562,9 @@
   "luid-35e1f975": {
     "active": true,
     "file": "src\\sync.mjs",
-    "line": 290,
+    "line": 278,
     "type": "error",
-    "content": "luid-35e1f975 Invalid multiaddr for peer"
+    "content": "luid-35e1f975 Peer address is missing"
   },
   "luid-33c856d9": {
     "active": true,
