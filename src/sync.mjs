@@ -117,18 +117,18 @@ export class SyncHandler {
     /** Synchronizes with known peers by first fetching their statuses and then syncing with the peer that has the highest block height. */
     async syncWithKnownPeers() {
         this.node.blockchainStats.state = "syncing";
-        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
-
+        this.isSyncing = true;
+        
         console.log('CONTROL --A')
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
         if (this.node.p2pNetwork.subscriptions.size > 0) {
             this.logger.info(`luid-7d739b5d [SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics`);
             for (const topic of uniqueTopics) { await this.node.p2pNetwork.unsubscribe(topic); }
         }
 
-        this.isSyncing = true;
         this.logger.info(`luid-ba6712a8 [SYNC] Starting syncWithKnownPeers at #${this.node.blockchain.currentHeight}`);
         console.log('CONTROL --B')
-        
+
         const peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
         if (peerStatuses === null || peerStatuses.length === 0) { // Restart node if no peers are available
             this.logger.error(`luid-b1baf98f [SYNC] unable to get peersStatus -> handleSyncFailure()`);
