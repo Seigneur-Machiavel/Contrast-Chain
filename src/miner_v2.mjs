@@ -59,7 +59,7 @@ export class Miner {
     pushCandidate(blockCandidate) {
         const validatorAddress = blockCandidate.Txs[0].inputs[0].split(':')[0];
         if (this.highestBlockIndex !== -1 && blockCandidate.index > this.highestBlockIndex + 1) {
-            console.info(`[MINER] Invalid block candidate pushed (Height: ${blockCandidate.index}) | blockCandidate.index > lastBlockIndex + 1`);
+            console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | blockCandidate.index > lastBlockIndex + 1`);
             return;
         }
 
@@ -70,8 +70,8 @@ export class Miner {
         // check if powReward is coherent
         const posReward = blockCandidate.Txs[0].outputs[0].amount;
         const powReward = blockCandidate.powReward;
-        if (!posReward || !powReward) { console.info(`[MINER] Invalid block candidate pushed (Height: ${blockCandidate.index}) | posReward = ${posReward} | powReward = ${powReward}`); return; }
-        if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (Height: ${blockCandidate.index}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
+        if (!posReward || !powReward) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward}`); return; }
+        if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
 
         // check if block is higher than the highest block
         if (blockCandidate.index > this.highestBlockIndex) {
