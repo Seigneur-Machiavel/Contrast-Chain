@@ -135,7 +135,7 @@ export class SyncHandler {
             console.log('CONTROL --HSF1')
             await this.handleSyncFailure();
             console.log('CONTROL --HSF2')
-            return true; // false
+            return false; // false
         }
         console.log('CONTROL --C')
 
@@ -149,7 +149,7 @@ export class SyncHandler {
             this.logger.error(`luid-daa18cf7 [SYNC] highestPeerHeight is undefined -> handleSyncFailure()`);
             await this.handleSyncFailure();
             console.log('CONTROL --HS4')
-            return true; // false
+            return false; // false
         }
 
         console.log('CONTROL --E')
@@ -157,7 +157,6 @@ export class SyncHandler {
             this.logger.debug(`luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
             this.isSyncing = false;
             await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
-            
             return true;
         }
 
@@ -171,10 +170,8 @@ export class SyncHandler {
             try {
                 const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight , peerId);
                 this.logger.info('luid-a373e2ca Successfully synced with peer',{ peerId });
-                this.isSyncing = false;
+                if (!synchronized) { continue; }
                 
-                if (!synchronized) {
-                    continue; }
                 break; // Sync successful, break out of loop
             } catch (error) {
                 //continue;
@@ -183,7 +180,7 @@ export class SyncHandler {
                 if (error instanceof SyncRestartError) {
                     this.logger.error('luid-5abadb62 Sync restart error occurred',{ error: error.message });
                     await this.handleSyncFailure();
-                    return true; // false
+                    return false; // false
                 }
                 break;
             } 
@@ -302,7 +299,7 @@ export class SyncHandler {
         // Execute all status retrievals in parallel
         //const results = await Promise.allSettled(statusPromises);
         
-        let timeOut = setTimeout(() => { 
+        setTimeout(() => { 
             console.log('--#getAllPeersStatus TIMEOUT')
             return allStatus;
         }, 5000);
@@ -323,9 +320,6 @@ export class SyncHandler {
                     latestBlockHash: result.latestBlockHash
                 });
             }
-
-            timeOut = clearTimeout(timeOut);
-            timeOut = setTimeout(() => { return allStatus; }, 5000);
         }
         return allStatus;
     }
@@ -334,13 +328,13 @@ export class SyncHandler {
     async handleSyncFailure() {
         this.logger.error(`luid-33c856d9 [SYNC] Sync failure occurred, restarting sync process`);
         if (this.node.restartRequested) {
-            this.isSyncing = false;
+            //this.isSyncing = false;
             return;
         }
 
         if (this.node.blockchain.currentHeight === -1) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - blockchain currentHeight is -1');
-            this.isSyncing = false;
+            //this.isSyncing = false;
             return;
         }
                 
@@ -349,7 +343,7 @@ export class SyncHandler {
         
         if (snapshotHeights.length === 0) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - no snapshots available');
-            this.isSyncing = false;
+            //this.isSyncing = false;
             return;
         }
         const lastSnapshotHeight = snapshotHeights[snapshotHeights.length - 1];
@@ -363,7 +357,7 @@ export class SyncHandler {
         
         this.logger.info(`luid-cd98e436 [SYNC-${this.node.id.slice(0, 6)}] Snapshot erased until #${eraseUntilHeight}, waiting for restart...`);
         this.logger.info(`luid-3ef67123 [SYNC] Blockchain restored and reloaded. Current height: ${this.node.blockchain.currentHeight}`);
-        this.isSyncing = false;
+        //this.isSyncing = false;
     }
     /**
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
