@@ -91,11 +91,11 @@ export class ValidationWorker_v2 {
         return new Promise((resolve, reject) => {
             this.worker.on('message', (message) => {
                 if (message.id !== this.id) { return; }
-                if (message.error) { return reject(message.error); }
-                resolve();
+                if (!message.error) { return } 
+                console.error(message.error);
+                reject(message.error);
             });
             this.worker.on('exit', (code) => {
-                console.log(`ValidationWorker ${this.id} stopped with exit code ${code}`);
                 resolve();
             });
         });

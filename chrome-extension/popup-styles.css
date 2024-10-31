@@ -768,12 +768,9 @@ button.classy.clicked:not(.disabled) {
 
 
 #settingsForm {
-    margin: 30px 0 20px 0;
+    margin: 0px 0 20px 0;
     justify-content: initial;
     min-height: 320px;
-}
-#settingsForm .textInfo {
-    margin: 0;
 }
 #settingsForm button {
     height: 32px;
@@ -785,8 +782,8 @@ button.classy.clicked:not(.disabled) {
     transform: scale(1.02);
 }
 #settingsForm .textInfo {
-    position: absolute;
-    top: -30px;
+    /*position: absolute;*/
+    top: 0px;
     margin: 8px 0;
     background: var(--color1);
     width: 100%;
@@ -872,7 +869,7 @@ button.classy.clicked:not(.disabled) {
 }
 .inlineRange {
     display: flex;
-    flex-direction: column;
+    justify-content: space-around;
     background-color: #ffffff0d;
     padding: 10px;
     width: -webkit-fill-available;
@@ -884,7 +881,7 @@ button.classy.clicked:not(.disabled) {
 }
 .inlineRange input {
     width: auto;
-    margin: 6px 0 0;
+    margin: 3px 0 0;
 }
 #miningForm h2 {
     margin: 14px 0 0;

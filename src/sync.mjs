@@ -128,6 +128,7 @@ export class SyncHandler {
         this.isSyncing = true;
         this.logger.info(`luid-ba6712a8 [SYNC] Starting syncWithKnownPeers at #${this.node.blockchain.currentHeight}`);
         console.log('CONTROL --B')
+        
         const peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
         if (peerStatuses === null || peerStatuses.length === 0) { // Restart node if no peers are available
             this.logger.error(`luid-b1baf98f [SYNC] unable to get peersStatus -> handleSyncFailure()`);
@@ -137,10 +138,12 @@ export class SyncHandler {
             return true; // false
         }
         console.log('CONTROL --C')
+
         // Sort peers by currentHeight in descending order
         peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
         const highestPeerHeight = peerStatuses[0].currentHeight;
         console.log('CONTROL --D')
+
         if (highestPeerHeight === undefined) {
             console.log('CONTROL --HSF3')
             this.logger.error(`luid-daa18cf7 [SYNC] highestPeerHeight is undefined -> handleSyncFailure()`);
@@ -148,6 +151,7 @@ export class SyncHandler {
             console.log('CONTROL --HS4')
             return true; // false
         }
+
         console.log('CONTROL --E')
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
@@ -300,7 +304,7 @@ export class SyncHandler {
         
         let timeOut = setTimeout(() => { 
             console.log('--#getAllPeersStatus TIMEOUT')
-            return allStatus; 
+            return allStatus;
         }, 5000);
 
         // Process the results

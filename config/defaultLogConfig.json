@@ -258,34 +258,6 @@
     "type": "error",
     "content": "luid-9dee0369 Failed to acquire stream"
   },
-  "luid-e99e2dac": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 401,
-    "type": "info",
-    "content": "luid-e99e2dac Message written to stream"
-  },
-  "luid-d7de89d1": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 405,
-    "type": "info",
-    "content": "luid-d7de89d1 Response read from stream"
-  },
-  "luid-a0932f5f": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 414,
-    "type": "error",
-    "content": "luid-a0932f5f Error during sendOverStream"
-  },
-  "luid-d0cd7dc0": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 422,
-    "type": "error",
-    "content": "luid-d0cd7dc0 Failed to close stream"
-  },
   "luid-07277de5": {
     "active": true,
     "file": "src\\p2p.mjs",
