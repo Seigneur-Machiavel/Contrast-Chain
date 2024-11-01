@@ -5,15 +5,15 @@ import { Vss } from './vss.mjs';
 import { MemPool } from './memPool.mjs';
 import { UtxoCache } from './utxoCache.mjs';
 import { BlockData, BlockUtils } from './block.mjs';
-import { Transaction_Builder, TxIO_Builder } from './transaction.mjs';
-import { Miner } from './miner_v2.mjs';
+import { Transaction_Builder } from './transaction.mjs';
+import { Miner } from './miner.mjs';
 import P2PNetwork from './p2p.mjs';
 import utils from './utils.mjs';
 import { Blockchain } from './blockchain.mjs';
 import { SyncHandler } from './sync.mjs';
 import SnapshotSystemDoc from './snapshot-system.mjs';
 import { performance, PerformanceObserver } from 'perf_hooks';
-import { ValidationWorker, ValidationWorker_v2 } from '../workers/workers-classes.mjs';
+import { ValidationWorker } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
 import { TimeSynchronizer } from './time.mjs';
 import { Logger } from './logger.mjs';
@@ -79,7 +79,7 @@ export class Node {
         /** @type {UtxoCache} */
         this.utxoCache = new UtxoCache(this.id, this.version, this.blockchain);
 
-        /** @type {ValidationWorker_v2[]} */
+        /** @type {ValidationWorker[]} */
         this.workers = [];
         this.nbOfWorkers = 4;
         this.configManager = new ConfigManager("config/config.json");
@@ -94,7 +94,7 @@ export class Node {
         await this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
 
-        for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker_v2(i)); }
+        for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
         this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack, this.timeSynchronizer);
         this.miner.useDevArgon2 = this.useDevArgon2;
@@ -111,7 +111,6 @@ export class Node {
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
         await this.#waitSomePeers();
-        //if (this.roles.includes('miner')) { this.miner.start_v2(); }
      
         console.log('P2P network is ready - we are connected baby!');
 

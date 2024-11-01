@@ -128,11 +128,11 @@ class P2PNetwork extends EventEmitter {
     }
 
     async connectToBootstrapNodes() {
-
         await Promise.all(this.options.bootstrapNodes.map(async (addr) => {
             try {
                 const ma = multiaddr(addr);
-                const isBanned = this.reputationManager.isPeerBanned({ ip: ma.toString() });
+                const ip = ma.toString();
+                const isBanned = this.reputationManager.isPeerBanned({ ip });
                 this.logger.info('luid-9167c650 Connecting to bootstrap node', { component: 'P2PNetwork bootstrap', bootstrapNode: addr, isBanned });
                 await this.p2pNode.dial(ma, { signal: AbortSignal.timeout(this.options.dialTimeout) });
                 //await this.p2pNode.components.connectionManager.openConnection(ma);

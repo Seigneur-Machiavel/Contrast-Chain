@@ -8,50 +8,6 @@ import utils from '../src/utils.mjs';
 export class ValidationWorker {
     constructor (id = 0) {
         this.id = id;
-        this.isValid = null;
-        this.discoveredPubKeysAddresses = {};
-        this.state = 'idle';
-
-        /** @type {Worker} worker */
-        this.worker = utils.newWorker('../workers/validation-worker-nodejs.mjs');
-        
-        this.worker.on('message', (message) => {
-            console.log(`ValidationWorker ${this.id} message: ${JSON.stringify(message)}`);
-            if (message.id !== this.id) { return; }
-            if (message.error) { console.error(message.error); }
-            
-            this.discoveredPubKeysAddresses = message.discoveredPubKeysAddresses;
-            this.isValid = message.isValid;
-            this.state = 'idle';
-        });
-        this.worker.on('exit', (code) => { console.log(`ValidationWorker stopped with exit code ${code}`); });
-        this.worker.on('close', () => { console.log('ValidationWorker closed'); });
-    }
-
-    reset() { // DEPRECATED
-        this.isValid = null;
-        this.state = 'idle';
-    }
-    addressOwnershipConfirmation(involvedUTXOs, transaction, impliedKnownPubkeysAddresses, useDevArgon2, specialTx) {
-        this.worker.postMessage({
-            id: this.id,
-            type: 'addressOwnershipConfirmation',
-            involvedUTXOs,
-            transaction,
-            impliedKnownPubkeysAddresses,
-            useDevArgon2,
-            specialTx
-        });
-    }
-    terminate() {
-        this.worker.postMessage({ type: 'terminate' });
-        console.info(`ValidationWorker ${this.id} terminated`);
-    }
-}
-
-export class ValidationWorker_v2 {
-    constructor (id = 0) {
-        this.id = id;
         this.state = 'idle';
 
         /** @type {Worker} worker */
@@ -119,7 +75,7 @@ export class MinerWorker {
         this.startTime = Date.now();
 
         /** @type {Worker} worker */
-        this.worker = utils.newWorker('../workers/miner-worker-nodejs-v2.mjs');
+        this.worker = utils.newWorker('../workers/miner-worker-nodejs.mjs');
         this.worker.on('close', () => { console.log('MinerWorker closed'); });
         this.worker.on('message', (message) => {
             if (message.hashCount) {
