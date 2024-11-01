@@ -88,7 +88,7 @@ export class Node {
     }
 
     async start(startFromScratch = false) {
-        await this.logger.initializeLogger();
+        await this.logger.initializeLoggerFromFile();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
         await this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
