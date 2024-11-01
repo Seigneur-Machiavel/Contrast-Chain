@@ -56,7 +56,7 @@ export class Miner {
     }
 
     /** @param {BlockData} blockCandidate */
-    pushCandidate(blockCandidate) {
+    /*pushCandidate(blockCandidate) {
         const validatorAddress = blockCandidate.Txs[0].inputs[0].split(':')[0];
         if (this.highestBlockIndex !== -1 && blockCandidate.index > this.highestBlockIndex + 1) {
             console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | blockCandidate.index > lastBlockIndex + 1`);
@@ -92,6 +92,29 @@ export class Miner {
 
         if (this.wsCallbacks.onBestBlockCandidateChange) {
             this.wsCallbacks.onBestBlockCandidateChange.execute(mostLegBlockCandidate);
+        }
+    }*/
+    /** @param {BlockData} blockCandidate */
+    updateBestCandidate(blockCandidate) {
+        // check if powReward is coherent
+        const posReward = blockCandidate.Txs[0].outputs[0].amount;
+        const powReward = blockCandidate.powReward;
+        if (!posReward || !powReward) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward}`); return; }
+        if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
+
+        // compare final diff if height is the same
+        if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
+            const newCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(blockCandidate);
+            const bestCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(this.bestCandidate);
+            if (newCandidateFinalDiff > bestCandidateFinalDiff) { return; }
+        }
+
+        this.highestBlockIndex = blockCandidate.index;
+        const changed = this.#setBestCandidateIfChanged(blockCandidate);
+        if (!changed) { return; }
+
+        if (this.wsCallbacks.onBestBlockCandidateChange) {
+            this.wsCallbacks.onBestBlockCandidateChange.execute(blockCandidate);
         }
     }
     #betPowTime(nbOfBets = 32) {

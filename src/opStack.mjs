@@ -13,6 +13,7 @@ export class OpStack {
     tasks = [];
     syncRequested = false;
     terminated = false;
+    paused = false;
     txBatchSize = 10; // will treat transactions in batches of 10
     /** @type {NodeJS.Timeout} */
     lastConfirmedBlockTimeout = null;
@@ -37,7 +38,7 @@ export class OpStack {
         while (true) {
             if (this.terminated) { break; }
 
-            if (this.tasks.length === 0) {
+            if (this.tasks.length === 0 || this.paused) {
                 await new Promise(resolve => setTimeout(resolve, delayMS));
                 if (this.node.miner) { this.node.miner.canProceedMining = true; }
                 continue;
@@ -62,7 +63,8 @@ export class OpStack {
     async #executeTask(task) {
         if (!task) { return; }
 
-        //try {
+        try {
+            const options = task.options ? task.options : {};
             const content = task.data ? task.data.content ? task.data.content : task.data : undefined;
             const byteLength = task.data ? task.data.byteLength ? task.data.byteLength : undefined : undefined;
 
@@ -78,7 +80,7 @@ export class OpStack {
                     break;
                 case 'digestPowProposal':
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
-                    try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false }, byteLength);
+                    try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false, ...options }, byteLength);
                     } catch (error) {
                         if (error.message.includes('!ban!')) {
                            if (task.data.from !== undefined) {
@@ -141,10 +143,13 @@ export class OpStack {
                 case 'createBlockCandidateAndBroadcast':
                     await this.node.createBlockCandidateAndBroadcast();
                     break;
+                case 'rollBackTo':
+                    await this.node.loadSnapshot(content, false);
+                    break;
                 default:
                     console.error(`[OpStack] Unknown task type: ${task.type}`);
             }
-        //} catch (error) { console.error(error.stack); }
+        } catch (error) { console.error(error.stack); }
     }
     /** @param {string} type  @param {object} data */
     push(type, data) {
@@ -157,5 +162,11 @@ export class OpStack {
         if (type === 'syncWithKnownPeers' && this.syncRequested) { return; }
         if (type === 'syncWithKnownPeers') { this.syncRequested = true; }
         this.tasks.unshift({ type, data });
+    }
+
+    securelyPushFirst(tasks) {
+        this.paused = true;
+        for (const task of tasks) { this.tasks.unshift(task); }
+        this.paused = false;
     }
 }

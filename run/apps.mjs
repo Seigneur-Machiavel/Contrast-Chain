@@ -612,12 +612,17 @@ export class ObserverWsApp {
                     break;
                 case 'broadcast_finalized_block':
                     console.log(`--- Broadcasting finalized block from observer ---`);
-                    //try {
+                    if (this.node.blockCandidate.index !== data.index) {
+                        console.error(`[OBSERVER] Block index mismatch: ${this.node.blockCandidate.index} !== ${data.index}`);
+                        return;
+                    }
+                    if (this.node.blockCandidate.prevHash !== data.prevHash) {
+                        console.error(`[OBSERVER] Block prevHash mismatch: ${this.node.blockCandidate.prevHash} !== ${data.prevHash}`);
+                        return;
+                    }
+
                     await this.node.p2pNetwork.broadcast('new_block_finalized', data);
-                    if (this.node.roles.includes('validator')) { this.node.opStack.push('digestPowProposal', data); };
-                    //} catch (error) {
-                        //console.error(`Error broadcasting finalized block: ${error.message}`);
-                    //}
+                    this.node.opStack.push('digestPowProposal', data);
                     break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: `unknown message type: ${parsedMessage.type}` }));

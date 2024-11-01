@@ -56,6 +56,8 @@ export class Node {
         this.validatorRewardAddress = account.address;
         /** @type {BlockData} */
         this.blockCandidate = null;
+        /** @type {Object<string, Object<string, BlockData>>} */
+        this.finalizedBlocksCache = {};
 
         /** @type {Vss} */
         this.vss = new Vss(utils.SETTINGS.maxSupply);
@@ -91,7 +93,7 @@ export class Node {
         await this.logger.initializeLogger();
         this.blockchainStats.state = "starting";
         await this.configManager.init();
-        await this.timeSynchronizer.syncTimeWithRetry(5, 500); // 5 try and 500ms interval between each try
+        await this.timeSynchronizer.syncTimeWithRetry(5, 500);
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
@@ -107,11 +109,12 @@ export class Node {
         this.p2pNetwork.options.bootstrapNodes = bootstrapNodes;
 
         const uniqueHash = await this.account.getUniqueHash(64);
-        await this.p2pNetwork.start(uniqueHash); // start the libp2p network
+        await this.p2pNetwork.start(uniqueHash);
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
-        await this.#waitSomePeers();
-     
+
+        const nbOfPeers = await this.#waitSomePeers();
+        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
         console.log('P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
@@ -130,6 +133,16 @@ export class Node {
         return this.timeSynchronizer.getCurrentTime();
     }
 
+    getTopicsToSubscribeRelatedToRoles() {
+        const rolesTopics = {
+            validator: ['new_transaction', 'new_block_finalized'],
+            miner: ['new_block_candidate'],
+            observer: ['new_transaction', 'new_block_finalized', 'new_block_candidate']
+        }
+        const topicsToSubscribe = [];
+        for (const role of this.roles) { topicsToSubscribe.push(...rolesTopics[role]); }
+        return [...new Set(topicsToSubscribe)];
+    }
     async #waitSomePeers(nbOfPeers = 1, maxAttempts = 60, timeOut = 30000) {
         const checkPeerCount = () => {
             const peersIds = this.p2pNetwork.getConnectedPeers();
@@ -174,6 +187,20 @@ export class Node {
             return false;
         }
     }
+    async createBlockCandidateAndBroadcast() {
+        this.blockchainStats.state = "creating block candidate";
+        try {
+            if (!this.roles.includes('validator')) { throw new Error('Only validator can create a block candidate'); }
+
+            this.blockCandidate = await this.#createBlockCandidate();
+            if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
+            await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
+            return true;
+        } catch (error) {
+            console.error(error);
+            return false;
+        }
+    }
 
     async #loadBlockchain() {
         this.blockchainStats.state = "loading";
@@ -207,13 +234,14 @@ export class Node {
             return true;
         }
 
-        await this.#loadSnapshot(startHeight);
+        await this.loadSnapshot(startHeight);
 
         return true;
     }
-    async #loadSnapshot(snapshotIndex = 0) {
+    async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
         console.warn(`Last known snapshot index: ${snapshotIndex}`);
         await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
+        if (!eraseHigher) { return; }
 
         // place snapshot to trash folder, we can restaure it if needed
         this.snapshotSystemDoc.eraseSnapshotsHigherThan(snapshotIndex - 1);
@@ -239,32 +267,106 @@ export class Node {
         }
         this.snapshotSystemDoc.restoreLoadedSnapshot();
     }
-
-    getTopicsToSubscribeRelatedToRoles() {
-        const rolesTopics = {
-            validator: ['new_transaction', 'new_block_finalized'],
-            miner: ['new_block_candidate'],
-            observer: ['new_transaction', 'new_block_finalized', 'new_block_candidate']
-        }
-        const topicsToSubscribe = [];
-        for (const role of this.roles) { topicsToSubscribe.push(...rolesTopics[role]); }
-        return [...new Set(topicsToSubscribe)];
+    #storeFinalizedBlockInCache(finalizedBlock) {
+        const index = finalizedBlock.index;
+        const hash = finalizedBlock.hash;
+        if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
+        this.finalizedBlocksCache[index][hash] = finalizedBlock;
     }
+    pruneStoredFinalizedBlockFromCache() {
+        const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
+        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
+        if (preLastSnapshot === undefined) { return; }
 
+        const eraseUntil = preLastSnapshot -1;
+        const blocksHeight = Object.keys(this.finalizedBlocksCache);
+        for (const height of blocksHeight) {
+            if (height > eraseUntil) { continue; }
+            delete this.finalizedBlocksCache[height];
+        }
+    }
+    pruneBranch(finalizedBlocks) {
+        for (const block of finalizedBlocks) {
+            const index = block.index;
+            if (!this.finalizedBlocksCache[index]) { continue; }
+            delete this.finalizedBlocksCache[index][block.hash];
+        }
+    }
+    getLegitimateReorg() {
+        const legitimateReorg = {
+            lastTimestamp: 0,
+            lastHeight: 0,
+            tasks: []
+        };
+        // most legitimate chain is the longest chain
+        // if two chains have the same length:
+        // the most legitimate chain is the one with the lowest mining final difficulty
+        // mining final difficulty affected by: posTimestamp
+        const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
+        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
+        if (preLastSnapshot === undefined) { return legitimateReorg; }
 
-    async createBlockCandidateAndBroadcast() {
-        this.blockchainStats.state = "creating block candidate";
-        try {
-            if (!this.roles.includes('validator')) { throw new Error('Only validator can create a block candidate'); }
+        const lastBlock = this.blockchain.lastBlock;
+        if (!lastBlock) { return legitimateReorg; }
 
-            this.blockCandidate = await this.#createBlockCandidate();
-            if (this.roles.includes('miner')) { this.miner.pushCandidate(this.blockCandidate); }
-            await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
-            return true;
-        } catch (error) {
-            console.error(error);
+        legitimateReorg.lastTimestamp = lastBlock.timestamp;
+        legitimateReorg.lastHeight = lastBlock.index;
+
+        let index = lastBlock.index;
+        while (this.finalizedBlocksCache[index]) {
+            const blocks = Object.values(this.finalizedBlocksCache[index]);
+            for (const block of blocks) {
+                if (block.hash === lastBlock.hash) { continue; }
+                
+                const blockTimestamp = block.timestamp;
+                const sameIndex = legitimateReorg.lastHeight === block.index;
+                if (sameIndex && blockTimestamp > legitimateReorg.lastTimestamp) { continue; }
+
+                const tasksToReorg = this.buildChainReorgTasksFromHighestToLowest(block, preLastSnapshot);
+                if (!tasksToReorg) { continue; }
+
+                legitimateReorg.tasks = tasksToReorg;
+                legitimateReorg.lastHeight = block.index;
+                legitimateReorg.lastTimestamp = block.timestamp;
+            }
+
+            index++;
+        }
+
+        return legitimateReorg;
+    }
+    buildChainReorgTasksFromHighestToLowest(highestBlock, lowestHeightToReach) {
+        const blocks = [];
+        let block = highestBlock;
+        while (block.index > lowestHeightToReach) {
+            if (!block) { return false; }
+            blocks.push(block);
+            if (this.blockchain.lastBlock.hash === block.prevHash) { break; }
+
+            const prevBlocks = this.finalizedBlocksCache[block.index - 1];
+            if (!prevBlocks || !prevBlocks[block.prevHash]) { return false; } // missing block
+
+            block = prevBlocks[block.prevHash];
+        }
+
+        // ensure we can build the chain
+        if (!this.blockchain.cache.blocksByHash.has(block.prevHash)) {
+            console.info(`[NODE-${this.id.slice(0, 6)}] Rejected reorg, missing block: #${block.index - 1} -> prune branch`);
+            this.pruneBranch(blocks);
             return false;
         }
+        
+        const tasks = [];
+        let broadcastNewCandidate = true; // broadcast candidate for the highest block only
+        for (const block_ of blocks) {
+            const options = { broadcastNewCandidate };
+            tasks.push({ type: 'digestPowProposal', data: block_, options });
+            broadcastNewCandidate = false;
+        }
+        if (this.blockchain.lastBlock.hash === block.prevHash) { return tasks; }
+
+        tasks.push({ type: 'rollBackTo', data: block.index - 1 });
+        return tasks;
     }
 
     /** @param {BlockData} finalizedBlock */
@@ -285,9 +387,13 @@ export class Node {
         
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
+        if (finalizedBlock.index > lastBlockIndex + 9) {
+            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 10} | validator: ${validatorId} | miner: ${minerId}`);
+            throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
+        }
         if (finalizedBlock.index > lastBlockIndex + 1) {
-            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 1} | validator: ${validatorId} | miner: ${minerId}`);
-            throw new Error(`!sync! Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 1}`);
+            this.#storeFinalizedBlockInCache(finalizedBlock);
+            throw new Error(`!stored! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
@@ -307,13 +413,8 @@ export class Node {
         const timeDiffFinal = finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime();
         if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
 
-        // verify prevhash
         const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
         const isEqualPrevHash = lastBlockHash === finalizedBlock.prevHash;
-        /*if (lastBlockHash !== finalizedBlock.prevHash) {
-            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-            throw new Error(`Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
-        }*/
 
         // verify the hash
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
@@ -321,8 +422,11 @@ export class Node {
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
         if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}`); }
 
-        // pow hash is valid
-        if (!isEqualPrevHash) { throw new Error(`!sync! Invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`); }
+        // verify prevhash
+        if (!isEqualPrevHash) {
+            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
+            throw new Error(`Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
+        }
 
         performance.mark('validation legitimacy');
 
@@ -465,9 +569,11 @@ export class Node {
         if (!broadcastNewCandidate) { return true; }
 
         this.blockCandidate = await this.#createBlockCandidate();
+        if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
         try {
+            // delay before broadcasting the new block candidate to ensure anyone digested the new block
+            await new Promise(resolve => setTimeout(resolve, 10000));
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
-            if (this.roles.includes('miner')) { this.miner.pushCandidate(this.blockCandidate); }
             if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
         } catch (error) {
             this.requestRestart('broadcastNewCandidate - error');
@@ -538,14 +644,17 @@ export class Node {
                     break;
                 case 'new_block_candidate':
                     if (!this.roles.includes('miner')) { break; }
+                    if (!this.roles.includes('validator')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { return; } // avoid processing old blocks
-                    if (this.roles.includes('validator')) { // check legitimacy
-                        await this.vss.calculateRoundLegitimacies(data.hash);
-                        const validatorAddress = data.Txs[0].inputs[0].split(':')[0];
-                        const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
-                        if (validatorLegitimacy !== data.legitimacy) { return 'Invalid legitimacy!'; }
-                    }
-                    this.miner.pushCandidate(data);
+                    if (this.blockCandidate && this.blockCandidate.index > data.index) { return; } // avoid processing old blocks
+                    if (this.blockCandidate && this.blockCandidate.index < data.index) { return; } // avoid processing future blocks
+
+                    await this.vss.calculateRoundLegitimacies(data.hash);
+                    const validatorAddress = data.Txs[0].inputs[0].split(':')[0];
+                    const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
+                    if (validatorLegitimacy !== data.legitimacy) { return 'Invalid legitimacy!'; }
+                    
+                    this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
                     if (!this.roles.includes('validator')) { break; }
