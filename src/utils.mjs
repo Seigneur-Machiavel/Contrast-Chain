@@ -2062,11 +2062,12 @@ const mining = {
     },
     getBlockFinalDifficulty: (blockData) => {
         const { difficulty, legitimacy, posTimestamp, timestamp } = blockData;
+        const powTimestamp = timestamp || posTimestamp + SETTINGS.targetBlockTime;
 
         if (!typeValidation.numberIsPositiveInteger(posTimestamp)) { throw new Error('Invalid posTimestamp'); }
-        if (!typeValidation.numberIsPositiveInteger(timestamp)) { throw new Error('Invalid timestamp'); }
+        if (!typeValidation.numberIsPositiveInteger(powTimestamp)) { throw new Error('Invalid timestamp'); }
 
-        const differenceRatio = (timestamp - posTimestamp) / SETTINGS.targetBlockTime;
+        const differenceRatio = (powTimestamp - posTimestamp) / SETTINGS.targetBlockTime;
         const timeDiffAdjustment = MINING_PARAMS.maxTimeDifferenceAdjustment - Math.round(differenceRatio * MINING_PARAMS.maxTimeDifferenceAdjustment);
         
         const legitimacyAdjustment = legitimacy * MINING_PARAMS.diffAdjustPerLegitimacy;

@@ -420,7 +420,8 @@ export class Node {
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
         if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-        if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}`); }
+        if (!hashConfInfo.conform) { 
+            throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}`); }
 
         // verify prevhash
         if (!isEqualPrevHash) {

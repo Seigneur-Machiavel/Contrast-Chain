@@ -80,13 +80,15 @@ export class OpStack {
                     break;
                 case 'digestPowProposal':
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
-                    try { await this.node.digestFinalizedBlock(content, { storeAsFiles: false, ...options }, byteLength);
+                    try { 
+                        await this.node.digestFinalizedBlock(content, { storeAsFiles: false, ...options }, byteLength);
                     } catch (error) {
                         if (error.message.includes('!ban!')) {
-                           if (task.data.from !== undefined) {
+                            if (task.data.from === undefined) { return }
                             this.node.p2pNetwork.reputationManager.applyOffense(
                                 {peerId : task.data.from},
-                                ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION); }
+                                ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION
+                            );
                             return;
                         }
 
