@@ -210,7 +210,7 @@ to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
 
         const validatorId = validatorAddress.slice(0, 6);
         const minerId = this.address.slice(0, 6);
-        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized, validator: ${validatorId} | miner: ${minerId}
+        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized, miner: ${minerId} | validator: ${validatorId}
 (Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)}`);
         
         this.addressOfCandidatesBroadcasted.push(validatorAddress);

@@ -31,6 +31,7 @@ async function mineBlockUntilValid() {
 	while (true) {
 		if (minerVars.blockCandidate === null) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
 		if (minerVars.paused) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
+		if (minerVars.timeOffset === 0) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
 
 		try {
 			const { signatureHex, nonce, clonedCandidate } = await prepareBlockCandidateBeforeMining();
