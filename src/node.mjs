@@ -279,6 +279,11 @@ export class Node {
         if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
         this.finalizedBlocksCache[index][hash] = finalizedBlock;
     }
+    isFinalizedBlockInCache(finalizedBlock) {
+        const index = finalizedBlock.index;
+        const hash = finalizedBlock.hash;
+        return this.finalizedBlocksCache[index] && this.finalizedBlocksCache[index][hash];
+    }
     pruneStoredFinalizedBlockFromCache() {
         const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
         const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
@@ -699,6 +704,7 @@ ${hashConfInfo.message}`);
                         return;
                     }*/
                     if (!this.roles.includes('validator')) { break; }
+                    if (this.isFinalizedBlockInCache(message.content)) { return; }
                     this.opStack.push('digestPowProposal', message);
                     break;
                 case 'test':
