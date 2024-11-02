@@ -81,7 +81,7 @@ export class OpStack {
                 case 'digestPowProposal':
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
                     try { 
-                        await this.node.digestFinalizedBlock(content, { storeAsFiles: false, ...options }, byteLength);
+                        await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
                         if (error.message.includes('!ban!')) {
                             if (task.data.from === undefined) { return }

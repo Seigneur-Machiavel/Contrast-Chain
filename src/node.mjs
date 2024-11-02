@@ -113,14 +113,14 @@ export class Node {
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
 
-        //const nbOfPeers = await this.#waitSomePeers();
-        //if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
+        const nbOfPeers = await this.#waitSomePeers();
+        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
         console.log('P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
 
         this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);
-        //this.opStack.pushFirst('syncWithKnownPeers', null);
+        this.opStack.pushFirst('syncWithKnownPeers', null);
     }
     async stop() {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
@@ -420,7 +420,8 @@ export class Node {
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
         if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-        if (!hashConfInfo.conform) { 
+        if (!hashConfInfo.conform) {
+            console.log(`[HASH_CONF_INFO] ${JSON.stringify(hashConfInfo)}`);
             throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}`); }
 
         // verify prevhash

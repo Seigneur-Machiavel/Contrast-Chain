@@ -106,7 +106,7 @@ export class Miner {
         if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
             const newCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(blockCandidate);
             const bestCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(this.bestCandidate);
-            if (newCandidateFinalDiff > bestCandidateFinalDiff) { return; }
+            if (newCandidateFinalDiff.finalDifficulty > bestCandidateFinalDiff.finalDifficulty) { return; }
         }
 
         this.bets[blockCandidate.index] = this.#betPowTime();
