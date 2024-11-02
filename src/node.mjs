@@ -113,14 +113,14 @@ export class Node {
         await this.syncHandler.start(this.p2pNetwork);
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
 
-        const nbOfPeers = await this.#waitSomePeers();
-        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
+        //const nbOfPeers = await this.#waitSomePeers();
+        //if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
         console.log('P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
 
         this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);
-        this.opStack.pushFirst('syncWithKnownPeers', null);
+        //this.opStack.pushFirst('syncWithKnownPeers', null);
     }
     async stop() {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);

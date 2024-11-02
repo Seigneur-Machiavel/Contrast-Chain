@@ -109,6 +109,7 @@ export class Miner {
             if (newCandidateFinalDiff > bestCandidateFinalDiff) { return; }
         }
 
+        this.bets[blockCandidate.index] = this.#betPowTime();
         this.highestBlockIndex = blockCandidate.index;
         const changed = this.#setBestCandidateIfChanged(blockCandidate);
         if (!changed) { return; }
