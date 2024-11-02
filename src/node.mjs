@@ -694,11 +694,11 @@ ${hashConfInfo.message}`);
                     break;
                 case 'new_block_finalized':
                     //TODO: remove this test code
-                    if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
+                    /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
                         this.testRejectedIndexes.push(data.index);
                         console.warn(`[TEST] rejecting block #${data.index} -> rejected: ${this.testRejectedIndexes}`);
                         return;
-                    }
+                    }*/
                     if (!this.roles.includes('validator')) { break; }
                     this.opStack.push('digestPowProposal', message);
                     break;
