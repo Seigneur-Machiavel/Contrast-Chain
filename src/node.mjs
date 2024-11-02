@@ -441,8 +441,7 @@ ${hashConfInfo.message}`);
 
         // verify prevhash
         const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
-        const isEqualPrevHash = lastBlockHash === finalizedBlock.prevHash;
-        if (!isEqualPrevHash) {
+        if (!lastBlockHash === finalizedBlock.prevHash) {
             //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
             throw new Error(`!store! !reorg! Rejected: #${finalizedBlock.index} -> invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
         }
@@ -659,7 +658,7 @@ ${hashConfInfo.message}`);
         localStorage_v1.saveBlockDataLocally(this.id, clone, 'bin');
     } // Used by developer to check the block data manually
 
-    testRejectedIndexes = [];
+    //testRejectedIndexes = [];
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // { content: parsedMessage, from, byteLength }

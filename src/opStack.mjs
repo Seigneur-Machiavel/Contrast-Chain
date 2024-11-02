@@ -1,6 +1,7 @@
 /**
 * @typedef {import("./syncHandler.mjs").SyncHandler} SyncHandler
 * @typedef {import("./node.mjs").Node} Node
+* @typedef {import("./block.mjs").BlockData} BlockData
 */
 
 import ReputationManager from "./reputation.mjs";
@@ -100,11 +101,19 @@ export class OpStack {
                         if (error.message.includes('!reorg!')) {
                             const legitimateReorg = await this.node.getLegitimateReorg(content);
                             if (legitimateReorg.tasks.length === 0) {
-                                console.error(`[OpStack] Reorg: no legitimate: ${content.index}`);
+                                console.error(`[OpStack] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
                                 return;
                             }
+                            console.error(`[OpStack] --- Reorg --- (from #${this.node.blockchain.lastBlock.index})`);
                             this.securelyPushFirst(legitimateReorg.tasks);
                         }
+                       // try reorg anytime
+                        /*const legitimateReorg = await this.node.getLegitimateReorg(content);
+                        if (legitimateReorg.tasks.length > 0) {
+                            console.error(`[OpStack] --- Reorg --- (from #${content.index})`);
+                            this.securelyPushFirst(legitimateReorg.tasks);
+                            return;
+                        }*/
 
                         if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
 
@@ -125,6 +134,12 @@ export class OpStack {
                     
                     // prune the reog cache
                     this.node.pruneStoredFinalizedBlockFromCache();
+
+                    // if: isValidatorOfBlock -> return
+                    // don't clear timeout. If many blocks are self validated, we are probably in a fork
+                    const blockValidatorAddress = content.Txs[1].inputs[0].split(':')[0];
+                    const isValidatorOfBlock = this.node.account.address === blockValidatorAddress;
+                    if (isValidatorOfBlock) { return; }
                     
                     // reset the timeout for the sync
                     clearTimeout(this.lastConfirmedBlockTimeout);
@@ -187,7 +202,7 @@ export class OpStack {
         for (const task of tasks) {
             //console.info(`[OpStack] securelyPushFirst: ${JSON.stringify(task)}`);
             if (task.type === 'rollBackTo') { console.info(`[OpStack] --- rollBackTo -> #${task.data}`); }
-            if (task.type === 'digestPowProposal') { console.info(`[OpStack] --- digestPowProposal -> #${task.data.content.index}`); }
+            if (task.type === 'digestPowProposal') { console.info(`[OpStack] --- digestPowProposal -> #${task.data.index}`); }
             this.tasks.unshift(task); 
         }
         this.paused = false;
