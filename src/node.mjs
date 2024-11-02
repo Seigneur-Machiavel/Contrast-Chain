@@ -243,6 +243,10 @@ export class Node {
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
         console.warn(`Last known snapshot index: ${snapshotIndex}`);
         await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
+        this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
+        this.blockchain.currentHeight = snapshotIndex;
+        this.blockCandidate = null;
+        console.warn(`Snapshot loaded: ${snapshotIndex}`);
         if (!eraseHigher) { return; }
 
         // place snapshot to trash folder, we can restaure it if needed
@@ -294,7 +298,7 @@ export class Node {
             delete this.finalizedBlocksCache[index][block.hash];
         }
     }
-    getLegitimateReorg() {
+    async getLegitimateReorg() {
         const legitimateReorg = {
             lastTimestamp: 0,
             lastHeight: 0,
@@ -305,8 +309,16 @@ export class Node {
         // the most legitimate chain is the one with the lowest mining final difficulty
         // mining final difficulty affected by: posTimestamp
         const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
-        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
-        if (preLastSnapshot === undefined) { return legitimateReorg; }
+        if (snapshotsHeights.length < 2) { return legitimateReorg; }
+
+        const snapshotsHashes = {
+            lastBlock: null,
+            lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
+            preLastBlock: null,
+            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
+        }
+        snapshotsHashes.lastBlock = await this.blockchain.getBlockByHeight(snapshotsHashes.lastHeight);
+        snapshotsHashes.preLastBlock = await this.blockchain.getBlockByHeight(snapshotsHashes.preLastHeight);
 
         const lastBlock = this.blockchain.lastBlock;
         if (!lastBlock) { return legitimateReorg; }
@@ -324,7 +336,7 @@ export class Node {
                 const sameIndex = legitimateReorg.lastHeight === block.index;
                 if (sameIndex && blockTimestamp > legitimateReorg.lastTimestamp) { continue; }
 
-                const tasksToReorg = this.buildChainReorgTasksFromHighestToLowest(block, preLastSnapshot);
+                const tasksToReorg = this.buildChainReorgTasksFromHighestToLowest(block, snapshotsHashes);
                 if (!tasksToReorg) { continue; }
 
                 legitimateReorg.tasks = tasksToReorg;
@@ -337,16 +349,32 @@ export class Node {
 
         return legitimateReorg;
     }
-    buildChainReorgTasksFromHighestToLowest(highestBlock, lowestHeightToReach) {
+    buildChainReorgTasksFromHighestToLowest(highestBlock, snapshotsHashes) {
+        /*snapshotsHashes = {
+            lastBlock: null,
+            lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
+            preLastBlock: null,
+            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
+        }*/
+
         const blocks = [];
         let block = highestBlock;
-        while (block.index > lowestHeightToReach) {
+        while (block.index > snapshotsHashes.preLastHeight) {
             if (!block) { return false; }
             blocks.push(block);
-            if (this.blockchain.lastBlock.hash === block.prevHash) { break; }
+            if (this.blockchain.lastBlock.hash === block.prevHash) {
+                break; // perfect, can build the chain without snapshot
+            }
+            if (snapshotsHashes.lastBlock.hash === block.prevHash) {
+                break; // can build the chain with the last snapshot
+            }
+            if (snapshotsHashes.preLastBlock.hash === block.prevHash) {
+                break; // can build the chain with the pre-last snapshot
+            }
 
             const prevBlocks = this.finalizedBlocksCache[block.index - 1];
-            if (!prevBlocks || !prevBlocks[block.prevHash]) { return false; } // missing block
+            if (!prevBlocks || !prevBlocks[block.prevHash]) {
+                return false; } // missing block
 
             block = prevBlocks[block.prevHash];
         }
@@ -394,28 +422,13 @@ export class Node {
             throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
         }
         if (finalizedBlock.index > lastBlockIndex + 1) {
-            throw new Error(`!store! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
+            throw new Error(`!store! !reorg! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
             throw new Error(`!store! Rejected: #${finalizedBlock.index} <= #${lastBlockIndex}`);
         }
         // The only possible case is: finalizedBlock.index === lastBlockIndex + 1
-
-        // verify the POS timestamp
-        if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
-        if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
-        const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
-        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
-
-        // verify final timestamp
-        if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
-        if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('Invalid block timestamp'); }
-        const timeDiffFinal = finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime();
-        if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
-
-        const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
-        const isEqualPrevHash = lastBlockHash === finalizedBlock.prevHash;
 
         // verify the hash
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
@@ -427,10 +440,24 @@ ${hashConfInfo.message}`);
         }
 
         // verify prevhash
+        const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
+        const isEqualPrevHash = lastBlockHash === finalizedBlock.prevHash;
         if (!isEqualPrevHash) {
             //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-            throw new Error(`!store! !reorg! Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
+            throw new Error(`!store! !reorg! Rejected: #${finalizedBlock.index} -> invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
         }
+
+         // verify the POS timestamp
+         if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+         if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
+         const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
+         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
+
+        // verify final timestamp
+        if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('Invalid block timestamp'); }
+        const timeDiffFinal = finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime();
+        if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
 
         performance.mark('validation legitimacy');
 
@@ -438,13 +465,13 @@ ${hashConfInfo.message}`);
         await this.vss.calculateRoundLegitimacies(finalizedBlock.prevHash); // stored in cache
         const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0];
         const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
-        if (validatorLegitimacy !== finalizedBlock.legitimacy) { throw new Error(`Invalid legitimacy: ${finalizedBlock.legitimacy} - expected: ${validatorLegitimacy}`); }
+        if (validatorLegitimacy !== finalizedBlock.legitimacy) { throw new Error(`Invalid #${finalizedBlock.index} legitimacy: ${finalizedBlock.legitimacy} - expected: ${validatorLegitimacy}`); }
 
         performance.mark('validation coinbase-rewards');
 
         // control coinbase amount
         const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
-        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!ban! Invalid coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
+        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!ban! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
 
         // control total rewards
         const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
@@ -632,6 +659,7 @@ ${hashConfInfo.message}`);
         localStorage_v1.saveBlockDataLocally(this.id, clone, 'bin');
     } // Used by developer to check the block data manually
 
+    testRejectedIndexes = [];
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // { content: parsedMessage, from, byteLength }
@@ -665,6 +693,12 @@ ${hashConfInfo.message}`);
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
+                    //TODO: remove this test code
+                    if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
+                        this.testRejectedIndexes.push(data.index);
+                        console.warn(`[TEST] rejecting block #${data.index} -> rejected: ${this.testRejectedIndexes}`);
+                        return;
+                    }
                     if (!this.roles.includes('validator')) { break; }
                     this.opStack.push('digestPowProposal', message);
                     break;
@@ -685,14 +719,18 @@ ${hashConfInfo.message}`);
             // re send for late nodes, blocks: -1, -2, -3, -5, -8
             const finalizedBlockHeight = message.index;
             const sequence = [-2, -4, -6, -8, -10];
+            const sentSequence = [];
             const blocksToReSendPromises = [];
             for (const index of sequence) {
                 blocksToReSendPromises.push(this.blockchain.getBlockByHeight(finalizedBlockHeight + index));
             }
             for (const blockPromise of blocksToReSendPromises) {
                 const block = await blockPromise;
-                if (block) { await this.p2pNetwork.broadcast(topic, block); }
+                if (!block) { continue; }
+                await this.p2pNetwork.broadcast(topic, block);
+                sentSequence.push(block.index);
             }
+            console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: ${sentSequence.join(', ')}`);
         }
     }
 

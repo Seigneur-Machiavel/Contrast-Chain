@@ -32,6 +32,7 @@ async function mineBlockUntilValid() {
 		if (minerVars.blockCandidate === null) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
 		if (minerVars.paused) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
 		if (minerVars.timeOffset === 0) { await new Promise((resolve) => setTimeout(resolve, 10)); continue; }
+		await new Promise((resolve) => setTimeout(resolve, minerVars.testMiningSpeedPenality));
 
 		try {
 			const { signatureHex, nonce, clonedCandidate } = await prepareBlockCandidateBeforeMining();
@@ -99,7 +100,8 @@ const minerVars = {
 	paused: false,
 
 	sendUpdateHashEvery: 10,
-	hashCount: 0
+	hashCount: 0,
+	testMiningSpeedPenality: 14000 // TODO: remove this after testing
 };
 parentPort.on('message', async (task) => {
 	//console.log('miner-worker-nodejs', task);

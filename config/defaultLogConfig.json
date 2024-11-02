@@ -168,7 +168,7 @@
     "content": "luid-ed4b8d0b Transaction size exceeds the maximum allowed size"
   },
   "luid-a305d036": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 258,
     "type": "debug",
@@ -182,7 +182,7 @@
     "content": "luid-bb4b664c Block candidate size exceeds the maximum allowed size"
   },
   "luid-3431060a": {
-    "active": true,
+    "active": false,
     "file": "src\\p2p.mjs",
     "line": 263,
     "type": "debug",
@@ -546,14 +546,14 @@
     "content": "luid-21d53280 Sync restart error occurred"
   },
   "luid-0269246d": {
-    "active": true,
+    "active": false,
     "file": "src\\sync.mjs",
     "line": 246,
     "type": "debug",
     "content": "luid-0269246d Getting peer status"
   },
   "luid-0c8cccd8": {
-    "active": true,
+    "active": false,
     "file": "src\\sync.mjs",
     "line": 256,
     "type": "debug",

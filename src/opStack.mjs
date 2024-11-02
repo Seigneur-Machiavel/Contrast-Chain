@@ -98,8 +98,11 @@ export class OpStack {
                         }
 
                         if (error.message.includes('!reorg!')) {
-                            const legitimateReorg = this.node.getLegitimateReorg(content);
-                            if (!legitimateReorg) { console.error(`[OpStack] Reorg: no legitimate: ${content.index}`); return; }
+                            const legitimateReorg = await this.node.getLegitimateReorg(content);
+                            if (legitimateReorg.tasks.length === 0) {
+                                console.error(`[OpStack] Reorg: no legitimate: ${content.index}`);
+                                return;
+                            }
                             this.securelyPushFirst(legitimateReorg.tasks);
                         }
 
@@ -181,7 +184,12 @@ export class OpStack {
 
     securelyPushFirst(tasks) {
         this.paused = true;
-        for (const task of tasks) { this.tasks.unshift(task); }
+        for (const task of tasks) {
+            //console.info(`[OpStack] securelyPushFirst: ${JSON.stringify(task)}`);
+            if (task.type === 'rollBackTo') { console.info(`[OpStack] --- rollBackTo -> #${task.data}`); }
+            if (task.type === 'digestPowProposal') { console.info(`[OpStack] --- digestPowProposal -> #${task.data.content.index}`); }
+            this.tasks.unshift(task); 
+        }
         this.paused = false;
     }
 }
