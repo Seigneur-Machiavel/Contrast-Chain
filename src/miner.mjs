@@ -23,7 +23,6 @@ export class Miner {
         this.candidates = [];
         /** @type {BlockData | null} */
         this.bestCandidate = null;
-        this.bestCandidateChanged = false;
         this.addressOfCandidatesBroadcasted = [];
         /** @type {P2PNetwork} */
         this.p2pNetwork = p2pNetwork;
@@ -103,16 +102,27 @@ export class Miner {
         if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
 
         // compare final diff if height is the same
-        if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
+        /*if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
             const newCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(blockCandidate);
             const bestCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(this.bestCandidate);
             if (newCandidateFinalDiff.finalDifficulty > bestCandidateFinalDiff.finalDifficulty) { return; }
+            console.info(`[MINER] easier block, final diffs: before = ${bestCandidateFinalDiff.finalDifficulty} | after = ${newCandidateFinalDiff.finalDifficulty}`);
         }
 
         this.bets[blockCandidate.index] = this.#betPowTime();
         this.highestBlockIndex = blockCandidate.index;
         const changed = this.#setBestCandidateIfChanged(blockCandidate);
+        if (!changed) { return; }*/
+
+        const changed = this.#setBestCandidateIfChanged(blockCandidate);
         if (!changed) { return; }
+
+        // check if block is higher than the highest block
+        if (blockCandidate.index > this.highestBlockIndex) { this.addressOfCandidatesBroadcasted = []; }
+        
+        this.bets[blockCandidate.index] = this.#betPowTime();
+        this.highestBlockIndex = blockCandidate.index;
+
 
         if (this.wsCallbacks.onBestBlockCandidateChange) {
             this.wsCallbacks.onBestBlockCandidateChange.execute(blockCandidate);
@@ -148,33 +158,30 @@ export class Miner {
         return sortedCandidates[0];
     }
     /** @param {BlockData} blockCandidate */
-    #setBestCandidateIfChanged(bestCandidate) {
+    #setBestCandidateIfChanged(blockCandidate) {
         if (this.bestCandidate !== null) {
-            const candidateValidatorAddress = bestCandidate.Txs[0].inputs[0].split(':')[0];
+            const candidateValidatorAddress = blockCandidate.Txs[0].inputs[0].split(':')[0];
             const bestCandidateValidatorAddress = this.bestCandidate.Txs[0].inputs[0].split(':')[0];
 
-            const bestCandidateIndexChanged = this.bestCandidate.index !== bestCandidate.index;
+            const bestCandidateIndexChanged = this.bestCandidate.index !== blockCandidate.index;
             const bestCandidateValidatorAddressChanged = bestCandidateValidatorAddress !== candidateValidatorAddress;
             if (!bestCandidateIndexChanged && !bestCandidateValidatorAddressChanged) { return false; }
         }
 
+        if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
+            const newCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(blockCandidate);
+            const bestCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(this.bestCandidate);
+            if (newCandidateFinalDiff.finalDifficulty >= bestCandidateFinalDiff.finalDifficulty) { return; }
+            console.info(`[MINER] easier block, final diffs: before = ${bestCandidateFinalDiff.finalDifficulty} | after = ${newCandidateFinalDiff.finalDifficulty}`);
+        }
+
         console.info(`[MINER] Best block candidate changed:
 from #${this.bestCandidate ? this.bestCandidate.index : null} | leg: ${this.bestCandidate ? this.bestCandidate.legitimacy : null}
-to #${bestCandidate.index} | leg: ${bestCandidate.legitimacy}`);
+to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
 
-        this.bestCandidate = bestCandidate;
-        this.bestCandidateChanged = true;
+        this.bestCandidate = blockCandidate;
 
         return true;
-    }
-    #hashRateNewHash(hashBeforeAveraging = 10) { // DEPRECATED
-        this.hashCount++;
-        if (this.hashCount < hashBeforeAveraging) { return; }
-
-        const timeSpent = (Date.now() - this.hashPeriodStart) / 1000;
-        this.hashRate = this.hashCount / timeSpent;
-        this.hashCount = 0;
-        this.hashPeriodStart = Date.now();
     }
     #getAverageHashrate() {
         let totalHashRate = 0;
