@@ -704,7 +704,10 @@ ${hashConfInfo.message}`);
                         return;
                     }*/
                     if (!this.roles.includes('validator')) { break; }
-                    if (this.isFinalizedBlockInCache(message.content)) { return; }
+                    if (this.isFinalizedBlockInCache(message.content)) {
+                        console.warn(`[P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
+                        return;
+                    }
                     this.opStack.push('digestPowProposal', message);
                     break;
                 case 'test':

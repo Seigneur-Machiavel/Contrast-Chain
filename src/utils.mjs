@@ -67,7 +67,7 @@ function newWorker(scriptPath, workerCode) {
 
 const SETTINGS = { // The Fibonacci based distribution
     // BLOCK
-    targetBlockTime: 10_000, // 120_000, // 2 min
+    targetBlockTime: 20_000, // 120_000, // 2 min
     maxBlockSize: 200_000, // ~200KB
     maxTransactionSize: 200_000, // ~200KB
     // DISTRIBUTION
