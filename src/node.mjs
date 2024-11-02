@@ -397,8 +397,8 @@ export class Node {
             throw new Error(`!store! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
-            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
-            throw new Error(`Rejected: #${finalizedBlock.index} <= #${lastBlockIndex}`);
+            //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
+            throw new Error(`!store! Rejected: #${finalizedBlock.index} <= #${lastBlockIndex}`);
         }
         // The only possible case is: finalizedBlock.index === lastBlockIndex + 1
 

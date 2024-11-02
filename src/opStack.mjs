@@ -94,7 +94,7 @@ export class OpStack {
 
                         if (error.message.includes('!store!')) {
                             console.info(`[OpStack] Storing finalized block in cache: ${content.index}`);
-                            this.node.storeFinalizedBlockInCache(finalizedBlock);
+                            this.node.storeFinalizedBlockInCache(content);
                         }
 
                         if (error.message.includes('!reorg!')) {
