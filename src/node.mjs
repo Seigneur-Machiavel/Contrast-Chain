@@ -679,14 +679,21 @@ ${hashConfInfo.message}`);
         }
     }
     /** @param {string} topic @param {any} message */
-    async p2pBroadcast(topic, message) { 
+    async p2pBroadcast(topic, message) {
+        await this.p2pNetwork.broadcast(topic, message);
         if (topic === 'new_block_finalized') {
-            // re send the block -7 for late nodes
+            // re send for late nodes, blocks: -1, -2, -3, -5, -8
             const finalizedBlockHeight = message.index;
-            const minusTenBlock = await this.blockchain.getBlockByHeight(finalizedBlockHeight - 7);
-            if (minusTenBlock) { await this.p2pNetwork.broadcast(topic, minusTenBlock); }
+            const sequence = [-2, -4, -6, -8, -10];
+            const blocksToReSendPromises = [];
+            for (const index of sequence) {
+                blocksToReSendPromises.push(this.blockchain.getBlockByHeight(finalizedBlockHeight + index));
+            }
+            for (const blockPromise of blocksToReSendPromises) {
+                const block = await blockPromise;
+                if (block) { await this.p2pNetwork.broadcast(topic, block); }
+            }
         }
-        return await this.p2pNetwork.broadcast(topic, message); 
     }
 
     // API -------------------------------------------------------------------------
