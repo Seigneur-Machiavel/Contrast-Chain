@@ -112,9 +112,6 @@ export class OpStack {
                         
                         if (error.message.includes('!sync!')) {
                             console.error(error.stack);
-                            //this.terminate();
-    
-                            //await this.node.syncHandler.handleSyncFailure();
                             this.pushFirst('syncWithKnownPeers', null);
                             console.log(`restartRequested: ${this.node.restartRequested}`);
                             return;
