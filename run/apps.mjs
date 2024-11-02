@@ -621,7 +621,7 @@ export class ObserverWsApp {
                         return;
                     }
 
-                    await this.node.p2pNetwork.broadcast('new_block_finalized', data);
+                    await this.node.p2pBroadcast('new_block_finalized', data);
                     this.node.opStack.push('digestPowProposal', data);
                     break;
                 default:

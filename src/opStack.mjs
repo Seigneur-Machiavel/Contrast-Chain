@@ -92,6 +92,19 @@ export class OpStack {
                             return;
                         }
 
+                        if (error.message.includes('!store!')) {
+                            console.info(`[OpStack] Storing finalized block in cache: ${content.index}`);
+                            this.node.storeFinalizedBlockInCache(finalizedBlock);
+                        }
+
+                        if (error.message.includes('!reorg!')) {
+                            const legitimateReorg = this.node.getLegitimateReorg(content);
+                            if (!legitimateReorg) { console.error(`[OpStack] Reorg: no legitimate: ${content.index}`); return; }
+                            this.securelyPushFirst(legitimateReorg.tasks);
+                        }
+
+                        if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
+
                         if (error.message.includes('Anchor not found')) {
                             console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
                         if (error.message.includes('invalid prevHash')) {
@@ -109,6 +122,9 @@ export class OpStack {
 
                         console.error(error.stack);
                     }
+                    
+                    // prune the reog cache
+                    this.node.pruneStoredFinalizedBlockFromCache();
                     
                     // reset the timeout for the sync
                     clearTimeout(this.lastConfirmedBlockTimeout);

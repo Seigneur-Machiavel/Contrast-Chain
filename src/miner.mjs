@@ -4,15 +4,16 @@ import utils from './utils.mjs';
 
 /**
  * @typedef {import("./account.mjs").Account} Account
- * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
+ * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./opStack.mjs").OpStack} OpStack
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
 
 export class Miner {
-    /** @param {Account} address @param {P2PNetwork} p2pNetwork */
-    constructor(address, p2pNetwork, roles = ['miner'], opStack = null, timeSynchronizer = null) {
+    /** @param {Account} address @param {Node} node */
+    //constructor(address, node, roles = ['miner'], opStack = null, timeSynchronizer = null) {
+    constructor(address, node) {
         this.terminated = false;
         this.version = 1;
         this.useBetTimestamp = true;
@@ -24,8 +25,8 @@ export class Miner {
         /** @type {BlockData | null} */
         this.bestCandidate = null;
         this.addressOfCandidatesBroadcasted = [];
-        /** @type {P2PNetwork} */
-        this.p2pNetwork = p2pNetwork;
+        /** @type {Node} */
+        this.node = node;
 
         this.highestBlockIndex = -1;
         this.useDevArgon2 = false;
@@ -39,16 +40,16 @@ export class Miner {
         this.betRange = { min: .4, max: .8 }; // will bet between 40% and 80% of the expected blockTime
         this.powBroadcastState = { foundHeight: -1, sentTryCount: 0, maxTryCount: 3 };
 
-        this.roles = roles;
+        this.roles = node.roles;
         this.canProceedMining = true;
         this.hashPeriodStart = 0;
         this.hashCount = 0;
         this.hashRate = 0; // hash rate in H/s
 
         /** @type {OpStack} */
-        this.opStack = opStack; // only for multiNode (validator + miner)
+        this.opStack = node.opStack; // only for multiNode (validator + miner)
         /** @type {TimeSynchronizer} */
-        this.timeSynchronizer = timeSynchronizer;
+        this.timeSynchronizer = node.timeSynchronizer;
 
         /** @type {Object<string, WebSocketCallBack>} */
         this.wsCallbacks = {};
@@ -119,7 +120,7 @@ export class Miner {
 
         // check if block is higher than the highest block
         if (blockCandidate.index > this.highestBlockIndex) { this.addressOfCandidatesBroadcasted = []; }
-        
+
         this.bets[blockCandidate.index] = this.#betPowTime();
         this.highestBlockIndex = blockCandidate.index;
 
@@ -217,11 +218,12 @@ to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
 
         const validatorId = validatorAddress.slice(0, 6);
         const minerId = this.address.slice(0, 6);
-        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized, miner: ${minerId} | validator: ${validatorId}
+        console.info(`[MINER-${this.address.slice(0, 6)}] SENDING: Block finalized, validator: ${validatorId} | miner: ${minerId}
 (Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)}`);
         
         this.addressOfCandidatesBroadcasted.push(validatorAddress);
-        await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
+        //await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
+        await this.node.p2pBroadcast('new_block_finalized', finalizedBlock);
 
         if (this.roles.includes('validator')) { 
             //console.info(`[MINER-${this.address.slice(0, 6)}] Pushing task to opStack: digestPowProposal`);

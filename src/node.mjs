@@ -87,6 +87,7 @@ export class Node {
         this.configManager = new ConfigManager("config/config.json");
 
         this.blockchainStats = {};
+        this.delayBeforeSendingCandidate = 10000;
     }
 
     async start(startFromScratch = false) {
@@ -98,7 +99,8 @@ export class Node {
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
-        this.miner = new Miner(this.minerAddress || this.account.address, this.p2pNetwork, this.roles, this.opStack, this.timeSynchronizer);
+        //this.miner = new Miner(this.minerAddress || this.account.address, this, this.roles, this.opStack, this.timeSynchronizer);
+        this.miner = new Miner(this.minerAddress || this.account.address, this);
         this.miner.useDevArgon2 = this.useDevArgon2;
 
         if (!startFromScratch) { await this.#loadBlockchain(); }
@@ -267,7 +269,7 @@ export class Node {
         }
         this.snapshotSystemDoc.restoreLoadedSnapshot();
     }
-    #storeFinalizedBlockInCache(finalizedBlock) {
+    storeFinalizedBlockInCache(finalizedBlock) {
         const index = finalizedBlock.index;
         const hash = finalizedBlock.hash;
         if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
@@ -392,8 +394,7 @@ export class Node {
             throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
         }
         if (finalizedBlock.index > lastBlockIndex + 1) {
-            this.#storeFinalizedBlockInCache(finalizedBlock);
-            throw new Error(`!stored! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
+            throw new Error(`!store! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
@@ -427,8 +428,8 @@ ${hashConfInfo.message}`);
 
         // verify prevhash
         if (!isEqualPrevHash) {
-            console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
-            throw new Error(`Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
+            //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
+            throw new Error(`!store! !reorg! Rejected: invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
         }
 
         performance.mark('validation legitimacy');
@@ -561,7 +562,7 @@ ${hashConfInfo.message}`);
         if (isSync && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
 
         if (!isLoading && !isSync) {
-            console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> miner: ${minerId} | validator: ${validatorId}
+            console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> validator: ${validatorId} | miner: ${minerId}
 ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | gap_PosPow: ${timeBetweenPosPow}s | digest: ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
         }
         //#endregion
@@ -569,13 +570,17 @@ ${hashConfInfo.message}`);
         // SNAPSHOT
         if (!isLoading) { await this.#saveSnapshot(finalizedBlock); }
 
+        const waitStart = Date.now();
+        const nbOfPeers = await this.#waitSomePeers();
+        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
         if (!broadcastNewCandidate) { return true; }
 
         this.blockCandidate = await this.#createBlockCandidate();
         if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
         try {
             // delay before broadcasting the new block candidate to ensure anyone digested the new block
-            await new Promise(resolve => setTimeout(resolve, 10000));
+            const delay = Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart));
+            await new Promise(resolve => setTimeout(resolve, delay));
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
             if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
         } catch (error) {
@@ -674,7 +679,15 @@ ${hashConfInfo.message}`);
         }
     }
     /** @param {string} topic @param {any} message */
-    async p2pBroadcast(topic, message) { return await this.p2pNetwork.broadcast(topic, message); }
+    async p2pBroadcast(topic, message) { 
+        if (topic === 'new_block_finalized') {
+            // re send the block -7 for late nodes
+            const finalizedBlockHeight = message.index;
+            const minusTenBlock = await this.blockchain.getBlockByHeight(finalizedBlockHeight - 7);
+            if (minusTenBlock) { await this.p2pNetwork.broadcast(topic, minusTenBlock); }
+        }
+        return await this.p2pNetwork.broadcast(topic, message); 
+    }
 
     // API -------------------------------------------------------------------------
     getStatus() {
