@@ -427,7 +427,7 @@ export class Node {
             throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
         }
         if (finalizedBlock.index > lastBlockIndex + 1) {
-            throw new Error(`!store! !reorg! #${finalizedBlock.index} > #${lastBlockIndex + 1}(+1)`);
+            throw new Error(`!store! !reorg! #${finalizedBlock.index} > #${lastBlockIndex + 1}(last+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
             //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, older index: ${finalizedBlock.index} <= ${lastBlockIndex} | validator: ${validatorId} | miner: ${minerId}`);
@@ -446,7 +446,8 @@ ${hashConfInfo.message}`);
 
         // verify prevhash
         const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
-        if (!lastBlockHash === finalizedBlock.prevHash) {
+        const prevHashEquals = lastBlockHash === finalizedBlock.prevHash;
+        if (!prevHashEquals) {
             //console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash} | from: ${finalizedBlock.Txs[0].outputs[0].address.slice(0, 6)}`);
             throw new Error(`!store! !reorg! Rejected: #${finalizedBlock.index} -> invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
         }
