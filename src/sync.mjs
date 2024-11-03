@@ -428,6 +428,50 @@ export class SyncHandler {
     /** Synchronizes missing blocks from a peer efficiently.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
+    async #getMissingBlocks_old(p2pNetwork, peerMultiaddr, peerCurrentHeight, peerId) { // DEPRECATED
+        this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
+        this.logger.info(`luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}`);
+        let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
+        if (!peerHeight) { this.logger.info(`luid-e9f9d488 [SYNC] (#getMissingBlocks) Failed to get peer height`); }
+
+        let desiredBlock = this.node.blockchain.currentHeight + 1;
+        while (desiredBlock <= peerHeight) {
+            const endIndex = Math.min(desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight);
+            const serializedBlocks = await this.#requestBlocksFromPeer(p2pNetwork, peerMultiaddr, desiredBlock, endIndex);
+            if (!serializedBlocks) { this.logger.error(`luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks`); break; }
+            if (serializedBlocks.length === 0) { this.logger.error(`luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found`); break; }
+            // Process blocks
+            for (const serializedBlock of serializedBlocks) {
+                try {
+                    const block = this.node.blockchain.blockDataFromSerializedHeaderAndTxs(
+                        serializedBlock.header,
+                        serializedBlock.txs
+                    );
+                    await this.node.digestFinalizedBlock(block, { skipValidation: false, broadcastNewCandidate: false, isSync: true, persistToDisk: true });
+                    desiredBlock++;
+                } catch (blockError) {
+                    this.logger.error('luid-63446bae Error processing block', { error: blockError.message, blockIndex: desiredBlock });
+                    this.isSyncing = false;
+                    throw new SyncRestartError('Sync failure occurred, restarting sync process');
+                }
+            }
+
+            this.logger.info('luid-09a78e43 Synchronized blocks from peer', { count: serializedBlocks.length, nextBlock: desiredBlock });
+            // Update the peer's height when necessary
+            if (peerHeight === this.node.blockchain.currentHeight) {
+                peerHeight = await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
+                if (!peerHeight) { this.logger.error(`luid-f1def041 [SYNC] (#getMissingBlocks: while()) Failed to get peer height`); }
+            }
+
+        }
+
+        if (peerHeight === this.node.blockchain.currentHeight) { return true; }
+        // No bug, but not fully synchronized
+        return false;
+    }
+    /** Synchronizes missing blocks from a peer efficiently.
+     * @param {P2PNetwork} p2pNetwork - The P2P network instance.
+     * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
     async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight, peerId) {
         this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
         this.logger.info(`luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}`);

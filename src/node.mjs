@@ -17,6 +17,7 @@ import { ValidationWorker } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
 import { TimeSynchronizer } from './time.mjs';
 import { Logger } from './logger.mjs';
+import { Reorganizator } from './reorganizator.mjs';
 /**
 * @typedef {import("./account.mjs").Account} Account
 * @typedef {import("./transaction.mjs").Transaction} Transaction
@@ -56,8 +57,6 @@ export class Node {
         this.validatorRewardAddress = account.address;
         /** @type {BlockData} */
         this.blockCandidate = null;
-        /** @type {Object<string, Object<string, BlockData>>} */
-        this.finalizedBlocksCache = {};
 
         /** @type {Vss} */
         this.vss = new Vss(utils.SETTINGS.maxSupply);
@@ -75,6 +74,8 @@ export class Node {
         this.blockchain = new Blockchain(this.id);
         /** @type {SyncHandler} */
         this.syncHandler = new SyncHandler(() => this, this.logger);
+        /** @type {Reorganizator} */
+        this.reorganizator = new Reorganizator(this);
 
         /** @type {Object<string, WebSocketCallBack>} */
         this.wsCallbacks = {};
@@ -272,136 +273,6 @@ export class Node {
             this.snapshotSystemDoc.loadedSnapshotHeight = 0;
         }
         this.snapshotSystemDoc.restoreLoadedSnapshot();
-    }
-    storeFinalizedBlockInCache(finalizedBlock) {
-        const index = finalizedBlock.index;
-        const hash = finalizedBlock.hash;
-        if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
-        this.finalizedBlocksCache[index][hash] = finalizedBlock;
-    }
-    isFinalizedBlockInCache(finalizedBlock) {
-        const index = finalizedBlock.index;
-        const hash = finalizedBlock.hash;
-        return this.finalizedBlocksCache[index] && this.finalizedBlocksCache[index][hash];
-    }
-    pruneStoredFinalizedBlockFromCache() {
-        const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
-        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
-        if (preLastSnapshot === undefined) { return; }
-
-        const eraseUntil = preLastSnapshot -1;
-        const blocksHeight = Object.keys(this.finalizedBlocksCache);
-        for (const height of blocksHeight) {
-            if (height > eraseUntil) { continue; }
-            delete this.finalizedBlocksCache[height];
-        }
-    }
-    pruneBranch(finalizedBlocks) {
-        for (const block of finalizedBlocks) {
-            const index = block.index;
-            if (!this.finalizedBlocksCache[index]) { continue; }
-            delete this.finalizedBlocksCache[index][block.hash];
-        }
-    }
-    async getLegitimateReorg() {
-        const legitimateReorg = {
-            lastTimestamp: 0,
-            lastHeight: 0,
-            tasks: []
-        };
-        // most legitimate chain is the longest chain
-        // if two chains have the same length:
-        // the most legitimate chain is the one with the lowest mining final difficulty
-        // mining final difficulty affected by: posTimestamp
-        const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
-        if (snapshotsHeights.length < 2) { return legitimateReorg; }
-
-        const snapshotsHashes = {
-            lastBlock: null,
-            lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
-            preLastBlock: null,
-            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
-        }
-        snapshotsHashes.lastBlock = await this.blockchain.getBlockByHeight(snapshotsHashes.lastHeight);
-        snapshotsHashes.preLastBlock = await this.blockchain.getBlockByHeight(snapshotsHashes.preLastHeight);
-
-        const lastBlock = this.blockchain.lastBlock;
-        if (!lastBlock) { return legitimateReorg; }
-
-        legitimateReorg.lastTimestamp = lastBlock.timestamp;
-        legitimateReorg.lastHeight = lastBlock.index;
-
-        let index = lastBlock.index;
-        while (this.finalizedBlocksCache[index]) {
-            const blocks = Object.values(this.finalizedBlocksCache[index]);
-            for (const block of blocks) {
-                if (block.hash === lastBlock.hash) { continue; }
-                
-                const blockTimestamp = block.timestamp;
-                const sameIndex = legitimateReorg.lastHeight === block.index;
-                if (sameIndex && blockTimestamp > legitimateReorg.lastTimestamp) { continue; }
-
-                const tasksToReorg = this.buildChainReorgTasksFromHighestToLowest(block, snapshotsHashes);
-                if (!tasksToReorg) { continue; }
-
-                legitimateReorg.tasks = tasksToReorg;
-                legitimateReorg.lastHeight = block.index;
-                legitimateReorg.lastTimestamp = block.timestamp;
-            }
-
-            index++;
-        }
-
-        return legitimateReorg;
-    }
-    buildChainReorgTasksFromHighestToLowest(highestBlock, snapshotsHashes) {
-        /*snapshotsHashes = {
-            lastBlock: null,
-            lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
-            preLastBlock: null,
-            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
-        }*/
-
-        const blocks = [];
-        let block = highestBlock;
-        while (block.index > snapshotsHashes.preLastHeight) {
-            if (!block) { return false; }
-            blocks.push(block);
-            if (this.blockchain.lastBlock.hash === block.prevHash) {
-                break; // perfect, can build the chain without snapshot
-            }
-            if (snapshotsHashes.lastBlock.hash === block.prevHash) {
-                break; // can build the chain with the last snapshot
-            }
-            if (snapshotsHashes.preLastBlock.hash === block.prevHash) {
-                break; // can build the chain with the pre-last snapshot
-            }
-
-            const prevBlocks = this.finalizedBlocksCache[block.index - 1];
-            if (!prevBlocks || !prevBlocks[block.prevHash]) {
-                return false; } // missing block
-
-            block = prevBlocks[block.prevHash];
-        }
-
-        // ensure we can build the chain
-        if (!this.blockchain.cache.blocksByHash.has(block.prevHash)) {
-            console.info(`[NODE-${this.id.slice(0, 6)}] Rejected reorg, missing block: #${block.index - 1} -> prune branch`);
-            this.pruneBranch(blocks);
-            return false;
-        }
-        
-        const tasks = [];
-        let broadcastNewCandidate = true; // broadcast candidate for the highest block only
-        for (const block_ of blocks) {
-            const options = { broadcastNewCandidate };
-            tasks.push({ type: 'digestPowProposal', data: block_, options });
-            broadcastNewCandidate = false;
-        }
-        if (this.blockchain.lastBlock.hash === block.prevHash) { return tasks; }
-
-        tasks.push({ type: 'rollBackTo', data: block.index - 1 });
-        return tasks;
     }
 
     /** @param {BlockData} finalizedBlock */
@@ -668,7 +539,6 @@ ${hashConfInfo.message}`);
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // { content: parsedMessage, from, byteLength }
-        if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
         const data = message.content;
         const from = message.from;
         const byteLength = message.byteLength;
@@ -676,6 +546,7 @@ ${hashConfInfo.message}`);
         try {
             switch (topic) {
                 case 'new_transaction':
+                    if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     if (!this.roles.includes('validator')) { break; }
                     this.opStack.push('pushTransaction', {
                         byteLength,
@@ -686,18 +557,30 @@ ${hashConfInfo.message}`);
                 case 'new_block_candidate':
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
-                    if (this.miner.highestBlockIndex > data.index) { return; } // avoid processing old blocks
-                    if (this.blockCandidate && this.blockCandidate.index > data.index) { return; } // avoid processing old blocks
-                    if (this.blockCandidate && this.blockCandidate.index < data.index) { return; } // avoid processing future blocks
+                    if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
+                        return; 
+                    }
+                    if (this.blockCandidate && this.blockCandidate.index > data.index) {
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> skip`);
+                        return;
+                    }
+                    if (this.blockCandidate && this.blockCandidate.index < data.index) {
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> replace`);
+                    }
 
                     await this.vss.calculateRoundLegitimacies(data.hash);
                     const validatorAddress = data.Txs[0].inputs[0].split(':')[0];
                     const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
-                    if (validatorLegitimacy !== data.legitimacy) { return 'Invalid legitimacy!'; }
+                    if (validatorLegitimacy !== data.legitimacy) {
+                        console.info(`[P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
+                        return;
+                    }
                     
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
+                    if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
                         this.testRejectedIndexes.push(data.index);
@@ -705,7 +588,7 @@ ${hashConfInfo.message}`);
                         return;
                     }*/
                     if (!this.roles.includes('validator')) { break; }
-                    if (this.isFinalizedBlockInCache(message.content)) {
+                    if (this.reorganizator.isFinalizedBlockInCache(message.content)) {
                         console.warn(`[P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
                         return;
                     }

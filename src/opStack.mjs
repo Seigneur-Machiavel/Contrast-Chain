@@ -22,12 +22,47 @@ export class OpStack {
     delayWithoutConfirmationBeforeSync = utils.SETTINGS.targetBlockTime * 2;
     lastExecutedTask = null;
 
+    // will replace the timeout with a simple loop
+    healthInfo = {
+        lastDigestTime: null,
+        lastSyncTime: null,
+        lastReorgCheckTime: null,
+        delayBeforeReorgCheck: 1000 * 60, // 1 minutes
+        delayBeforeSyncCheck: 1000 * 60 * 5 // 5 minutes
+    }
+
     /** @param {Node} node */
     static buildNewStack(node) {
         const newCallStack = new OpStack();
         newCallStack.node = node;
         newCallStack.#stackLoop();
+        newCallStack.#healthCheckLoop();
         return newCallStack;
+    }
+    async #healthCheckLoop() {
+        const delayBetweenChecks = 1000; // 1 second
+        while (!this.terminated) {
+            await new Promise(resolve => setTimeout(resolve, delayBetweenChecks));
+            const now = Date.now();
+            
+            if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
+            const lastDigestOrSyncTime = Math.max(this.healthInfo.lastDigestTime, this.healthInfo.lastSyncTime);
+
+            if (now - lastDigestOrSyncTime > this.healthInfo.delayBeforeSyncCheck) {
+                this.healthInfo.lastSyncTime = Date.now();
+                this.pushFirst('syncWithKnownPeers', null);
+                console.warn(`[OpStack] SyncWithKnownPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                continue;
+            }
+
+            const lastReorgCheckTime = this.healthInfo.lastReorgCheckTime;
+            const timeSinceLastReorgCheck = lastReorgCheckTime ? now - lastReorgCheckTime : now - lastDigestOrSyncTime;
+
+            if (timeSinceLastReorgCheck > this.healthInfo.delayBeforeReorgCheck) {
+                this.healthInfo.lastReorgCheckTime = Date.now();
+                const reorgInitiated = await this.node.reorganizator.reorgIfMostLegitimateChain();
+            }
+        }
     }
     terminate() {
         clearTimeout(this.lastConfirmedBlockTimeout);
@@ -85,7 +120,13 @@ export class OpStack {
                     try { 
                         await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
+                        if (error.message.includes('Anchor not found')) {
+                            console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
+                        if (error.message.includes('invalid prevHash')) {
+                            console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
                         if (error.message.includes('!ban!')) {
+                            // avoid using the block in future reorgs
+                            this.node.reorganizator.banFinalizedBlock(content);
                             if (task.data.from === undefined) { return }
                             this.node.p2pNetwork.reputationManager.applyOffense(
                                 {peerId : task.data.from},
@@ -96,25 +137,15 @@ export class OpStack {
 
                         if (error.message.includes('!store!')) {
                             console.info(`[OpStack] Storing finalized block in cache: ${content.index}`);
-                            this.node.storeFinalizedBlockInCache(content);
+                            this.node.reorganizator.storeFinalizedBlockInCache(content);
                         }
 
                         if (error.message.includes('!reorg!')) {
-                            const legitimateReorg = await this.node.getLegitimateReorg(content);
-                            if (legitimateReorg.tasks.length === 0) {
-                                console.error(`[OpStack] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
-                                return;
-                            }
-                            console.error(`[OpStack] --- Reorg --- (from #${this.node.blockchain.lastBlock.index})`);
-                            this.securelyPushFirst(legitimateReorg.tasks);
+                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain();
+                            if (reorgInitiated) { return; }
                         }
 
                         if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
-
-                        if (error.message.includes('Anchor not found')) {
-                            console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
-                        if (error.message.includes('invalid prevHash')) {
-                            console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
                         
                         if (error.message.includes('!sync!')) {
                             console.error(error.stack);
@@ -127,7 +158,7 @@ export class OpStack {
                     }
                     
                     // prune the reog cache
-                    this.node.pruneStoredFinalizedBlockFromCache();
+                    this.node.reorganizator.pruneCache();
 
                     // if: isValidatorOfBlock -> return
                     // don't clear timeout. If many blocks are self validated, we are probably in a fork
@@ -135,12 +166,13 @@ export class OpStack {
                     const isValidatorOfBlock = this.node.account.address === blockValidatorAddress;
                     if (isValidatorOfBlock) { return; }
                     
+                    this.healthInfo.lastDigestTime = Date.now();
                     // reset the timeout for the sync
-                    clearTimeout(this.lastConfirmedBlockTimeout);
+                    /*clearTimeout(this.lastConfirmedBlockTimeout);
                     this.lastConfirmedBlockTimeout = setTimeout(() => {
                         this.pushFirst('syncWithKnownPeers', null);
                         console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                    }, this.delayWithoutConfirmationBeforeSync);
+                    }, this.delayWithoutConfirmationBeforeSync);*/
                     break;
                 case 'syncWithKnownPeers':
                     if (this.node.miner) { this.node.miner.canProceedMining = false; }
@@ -157,12 +189,13 @@ export class OpStack {
                         break;
                     }
 
+                    this.healthInfo.lastSyncTime = Date.now();
                     // reset the timeout for the sync
-                    clearTimeout(this.lastConfirmedBlockTimeout);
+                    /*clearTimeout(this.lastConfirmedBlockTimeout);
                     this.lastConfirmedBlockTimeout = setTimeout(() => {
                         this.pushFirst('syncWithKnownPeers', null);
                         console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                    }, this.delayWithoutConfirmationBeforeSync);
+                    }, this.delayWithoutConfirmationBeforeSync);*/
 
                     console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
