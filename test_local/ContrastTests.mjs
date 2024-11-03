@@ -8,7 +8,7 @@ import { DashboardWsApp, ObserverWsApp } from '../run/apps.mjs';
 */
 
 let txsTaskDoneThisBlock = {};
-const network = 'local'; // 'local' | 'testnet' | 'mainnet'
+const network = 'mainnet'; // 'local' | 'testnet' | 'mainnet'
 const port = 27260; //? 27260
 const testParams = {
     privKey: "27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff",
