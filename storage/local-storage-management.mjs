@@ -1,8 +1,8 @@
-import { BlockData, BlockUtils } from "../src/block.mjs";
+import { BlockData, BlockUtils } from "../src/block-classes.mjs";
 import utils from '../src/utils.mjs';
 
 /**
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("../src/block-classes.mjs").BlockData} BlockData
 * @typedef {import("../src/node.mjs").Node} Node
 */
 

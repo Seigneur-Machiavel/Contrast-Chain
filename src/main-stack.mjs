@@ -2,7 +2,7 @@ import utils from './utils.mjs';
 /**
 * @typedef {import("./syncHandler.mjs").SyncHandler} SyncHandler
 * @typedef {import("./node.mjs").Node} Node
-* @typedef {import("./block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 */
 
 import ReputationManager from "./reputation.mjs";
@@ -17,9 +17,6 @@ export class OpStack {
     terminated = false;
     paused = false;
     txBatchSize = 10; // will treat transactions in batches of 10
-    /** @type {NodeJS.Timeout} */
-    lastConfirmedBlockTimeout = null;
-    delayWithoutConfirmationBeforeSync = utils.SETTINGS.targetBlockTime * 2;
     lastExecutedTask = null;
 
     // will replace the timeout with a simple loop
@@ -67,8 +64,6 @@ export class OpStack {
         }
     }
     terminate() {
-        clearTimeout(this.lastConfirmedBlockTimeout);
-        this.lastConfirmedBlockTimeout = null;
         this.terminated = true;
         this.syncRequested = false;
     }
@@ -85,7 +80,14 @@ export class OpStack {
 
             await new Promise(resolve => setImmediate(resolve));
 
-            for (let i = 0; i < this.txBatchSize; i++) {
+            // keep it simple!
+            const task = this.tasks.shift();
+            if (!task) { continue; }
+
+            this.lastExecutedTask = task;
+            await this.#executeTask(task);
+
+            /*for (let i = 0; i < this.txBatchSize; i++) {
                 const task = this.tasks.shift();
                 if (!task) { break; }
                 
@@ -93,7 +95,7 @@ export class OpStack {
                 await this.#executeTask(task);
 
                 if (task.type !== 'pushTransaction') { break; }
-            }
+            }*/
         }
         console.info('------------------');
         console.info('OpStack terminated');
@@ -129,7 +131,6 @@ export class OpStack {
 
                         // reorg management
                         if (error.message.includes('!store!')) {
-                            //console.info(`[OpStack] --- Storing finalized block in cache: ${content.index}`);
                             this.node.reorganizator.storeFinalizedBlockInCache(content);
                         }
                         if (error.message.includes('!reorg!')) {
@@ -169,12 +170,6 @@ export class OpStack {
                     if (isValidatorOfBlock) { return; }
                     
                     this.healthInfo.lastDigestTime = Date.now();
-                    // reset the timeout for the sync
-                    /*clearTimeout(this.lastConfirmedBlockTimeout);
-                    this.lastConfirmedBlockTimeout = setTimeout(() => {
-                        this.pushFirst('syncWithKnownPeers', null);
-                        console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                    }, this.delayWithoutConfirmationBeforeSync);*/
                     break;
                 case 'syncWithKnownPeers':
                     if (this.node.miner) { this.node.miner.canProceedMining = false; }
@@ -184,21 +179,13 @@ export class OpStack {
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                        //this.tasks.unshift(task);
                         this.terminate();
-                        console.log(`restartRequested: ${this.node.restartRequested}`);
                         if (!this.node.restartRequested) { this.node.requestRestart('OpStack.syncWithKnownPeers() -> force!'); }
+                        console.log(`restartRequested: ${this.node.restartRequested}`);
                         break;
                     }
 
                     this.healthInfo.lastSyncTime = Date.now();
-                    // reset the timeout for the sync
-                    /*clearTimeout(this.lastConfirmedBlockTimeout);
-                    this.lastConfirmedBlockTimeout = setTimeout(() => {
-                        this.pushFirst('syncWithKnownPeers', null);
-                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers requested after TIMEOUT, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                    }, this.delayWithoutConfirmationBeforeSync);*/
-
                     console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
                     break;

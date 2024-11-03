@@ -1,11 +1,11 @@
 import { parentPort } from 'worker_threads';
 import utils from '../src/utils.mjs';
 import { HashFunctions } from '../src/conCrypto.mjs';
-import { BlockUtils } from '../src/block.mjs';
+import { BlockUtils } from '../src/block-classes.mjs';
 import { Transaction_Builder } from '../src/transaction.mjs';
 
 /**
- * @typedef {import("../src/block.mjs").BlockData} BlockData
+ * @typedef {import("../src/block-classes.mjs").BlockData} BlockData
  */
 
 /**

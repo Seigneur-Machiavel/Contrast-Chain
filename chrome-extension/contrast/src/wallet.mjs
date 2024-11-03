@@ -1,7 +1,11 @@
 import { HashFunctions, AsymetricFunctions } from './conCrypto.mjs';
-import { Account } from './account.mjs';
 import utils from './utils.mjs';
 import { AccountDerivationWorker } from '../workers/workers-classes.mjs';
+
+/**
+* @typedef {import("../src/transaction.mjs").Transaction} Transaction
+* @typedef {import("../src/transaction.mjs").UTXO} UTXO
+*/
 
 async function localStorage_v1Lib() {
     if (utils.isNode) {
@@ -18,7 +22,57 @@ export class AddressTypeInfo {
     zeroBits = 0;
     nbOfSigners = 1;
 }
+export class Account {
+    /** @type {string} */
+    #privKey = '';
+    /** @type {string} */
+    #pubKey = '';
 
+    constructor(pubKey = '', privKey = '', address = '') {
+        this.#pubKey = pubKey;
+        this.#privKey = privKey;
+
+        /** @type {string} */
+        this.address = address;
+        /** @type {UTXO[]} */
+        this.UTXOs = [];
+        /** @type {number} */
+        this.balance = 0;
+        /** @type {number} */
+        this.spendableBalance = 0;
+        /** @type {Object.<string, UTXO>} */
+        this.spentUTXOByAnchors = {};
+    }
+
+    /** @param {Transaction} transaction */
+    async signTransaction(transaction) {
+        if (typeof this.#privKey !== 'string') { throw new Error('Invalid private key'); }
+
+        const { signatureHex } = await AsymetricFunctions.signMessage(transaction.id, this.#privKey, this.#pubKey);
+        if (!Array.isArray(transaction.witnesses)) {
+            throw new Error('Invalid witnesses');
+        }
+        if (transaction.witnesses.includes(`${signatureHex}:${this.#pubKey}`)) { throw new Error('Signature already included'); }
+
+        transaction.witnesses.push(`${signatureHex}:${this.#pubKey}`);
+
+        return transaction;
+    }
+    /** @param {number} balance @param {UTXO[]} UTXOs */
+    setBalanceAndUTXOs(balance, UTXOs, spendableBalance = 0) {
+        if (typeof balance !== 'number') { throw new Error('Invalid balance'); }
+        if (!Array.isArray(UTXOs)) { throw new Error('Invalid UTXOs'); }
+
+        this.balance = balance;
+        this.UTXOs = UTXOs;
+        this.spendableBalance = spendableBalance;
+    }
+    /** @param {number} length - len of the hex hash */
+    async getUniqueHash(length = 64) {
+        const hash = await HashFunctions.SHA256(this.#pubKey + this.#privKey);
+        return hash.substring(0, length);
+    }
+}
 class generatedAccount {
     address = '';
     seedModifierHex = '';
@@ -226,28 +280,5 @@ avgIterations: ${avgIterations} | time: ${(endTime - startTime).toFixed(3)}ms`);
         await utils.addressUtils.securityCheck(addressBase58, pubKeyHex);
 
         return addressBase58;
-    }
-    // PUBLIC
-    async loadOrCreateAccounts(params) { // DEPRECATED
-        if (params === undefined) {
-            console.warn('No params provided, using default dev params to derive accounts');
-            params = utils.devParams;
-        }
-        // derive accounts
-        this.masterHex = params.masterHex;
-        this.useDevArgon2 = params.useDevArgon2;
-        await this.restore(params.masterHex);
-        // try to load accounts
-        const loaded = await this.loadAccounts();
-        if (loaded) {
-            const derivedAccounts = this.accounts[params.addressPrefix].slice(0, params.nbOfAccounts);
-            if (derivedAccounts.length === params.nbOfAccounts) { return derivedAccounts; }
-        }
-
-        const { derivedAccounts } = await this.deriveAccounts(params.nbOfAccounts, params.addressPrefix);
-        if (derivedAccounts.length !== params.nbOfAccounts) { console.error('Failed to derive all accounts'); return {}; }
-
-        await this.saveAccounts();
-        return derivedAccounts;
     }
 }

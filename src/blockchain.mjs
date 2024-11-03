@@ -1,8 +1,8 @@
 import LevelUp from 'levelup';
 import LevelDown from 'leveldown';
 import pino from 'pino';
-import { BlockUtils } from './block.mjs';
-import { BlockMiningData } from './block.mjs';
+import { BlockUtils } from './block-classes.mjs';
+import { BlockMiningData } from './block-classes.mjs';
 import utils from './utils.mjs';
 import { Transaction_Builder } from './transaction.mjs';
 import fs from 'fs';
@@ -11,8 +11,8 @@ const url = await import('url');
 
 /**
 * @typedef {import("../src/block-tree.mjs").TreeNode} TreeNode
-* @typedef {import("../src/block.mjs").BlockInfo} BlockInfo
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockInfo} BlockInfo
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("../src/vss.mjs").Vss} Vss
 * @typedef {import("../src/utxoCache.mjs").UtxoCache} UtxoCache
 * @typedef {import("../src/memPool.mjs").MemPool} MemPool

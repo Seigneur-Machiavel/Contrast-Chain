@@ -1,11 +1,11 @@
-import { BlockData, BlockUtils } from './block.mjs';
+import { BlockData, BlockUtils } from './block-classes.mjs';
 import { MinerWorker } from '../workers/workers-classes.mjs';
 import utils from './utils.mjs';
 
 /**
  * @typedef {import("./account.mjs").Account} Account
  * @typedef {import("./node.mjs").Node} Node
- * @typedef {import("./opStack.mjs").OpStack} OpStack
+ * @typedef {import("./main-stack.mjs").OpStack} OpStack
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
  * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
  */
@@ -20,8 +20,6 @@ export class Miner {
 
         /** @type {string} */
         this.address = address;
-        /** @type {BlockData[]} */
-        this.candidates = [];
         /** @type {BlockData | null} */
         this.bestCandidate = null;
         this.addressOfCandidatesBroadcasted = [];

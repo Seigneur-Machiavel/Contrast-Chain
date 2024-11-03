@@ -12,8 +12,8 @@ import utils from '../src/utils.mjs';
 * @typedef {import("../src/account.mjs").Account} Account
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
 * @typedef {import("../src/node.mjs").Node} Node
-* @typedef {import("../src/block.mjs").BlockData} BlockData
-* @typedef {import("../src/block.mjs").BlockUtils} BlockUtils
+* @typedef {import("../src/block-classes.mjs").BlockData} BlockData
+* @typedef {import("../src/block-classes.mjs").BlockUtils} BlockUtils
 */
 
 const APPS_VARS = {

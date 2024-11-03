@@ -4,7 +4,7 @@
  * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
  * @typedef {import("./snapshot-system.mjs").SnapshotSystem} SnapshotSystem
  * @typedef {import("./op-stack.mjs").OpStack} OpStack
- * @typedef {import("./block.mjs").BlockData} BlockData
+ * @typedef {import("./block-classes.mjs").BlockData} BlockData
  */
 
 export class Reorganizator {

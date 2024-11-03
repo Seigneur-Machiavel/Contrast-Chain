@@ -1,7 +1,7 @@
 import utils from '../src/utils.mjs';
 
 /**
- * @typedef {import("../src/block.mjs").BlockData} BlockData
+ * @typedef {import("../src/block-classes.mjs").BlockData} BlockData
  */
 
 // CLASS FOR EASY USAGE OF THE WORKER

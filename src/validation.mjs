@@ -5,7 +5,7 @@ import utils from './utils.mjs';
 /**
  * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
  * @typedef {import("./memPool.mjs").MemPool} MemPool
- * @typedef {import("./block.mjs").BlockData} BlockData
+ * @typedef {import("./block-classes.mjs").BlockData} BlockData
  * @typedef {import("../workers/workers-classes.mjs").ValidationWorker} ValidationWorker
  * @typedef {import("../workers/workers-classes.mjs").ValidationWorker_v2} ValidationWorker_v2
  */

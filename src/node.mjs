@@ -1,16 +1,16 @@
 import localStorage_v1 from '../storage/local-storage-management.mjs';
 import { BlockValidation } from './validation.mjs';
-import { OpStack } from './opStack.mjs';
+import { OpStack } from './main-stack.mjs';
 import { Vss } from './vss.mjs';
 import { MemPool } from './memPool.mjs';
 import { UtxoCache } from './utxoCache.mjs';
-import { BlockData, BlockUtils } from './block.mjs';
+import { BlockData, BlockUtils } from './block-classes.mjs';
 import { Transaction_Builder } from './transaction.mjs';
 import { Miner } from './miner.mjs';
 import P2PNetwork from './p2p.mjs';
 import utils from './utils.mjs';
 import { Blockchain } from './blockchain.mjs';
-import { SyncHandler } from './sync.mjs';
+import { SyncHandler } from './nodes-synchronizer.mjs';
 import SnapshotSystemDoc from './snapshot-system.mjs';
 import { performance, PerformanceObserver } from 'perf_hooks';
 import { ValidationWorker } from '../workers/workers-classes.mjs';
@@ -22,8 +22,8 @@ import { Reorganizator } from './reorganizator.mjs';
 * @typedef {import("./account.mjs").Account} Account
 * @typedef {import("./transaction.mjs").Transaction} Transaction
 * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
-* @typedef {import("./block.mjs").BlockHeader} BlockHeader
-* @typedef {import("./block.mjs").BlockInfo} BlockInfo
+* @typedef {import("./block-classes.mjs").BlockHeader} BlockHeader
+* @typedef {import("./block-classes.mjs").BlockInfo} BlockInfo
 */
 
 const obs = new PerformanceObserver((items) => { // TODO: disable in production

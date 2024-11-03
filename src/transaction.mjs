@@ -1,11 +1,11 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
 import { TxValidation } from './validation.mjs';
-import { BlockUtils } from './block.mjs';
+import { BlockUtils } from './block-classes.mjs';
 
 /**
  * @typedef {import('./account.mjs').Account} Account
- * @typedef {import('./block.mjs').BlockData} BlockData
+ * @typedef {import('./block-classes.mjs').BlockData} BlockData
  */
 
 export class TxIO_Builder {

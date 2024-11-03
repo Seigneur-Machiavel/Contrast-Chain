@@ -2,10 +2,10 @@ import { TxValidation } from './validation.mjs';
 import { Transaction_Builder, Transaction } from './transaction.mjs';
 import utils from './utils.mjs';
 import { UtxoCache } from './utxoCache.mjs';
-import { TransactionPriorityQueue } from './tx-queue.mjs';
+import { TransactionPriorityQueue } from './memPool-tx-queue.mjs';
 
 /**
- * @typedef {import('./block.mjs').BlockData} BlockData
+ * @typedef {import('./block-classes.mjs').BlockData} BlockData
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
  * @typedef {import("./transaction.mjs").UTXO} UTXO
  */

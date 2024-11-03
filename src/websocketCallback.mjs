@@ -1,7 +1,7 @@
 import { Node } from './node.mjs';
 import { WebSocketServer } from 'ws';
 /**
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 */
 
 /** @typedef {Object} WebSocketCallBack

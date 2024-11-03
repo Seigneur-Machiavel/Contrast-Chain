@@ -41,10 +41,7 @@ export class Account {
 
         return transaction;
     }
-    /**
-     * @param {number} balance
-     * @param {UTXO[]} UTXOs
-     */
+    /** @param {number} balance @param {UTXO[]} UTXOs */
     setBalanceAndUTXOs(balance, UTXOs, spendableBalance = 0) {
         if (typeof balance !== 'number') { throw new Error('Invalid balance'); }
         if (!Array.isArray(UTXOs)) { throw new Error('Invalid UTXOs'); }
@@ -53,10 +50,7 @@ export class Account {
         this.UTXOs = UTXOs;
         this.spendableBalance = spendableBalance;
     }
-
-    /*getKeyPair() {
-        return { privKey: this.#privKey, pubKey: this.#pubKey };
-    }*/
+    /** @param {number} length - len of the hex hash */
     async getUniqueHash(length = 64) {
         const hash = await HashFunctions.SHA256(this.#pubKey + this.#privKey);
         return hash.substring(0, length);

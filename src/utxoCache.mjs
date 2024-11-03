@@ -4,7 +4,7 @@ import { TxValidation } from './validation.mjs';
 
 /**
 * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
-* @typedef {import("./block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
 */
 
