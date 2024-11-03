@@ -56,12 +56,15 @@ export class OpStack {
                 continue;
             }
 
+            
             const lastReorgCheckTime = this.healthInfo.lastReorgCheckTime;
             const timeSinceLastReorgCheck = lastReorgCheckTime ? now - lastReorgCheckTime : now - lastDigestOrSyncTime;
-
+            
+            if (timeSinceLastDigestOrSync < this.healthInfo.delayBeforeReorgCheck) { continue; }
             if (timeSinceLastReorgCheck > this.healthInfo.delayBeforeReorgCheck) {
                 this.healthInfo.lastReorgCheckTime = Date.now();
                 const reorgInitiated = await this.node.reorganizator.reorgIfMostLegitimateChain();
+                if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
             }
         }
     }
@@ -125,6 +128,17 @@ export class OpStack {
                             console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
                         if (error.message.includes('invalid prevHash')) {
                             console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
+
+                        // reorg management
+                        if (error.message.includes('!store!')) {
+                            console.info(`[OpStack] --- Storing finalized block in cache: ${content.index}`);
+                            this.node.reorganizator.storeFinalizedBlockInCache(content);
+                        }
+                        if (error.message.includes('!reorg!')) {
+                            this.healthInfo.lastReorgCheckTime = Date.now();
+                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain();
+                            if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
+                        }
                         if (error.message.includes('!ban!')) {
                             this.node.reorganizator.banFinalizedBlock(content); // avoid using the block in future reorgs
                             if (task.data.from === undefined) { return }
@@ -133,16 +147,6 @@ export class OpStack {
                                 ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION
                             );
                             return;
-                        }
-
-                        // reorg management
-                        if (error.message.includes('!store!')) {
-                            console.info(`[OpStack] Storing finalized block in cache: ${content.index}`);
-                            this.node.reorganizator.storeFinalizedBlockInCache(content);
-                        }
-                        if (error.message.includes('!reorg!')) {
-                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain();
-                            if (reorgInitiated) { this.healthInfo.lastReorgCheckTime = Date.now(); }
                         }
                         if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
                         
