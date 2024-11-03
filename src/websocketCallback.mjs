@@ -1,6 +1,5 @@
-import { Node } from './node.mjs';
-import { WebSocketServer } from 'ws';
 /**
+* @typedef {import("./node.mjs").Node} Node
 * @typedef {import("./block-classes.mjs").BlockData} BlockData
 */
 

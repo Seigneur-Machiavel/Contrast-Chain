@@ -1,6 +1,6 @@
 import localStorage_v1 from '../storage/local-storage-management.mjs';
-import { BlockValidation } from './validation.mjs';
-import { OpStack } from './main-stack.mjs';
+import { BlockValidation } from './validations-classes.mjs';
+import { OpStack } from './main-tasks-stack.mjs';
 import { Vss } from './vss.mjs';
 import { MemPool } from './memPool.mjs';
 import { UtxoCache } from './utxoCache.mjs';
@@ -15,11 +15,11 @@ import SnapshotSystemDoc from './snapshot-system.mjs';
 import { performance, PerformanceObserver } from 'perf_hooks';
 import { ValidationWorker } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
-import { TimeSynchronizer } from './time.mjs';
-import { Logger } from './logger.mjs';
-import { Reorganizator } from './reorganizator.mjs';
+import { TimeSynchronizer } from '../plugins/time.mjs';
+import { Logger } from '../plugins/logger.mjs';
+import { Reorganizator } from './blockchain-reorganizator.mjs';
 /**
-* @typedef {import("./account.mjs").Account} Account
+* @typedef {import("./wallet.mjs").Account} Account
 * @typedef {import("./transaction.mjs").Transaction} Transaction
 * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
 * @typedef {import("./block-classes.mjs").BlockHeader} BlockHeader

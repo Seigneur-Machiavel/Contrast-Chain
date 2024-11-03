@@ -41,8 +41,8 @@ const argon2Lib = await getArgon2Lib();
 //import Decompressor from '../externalLibs/gunzip.min.js'; -> not used anymore
 
 /**
-* @typedef {import("./block.mjs").Block} Block
-* @typedef {import("./block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").Block} Block
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("./transaction.mjs").Transaction} Transaction
 * @typedef {import("./transaction.mjs").UTXO} UTXO
 * @typedef {import("./conCrypto.mjs").argon2Hash} HashFunctions

@@ -2,7 +2,7 @@ import contrast from '../src/contrast.mjs';
 import { NodeFactory } from '../src/node-factory.mjs';
 
 /**
-* @typedef {import("../src/account.mjs").Account} Account
+* @typedef {import("../src/wallet.mjs").Account} Account
 * @typedef {import("../src/node.mjs").Node} Node
 */
 

@@ -9,7 +9,7 @@ import { exec } from 'child_process';
 import { CallBackManager } from '../src/websocketCallback.mjs';
 import utils from '../src/utils.mjs';
 /**
-* @typedef {import("../src/account.mjs").Account} Account
+* @typedef {import("../src/wallet.mjs").Account} Account
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
 * @typedef {import("../src/node.mjs").Node} Node
 * @typedef {import("../src/block-classes.mjs").BlockData} BlockData

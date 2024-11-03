@@ -9,13 +9,13 @@ import { bootstrap } from '@libp2p/bootstrap';
 import { lpStream } from 'it-length-prefixed-stream';
 import utils from './utils.mjs';
 import { multiaddr } from '@multiformats/multiaddr';
-import ReputationManager from './reputation.mjs'; // Import the ReputationManager
+import ReputationManager from './peers-reputation.mjs'; // Import the ReputationManager
 import { yamux } from '@chainsafe/libp2p-yamux';
-import { Logger } from './logger.mjs';
+import { Logger } from '../plugins/logger.mjs';
 import { generateKeyPairFromSeed } from '@libp2p/crypto/keys';
 
 /**
- * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
+ * @typedef {import("../plugins/time.mjs").TimeSynchronizer} TimeSynchronizer
  */
 
 class P2PNetwork extends EventEmitter {

@@ -5,7 +5,7 @@ import utils from './utils.mjs';
 * @typedef {import("./block-classes.mjs").BlockData} BlockData
 */
 
-import ReputationManager from "./reputation.mjs";
+import ReputationManager from "./peers-reputation.mjs";
 
 // Simple task manager, used to avoid vars overwriting in the callstack
 export class OpStack {

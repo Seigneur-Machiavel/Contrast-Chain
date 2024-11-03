@@ -3,11 +3,11 @@ import { MinerWorker } from '../workers/workers-classes.mjs';
 import utils from './utils.mjs';
 
 /**
- * @typedef {import("./account.mjs").Account} Account
+ * @typedef {import("./wallet.mjs").Account} Account
  * @typedef {import("./node.mjs").Node} Node
- * @typedef {import("./main-stack.mjs").OpStack} OpStack
+ * @typedef {import("./main-tasks-stack.mjs").OpStack} OpStack
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
- * @typedef {import("./time.mjs").TimeSynchronizer} TimeSynchronizer
+ * @typedef {import("../plugins/time.mjs").TimeSynchronizer} TimeSynchronizer
  */
 
 export class Miner {

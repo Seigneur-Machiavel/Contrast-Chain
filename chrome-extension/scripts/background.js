@@ -3,7 +3,7 @@ import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
 import { cryptoLight } from './cryptoLight.js';
 
 /**
-* @typedef {import("../contrast/src/block.mjs").BlockData} BlockData
+* @typedef {import("../contrast/src/block-classes.mjs").BlockData} BlockData
 * @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
 */

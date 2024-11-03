@@ -22,7 +22,7 @@ class Sanitizer {
 }
 
 /**
-* @typedef {import("../contrast/src/block.mjs").BlockData} BlockData
+* @typedef {import("../contrast/src/block-classes.mjs").BlockData} BlockData
 */
 
 class Pow {

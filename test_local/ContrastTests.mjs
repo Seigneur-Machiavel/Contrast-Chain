@@ -3,7 +3,7 @@ import { NodeFactory } from '../src/node-factory.mjs';
 import { DashboardWsApp, ObserverWsApp } from '../run/apps.mjs';
 
 /**
-* @typedef {import("../src/account.mjs").Account} Account
+* @typedef {import("../src/wallet.mjs").Account} Account
 * @typedef {import("../src/node.mjs").Node} Node
 */
 

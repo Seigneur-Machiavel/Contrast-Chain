@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Wallet } from '../src/wallet_pariah.mjs';
-import { Account } from '../src/account.mjs';
+import { Account } from '../src/wallet.mjs';
 import fs from 'fs/promises';
 
 describe('Wallet Integration Tests', function () {

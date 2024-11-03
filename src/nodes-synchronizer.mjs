@@ -3,13 +3,13 @@ import utils from './utils.mjs';
 import P2PNetwork from './p2p.mjs';
 import * as lp from 'it-length-prefixed';
 import { multiaddr } from '@multiformats/multiaddr';
-import ReputationManager from './reputation.mjs';
-import { Logger } from './logger.mjs';
+import ReputationManager from './peers-reputation.mjs';
+import { Logger } from '../plugins/logger.mjs';
 /**
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
  * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
- * @typedef {import("./logger.mjs").Logger} Logger
+ * @typedef {import("../plugins/logger.mjs").Logger} Logger
  */
 const MAX_BLOCKS_PER_REQUEST = 4;
 const DELAY_BETWEEN_PEERS = 1000; // 2 seconds

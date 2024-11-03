@@ -2,7 +2,7 @@ import storage from '../storage/local-storage-management.mjs';
 import fs from 'fs';
 import path from 'path';
 const url = await import('url');
-import utils from '../src/utils.mjs';
+import utils from './utils.mjs';
 
 /**
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache

@@ -1,6 +1,6 @@
 import { Transaction, UTXO, Transaction_Builder, TxIO_Builder } from './transaction.mjs';
 import utils from './utils.mjs';
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 
 /**
 * @typedef {import("./blockchain.mjs").Blockchain} Blockchain

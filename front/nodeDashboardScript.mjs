@@ -3,7 +3,7 @@ import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
 
 /**
- * @typedef {import("../src/block.mjs").BlockData} BlockData
+ * @typedef {import("../src/block-classes.mjs").BlockData} BlockData
  * @typedef {import("./transaction.mjs").Transaction} Transaction
  */
 

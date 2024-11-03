@@ -3,18 +3,16 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)
 	const anime = require('animejs');
 }
 
-//import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
-import { BlockData } from '../src/block.mjs';
+import { BlockData } from '../src/block-classes.mjs';
 import { Transaction_Builder } from '../src/transaction.mjs';
-import { TxValidation } from '../src/validation.mjs';
+import { TxValidation } from '../src/validations-classes.mjs';
 /**
-* @typedef {import("../src/block.mjs").BlockHeader} BlockHeader
-* @typedef {import("../src/block.mjs").BlockInfo} BlockInfo
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("../src/block-classes.mjs").BlockHeader} BlockHeader
+* @typedef {import("../src/block-classes.mjs").BlockInfo} BlockInfo
+* @typedef {import("../src/block-classes.mjs").BlockData} BlockData
 * @typedef {import("../src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../src/transaction.mjs").UTXO} UTXO
-* @typedef {import("../src/validation.mjs").TxValidation} TxValidation
 */
 
 /** @type {BlockExplorerWidget} */

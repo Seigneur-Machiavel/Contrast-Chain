@@ -1,4 +1,4 @@
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 import { Transaction_Builder, Transaction } from './transaction.mjs';
 import utils from './utils.mjs';
 import { UtxoCache } from './utxoCache.mjs';

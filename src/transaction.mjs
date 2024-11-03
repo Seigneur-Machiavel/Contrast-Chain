@@ -1,10 +1,10 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 import { BlockUtils } from './block-classes.mjs';
 
 /**
- * @typedef {import('./account.mjs').Account} Account
+ * @typedef {import('./wallet.mjs').Account} Account
  * @typedef {import('./block-classes.mjs').BlockData} BlockData
  */
 

@@ -1,7 +1,7 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
 import { Transaction_Builder, Transaction } from './transaction.mjs';
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 
 /**
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache

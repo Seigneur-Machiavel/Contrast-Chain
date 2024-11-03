@@ -1,7 +1,7 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
 import { Transaction_Builder, Transaction } from './transaction.mjs';
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 
 /**
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
@@ -322,17 +322,39 @@ export class BlockUtils {
         /** @type {Object<string, string[]>} */
         const txRefsRelatedToAddress = {};
         for (const Tx of blockData.Txs) {
-            const addressesRelatedToTx = Tx.outputs.map(output => output.address);
-            for (const witness of Tx.witnesses) { // correspond to the inputs's addresses
+            //const addressesRelatedToTx = [];
+            const addressesRelatedToTx = {};
+            for (const witness of Tx.witnesses) {
                 const pubKey = witness.split(':')[1];
                 const address = blockPubKeysAddresses[pubKey];
-                addressesRelatedToTx.push(address);
+                if (addressesRelatedToTx[address]) { continue; } // no duplicates
+                addressesRelatedToTx[address] = true;
+            }
+
+            for (const output of Tx.outputs) {
+                if (addressesRelatedToTx[output.address]) { continue; } // no duplicates
+                addressesRelatedToTx[output.address] = true;
             }
             
-            for (const address of addressesRelatedToTx) {
+            for (const address of Object.keys(addressesRelatedToTx)) {
                 if (!txRefsRelatedToAddress[address]) { txRefsRelatedToAddress[address] = []; }
                 txRefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
             }
+        }
+
+        // CONTROL
+        for (const address in txRefsRelatedToAddress) {
+            const addressTxsRefs = txRefsRelatedToAddress[address];
+            const txsRefsDupiCounter = {};
+            let duplicate = 0;
+            for (let i = 0; i < addressTxsRefs.length; i++) {
+                const txRef = addressTxsRefs[i];
+                if (txsRefsDupiCounter[txRef]) { duplicate++; }
+                
+                txsRefsDupiCounter[txRef] = true;
+            }
+            if (duplicate > 0) {
+                    console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
         }
 
         return txRefsRelatedToAddress;

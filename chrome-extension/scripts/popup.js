@@ -6,7 +6,7 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const { htmlAnimations } = require("./htmlAnimations.js");
     const { Wallet } = require("../contrast/src/wallet.mjs");
     const utils = require("../contrast/src/utils.mjs").default;
-    const { Account } = require("../contrast/src/account.mjs");
+    const { Account } = require("../contrast/src/wallet.mjs");
     const { Transaction, Transaction_Builder } = require("../contrast/src/transaction.mjs");
 }
 
