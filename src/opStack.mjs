@@ -131,7 +131,7 @@ export class OpStack {
 
                         // reorg management
                         if (error.message.includes('!store!')) {
-                            console.info(`[OpStack] --- Storing finalized block in cache: ${content.index}`);
+                            //console.info(`[OpStack] --- Storing finalized block in cache: ${content.index}`);
                             this.node.reorganizator.storeFinalizedBlockInCache(content);
                         }
                         if (error.message.includes('!reorg!')) {

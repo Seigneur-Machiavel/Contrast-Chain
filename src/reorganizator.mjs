@@ -24,7 +24,10 @@ export class Reorganizator {
         const index = finalizedBlock.index;
         const hash = finalizedBlock.hash;
         if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
+        if (this.finalizedBlocksCache[index][hash]) { return; }
+
         this.finalizedBlocksCache[index][hash] = finalizedBlock;
+        console.info(`[REORGANIZATOR] Stored finalized block #${index} | hash:${hash.slice(0, 10)}...`);
     }
     /** @param {BlockData} finalizedBlock */
     isFinalizedBlockInCache(finalizedBlock) {
@@ -45,7 +48,7 @@ export class Reorganizator {
         if (!this.bannedBlockHashesByHeight[index]) { this.bannedBlockHashesByHeight[index] = {}; }
         this.bannedBlockHashesByHeight[index][hash] = true;
 
-        console.info(`[REORGANIZATOR] Banned block #${index} | hash:${hash.slice(0, 60)}...`);
+        console.info(`[REORGANIZATOR] Banned block #${index} | hash:${hash.slice(0, 10)}...`);
     }
     pruneCache() {
         const snapshotsHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();

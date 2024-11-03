@@ -32,6 +32,7 @@ export class SyncHandler {
         this.logger = logger;
         this.isSyncing = false;
         this.peerHeights = new Map();
+        this.subscriptionsInitialized = false;
     }
     /** @type {Node} */
     get node() {
@@ -199,6 +200,7 @@ export class SyncHandler {
     }
     async syncWithKnownPeers() {
         this.logger.info(`luid-ba6712a8 [SYNC] Starting syncWithKnownPeers at #${this.node.blockchain.currentHeight}`);
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
 
@@ -222,6 +224,9 @@ export class SyncHandler {
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
             this.isSyncing = false;
+            if (this.subscriptionsInitialized) { return true; }
+
+            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
             return true;
         }
 
@@ -255,8 +260,11 @@ export class SyncHandler {
             return false;
         }
 
-        this.isSyncing = false;
         this.logger.debug(`luid-8085b169 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight} compared to highestPeerHeight: ${highestPeerHeight}`);
+        this.isSyncing = false;
+        if (this.subscriptionsInitialized) { return true; }
+
+        await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
         return true;
     }
     // TODO: unify syncWithPeer and syncWithKnownPeers

@@ -298,7 +298,6 @@ export class Node {
             throw new Error(`Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
         }
         if (finalizedBlock.index > lastBlockIndex + 1) {
-            console.info('\n finalizedBlock.index > lastBlockIndex + 1 \n');
             throw new Error(`!store! !reorg! #${finalizedBlock.index} > #${lastBlockIndex + 1}(last+1)`);
         }
         if (finalizedBlock.index <= lastBlockIndex) {
