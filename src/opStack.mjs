@@ -27,8 +27,8 @@ export class OpStack {
         lastDigestTime: null,
         lastSyncTime: null,
         lastReorgCheckTime: null,
-        delayBeforeReorgCheck: 1000 * 60, // 1 minutes
-        delayBeforeSyncCheck: 1000 * 60 * 5 // 5 minutes
+        delayBeforeReorgCheck: utils.SETTINGS.targetBlockTime,
+        delayBeforeSyncCheck: utils.SETTINGS.targetBlockTime * 2
     }
 
     /** @param {Node} node */
@@ -47,8 +47,9 @@ export class OpStack {
             
             if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
             const lastDigestOrSyncTime = Math.max(this.healthInfo.lastDigestTime, this.healthInfo.lastSyncTime);
+            const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
-            if (now - lastDigestOrSyncTime > this.healthInfo.delayBeforeSyncCheck) {
+            if (timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
                 this.healthInfo.lastSyncTime = Date.now();
                 this.pushFirst('syncWithKnownPeers', null);
                 console.warn(`[OpStack] SyncWithKnownPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
@@ -125,8 +126,7 @@ export class OpStack {
                         if (error.message.includes('invalid prevHash')) {
                             console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
                         if (error.message.includes('!ban!')) {
-                            // avoid using the block in future reorgs
-                            this.node.reorganizator.banFinalizedBlock(content);
+                            this.node.reorganizator.banFinalizedBlock(content); // avoid using the block in future reorgs
                             if (task.data.from === undefined) { return }
                             this.node.p2pNetwork.reputationManager.applyOffense(
                                 {peerId : task.data.from},
@@ -135,18 +135,18 @@ export class OpStack {
                             return;
                         }
 
+                        // reorg management
                         if (error.message.includes('!store!')) {
                             console.info(`[OpStack] Storing finalized block in cache: ${content.index}`);
                             this.node.reorganizator.storeFinalizedBlockInCache(content);
                         }
-
                         if (error.message.includes('!reorg!')) {
                             const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain();
-                            if (reorgInitiated) { return; }
+                            if (reorgInitiated) { this.healthInfo.lastReorgCheckTime = Date.now(); }
                         }
-
                         if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
                         
+                        // sync management
                         if (error.message.includes('!sync!')) {
                             console.error(error.stack);
                             this.pushFirst('syncWithKnownPeers', null);
