@@ -1,3 +1,4 @@
+import utils from './utils.mjs';
 /**
 * @typedef {import("./syncHandler.mjs").SyncHandler} SyncHandler
 * @typedef {import("./node.mjs").Node} Node
@@ -18,7 +19,7 @@ export class OpStack {
     txBatchSize = 10; // will treat transactions in batches of 10
     /** @type {NodeJS.Timeout} */
     lastConfirmedBlockTimeout = null;
-    delayWithoutConfirmationBeforeSync = 300_000; // 5 minutes
+    delayWithoutConfirmationBeforeSync = utils.SETTINGS.targetBlockTime * 2;
     lastExecutedTask = null;
 
     /** @param {Node} node */
@@ -107,13 +108,6 @@ export class OpStack {
                             console.error(`[OpStack] --- Reorg --- (from #${this.node.blockchain.lastBlock.index})`);
                             this.securelyPushFirst(legitimateReorg.tasks);
                         }
-                       // try reorg anytime
-                        /*const legitimateReorg = await this.node.getLegitimateReorg(content);
-                        if (legitimateReorg.tasks.length > 0) {
-                            console.error(`[OpStack] --- Reorg --- (from #${content.index})`);
-                            this.securelyPushFirst(legitimateReorg.tasks);
-                            return;
-                        }*/
 
                         if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
 

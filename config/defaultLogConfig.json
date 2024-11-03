@@ -321,6 +321,13 @@
     "type": "debug",
     "content": "luid-0f2f018d Subscribing to topic"
   },
+  "luid-1d1d61f7": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 529,
+    "type": "error",
+    "content": "luid-1d1d61f7 Failed to subscribe to topic"
+  },
   "luid-7c191bc3": {
     "active": true,
     "file": "src\\p2p.mjs",

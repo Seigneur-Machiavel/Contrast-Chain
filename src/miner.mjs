@@ -54,46 +54,6 @@ export class Miner {
         /** @type {Object<string, WebSocketCallBack>} */
         this.wsCallbacks = {};
     }
-
-    /** @param {BlockData} blockCandidate */
-    /*pushCandidate(blockCandidate) {
-        const validatorAddress = blockCandidate.Txs[0].inputs[0].split(':')[0];
-        if (this.highestBlockIndex !== -1 && blockCandidate.index > this.highestBlockIndex + 1) {
-            console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | blockCandidate.index > lastBlockIndex + 1`);
-            return;
-        }
-
-        // check if block is already in the candidates
-        const index = this.candidates.findIndex(candidate => candidate.index === blockCandidate.index && candidate.Txs[0].inputs[0].split(':')[0] === validatorAddress);
-        if (index !== -1) { return; }
-
-        // check if powReward is coherent
-        const posReward = blockCandidate.Txs[0].outputs[0].amount;
-        const powReward = blockCandidate.powReward;
-        if (!posReward || !powReward) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward}`); return; }
-        if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
-
-        // check if block is higher than the highest block
-        if (blockCandidate.index > this.highestBlockIndex) {
-            this.bets[blockCandidate.index] = this.#betPowTime();
-            this.highestBlockIndex = blockCandidate.index;
-            this.#cleanupCandidates();
-            this.addressOfCandidatesBroadcasted = [];
-        }
-
-        console.info(`[MINER] New block candidate pushed (Height: ${blockCandidate.index} | validator: ${validatorAddress.slice(0,6)})`);
-        this.candidates.push(blockCandidate);
-
-        const mostLegBlockCandidate = this.#getMostLegitimateBlockCandidate();
-        if (!mostLegBlockCandidate) { return console.info(`[MINER] No legitimate block candidate found`); }
-
-        const changed = this.#setBestCandidateIfChanged(mostLegBlockCandidate);
-        if (!changed) { return; }
-
-        if (this.wsCallbacks.onBestBlockCandidateChange) {
-            this.wsCallbacks.onBestBlockCandidateChange.execute(mostLegBlockCandidate);
-        }
-    }*/
     /** @param {BlockData} blockCandidate */
     updateBestCandidate(blockCandidate) {
         // check if powReward is coherent
@@ -102,28 +62,16 @@ export class Miner {
         if (!posReward || !powReward) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward}`); return; }
         if (Math.abs(posReward - powReward) > 1) { console.info(`[MINER] Invalid block candidate pushed (#${blockCandidate.index} | v:${validatorAddress.slice(0,6 )}) | posReward = ${posReward} | powReward = ${powReward} | Math.abs(posReward - powReward) > 1`); return; }
 
-        // compare final diff if height is the same
-        /*if (this.bestCandidate && blockCandidate.index === this.bestCandidate.index) {
-            const newCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(blockCandidate);
-            const bestCandidateFinalDiff = utils.mining.getBlockFinalDifficulty(this.bestCandidate);
-            if (newCandidateFinalDiff.finalDifficulty > bestCandidateFinalDiff.finalDifficulty) { return; }
-            console.info(`[MINER] easier block, final diffs: before = ${bestCandidateFinalDiff.finalDifficulty} | after = ${newCandidateFinalDiff.finalDifficulty}`);
-        }
-
-        this.bets[blockCandidate.index] = this.#betPowTime();
-        this.highestBlockIndex = blockCandidate.index;
-        const changed = this.#setBestCandidateIfChanged(blockCandidate);
-        if (!changed) { return; }*/
-
         const changed = this.#setBestCandidateIfChanged(blockCandidate);
         if (!changed) { return; }
 
         // check if block is higher than the highest block
-        if (blockCandidate.index > this.highestBlockIndex) { this.addressOfCandidatesBroadcasted = []; }
-
-        this.bets[blockCandidate.index] = this.#betPowTime();
-        this.highestBlockIndex = blockCandidate.index;
-
+        if (blockCandidate.index > this.highestBlockIndex) {
+            this.addressOfCandidatesBroadcasted = [];
+            this.highestBlockIndex = blockCandidate.index;
+        }
+        
+        this.bets[blockCandidate.index] = this.bets[blockCandidate.index] || this.#betPowTime();
 
         if (this.wsCallbacks.onBestBlockCandidateChange) {
             this.wsCallbacks.onBestBlockCandidateChange.execute(blockCandidate);
@@ -142,21 +90,6 @@ export class Miner {
         }
 
         return bets;
-    }
-    /** Remove candidates with height tolerance, to avoid memory leak */
-    #cleanupCandidates(heightTolerance = 6) {
-        const minimumHeight = this.highestBlockIndex - heightTolerance;
-        const cleanedCandidates = this.candidates.filter(candidate => candidate.index >= minimumHeight);
-        this.candidates = cleanedCandidates;
-    }
-    /** Return the most legitimate block candidate */
-    #getMostLegitimateBlockCandidate() {
-        if (this.candidates.length === 0) { return null; }
-
-        const filteredCandidates = this.candidates.filter(candidate => candidate.index === this.highestBlockIndex);
-        // the lower the legitimacy, the more legitimate the block is, 0 is the most legitimate
-        const sortedCandidates = filteredCandidates.sort((a, b) => a.legitimacy - b.legitimacy);
-        return sortedCandidates[0];
     }
     /** @param {BlockData} blockCandidate */
     #setBestCandidateIfChanged(blockCandidate) {
@@ -197,7 +130,7 @@ to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
     async broadcastFinalizedBlock(finalizedBlock) {
         // Avoid sending the block pow if a higher block candidate is available to be mined
         if (this.highestBlockIndex > finalizedBlock.index) {
-            console.info(`[MINER-${this.address.slice(0, 6)}] Block finalized is not the highest block candidate`);
+            console.info(`[MINER-${this.address.slice(0, 6)}] Block finalized is not the highest block candidate: #${finalizedBlock.index} < #${this.highestBlockIndex}`);
             return;
         }
         
@@ -298,7 +231,7 @@ to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
                 if (worker.isWorking) { continue; }
                 if (worker.result !== null) {
                     const finalizedBlock = worker.getResultAndClear();
-                    console.info(`[MINER-${this.address.slice(0, 6)}] Worker ${i} pow! #${finalizedBlock.index})`);
+                    //console.info(`[MINER-${this.address.slice(0, 6)}] Worker ${i} pow! #${finalizedBlock.index})`);
                     await this.broadcastFinalizedBlock(finalizedBlock);
                 }
 
@@ -317,7 +250,6 @@ to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
 
         console.info(`[MINER-${this.address.slice(0, 6)}] Stopped`);
     }
-
     async terminate() {
         //this.workers.forEach(worker => worker.terminateAsync());
         for (const worker of this.workers) {

@@ -462,7 +462,7 @@ class P2PNetwork extends EventEmitter {
         }
     }
     /** @param {string} topic @param {Function} [callback] */
-    async subscribe(topic, callback) {
+    async subscribe_old(topic, callback) {
         if (this.subscriptions.has(topic)) {
             if (callback) {
                 // Check if we're trying to bind a new callback
@@ -509,6 +509,23 @@ class P2PNetwork extends EventEmitter {
                 topic,
                 error: error.message
             });
+            throw error;
+        }
+    }
+    /** @param {string} topic @param {Function} [callback] */
+    async subscribe(topic, callback) {
+        if (this.subscriptions.has(topic)) return;
+
+        try {
+            await this.p2pNode.services.pubsub.subscribe(topic);
+            this.subscriptions.add(topic);
+            
+            if (callback) {
+                this.on(topic, message => callback(topic, message));
+                this.topicBindings.set(topic, callback);
+            }
+        } catch (error) {
+            this.logger.error('luid-1d1d61f7 Failed to subscribe to topic', { component: 'P2PNetwork', topic, error: error.message });
             throw error;
         }
     }
