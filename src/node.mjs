@@ -566,7 +566,8 @@ ${hashConfInfo.message}`);
                         return;
                     }
                     if (this.blockCandidate && this.blockCandidate.index < data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> replace`);
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> skip`);
+                        return;
                     }
 
                     await this.vss.calculateRoundLegitimacies(data.hash);
