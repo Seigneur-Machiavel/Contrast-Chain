@@ -8,6 +8,7 @@ export class NodeFactory {
         this.nodes = new Map();
         this.nodesCreationSettings = {};
         this.#controlLoop();
+        this.restartCounter = 0;
     }
     async #restartNodesWhoRequestedIt() {
         for (const node of this.nodes.values()) {
@@ -67,6 +68,7 @@ export class NodeFactory {
         console.log(`Forcing restart of node ${nodeId} with account ${newAccount ? newAccount.address : 'unchanged'}`);
         const targetNode = this.getNode(nodeId);
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
+
         targetNode.restarting = true;
         if (!targetNode.restartRequested) {
             targetNode.requestRestart('NodeFactory.forceRestartNode()');
@@ -105,9 +107,12 @@ export class NodeFactory {
             nodeSettings.p2pOptions,
             nodeSettings.minerAddress
         );
+
+        this.restartCounter++;
         await newNode.start(startFromScratch);
         newNode.validatorRewardAddress = nodeSettings.validatorRewardAddress;
-        console.log(`Node ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+        console.log(`\nNode ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+        console.info(`Restart counter: ${this.restartCounter}\n`);
         
         this.nodes.set(nodeId, newNode);
     }
