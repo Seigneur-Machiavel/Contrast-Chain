@@ -50,12 +50,10 @@ export class OpStack {
             const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
             if (timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
-                this.healthInfo.lastSyncTime = Date.now();
                 this.pushFirst('syncWithKnownPeers', null);
                 console.warn(`[OpStack] SyncWithKnownPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                 continue;
             }
-
             
             const lastReorgCheckTime = this.healthInfo.lastReorgCheckTime;
             const timeSinceLastReorgCheck = lastReorgCheckTime ? now - lastReorgCheckTime : now - lastDigestOrSyncTime;
