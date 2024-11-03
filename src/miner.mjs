@@ -68,9 +68,9 @@ export class Miner {
         // check if block is higher than the highest block
         if (blockCandidate.index > this.highestBlockIndex) {
             this.addressOfCandidatesBroadcasted = [];
-            this.highestBlockIndex = blockCandidate.index;
         }
         
+        this.highestBlockIndex = blockCandidate.index;
         this.bets[blockCandidate.index] = this.bets[blockCandidate.index] || this.#betPowTime();
 
         if (this.wsCallbacks.onBestBlockCandidateChange) {
