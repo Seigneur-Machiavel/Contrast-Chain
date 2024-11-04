@@ -1073,8 +1073,8 @@ const serializer = {
                 };
 
                 for (let j = 0; j < tx.outputs.length; j++) {
-                    const { amount, rule, address } = tx.outputs[j];
-                    if (amount, rule, address) { //  {"amount": 19545485, "rule": "sig", "address": "WKXmNF5xJTd58aWpo7QX"}
+                    const { address, amount, rule } = tx.outputs[j];
+                    if (address, amount, rule) { //  {"amount": 19545485, "rule": "sig", "address": "WKXmNF5xJTd58aWpo7QX"}
                         const ruleCode = UTXO_RULES_GLOSSARY[rule].code;
                         txAsArray[4].push([
                             convert.number.toUint8Array(amount), // safe type: number
@@ -1134,7 +1134,7 @@ const serializer = {
                         const ruleCode = convert.uint8Array.toNumber(output[1]); // safe type: uint8 -> number
                         const rule = UTXO_RULESNAME_FROM_CODE[ruleCode];
                         const address = convert.uint8Array.toBase58(output[2]); // safe type: uint8 -> base58
-                        tx.outputs.push({ amount, rule, address });
+                        tx.outputs.push({ address, amount, rule });
                     } else {
                         tx.outputs.push(convert.uint8Array.toString(output));
                     }
@@ -1509,7 +1509,7 @@ const serializerFast = {
         anchorsObjToArray(anchors) {
             return this.anchorsArray(Object.keys(anchors));
         },
-        /** serialize the UTXO as a miniUTXO: amount, rule, address (23 bytes)
+        /** serialize the UTXO as a miniUTXO: address, amount, rule (23 bytes)
          * @param {UTXO} utxo */
         miniUTXO(utxo) {
             const utxoBuffer = new ArrayBuffer(23);
@@ -1524,7 +1524,7 @@ const serializerFast = {
             const outputsBuffer = new ArrayBuffer(23 * outputs.length);
             const outputsBufferView = new Uint8Array(outputsBuffer);
             for (let i = 0; i < outputs.length; i++) {
-                const { amount, rule, address } = outputs[i];
+                const { address, amount, rule } = outputs[i];
                 const ruleCode = UTXO_RULES_GLOSSARY[rule].code;
                 outputsBufferView.set(fastConverter.numberTo6BytesUint8Array(amount), i * 23);
                 outputsBufferView.set(fastConverter.numberTo1ByteUint8Array(ruleCode), i * 23 + 6);
@@ -1708,7 +1708,7 @@ const serializerFast = {
             }
             return obj;
         },
-        /** Deserialize a miniUTXO: amount, rule, address (23 bytes)
+        /** Deserialize a miniUTXO: address, amount, rule (23 bytes)
          * @param {Uint8Array} serializedUTXO */
         miniUTXO(serializedminiUTXO) {
             const amount = fastConverter.uint86BytesToNumber(serializedminiUTXO.slice(0, 6)); // 6 bytes
