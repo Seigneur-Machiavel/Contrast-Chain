@@ -69,124 +69,82 @@
     "type": "warn",
     "content": "luid-f04b2516 Invalid request type"
   },
-  "luid-7d739b5d": {
+  "luid-4dce8bb0": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 125,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 118,
     "type": "info",
-    "content": "luid-7d739b5d [SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics"
+    "content": "luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}"
   },
-  "luid-ba6712a8": {
+  "luid-0dc61aa6": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 129,
-    "type": "info",
-    "content": "luid-ba6712a8 [SYNC] Starting syncWithKnownPeers at #${this.node.blockchain.currentHeight}"
-  },
-  "luid-b1baf98f": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 134,
-    "type": "error",
-    "content": "luid-b1baf98f [SYNC] unable to get peersStatus -> handleSyncFailure()"
-  },
-  "luid-daa18cf7": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 149,
-    "type": "error",
-    "content": "luid-daa18cf7 [SYNC] highestPeerHeight is undefined -> handleSyncFailure()"
-  },
-  "luid-f7d49337": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 157,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 124,
     "type": "debug",
-    "content": "luid-f7d49337 [SYNC] Already at the highest height, no need to sync peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}"
+    "content": "luid-0dc61aa6 [SYNC] Unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics"
   },
-  "luid-dbad0072": {
+  "luid-909bb94c": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 163,
-    "type": "info",
-    "content": "luid-dbad0072 [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}"
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 153,
+    "type": "error",
+    "content": "luid-909bb94c [SYNC] No valid peers to sync with"
   },
-  "luid-9dc1ad9d": {
+  "luid-eec3c612": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 169,
-    "type": "info",
-    "content": "luid-9dc1ad9d Attempting to sync with peer"
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 161,
+    "type": "error",
+    "content": "luid-eec3c612 [SYNC] Unable to get peer statuses"
   },
-  "luid-a373e2ca": {
+  "luid-ff391762": {
     "active": true,
-    "file": "src\\sync.mjs",
+    "file": "src\\nodes-synchronizer.mjs",
     "line": 172,
-    "type": "info",
-    "content": "luid-a373e2ca Successfully synced with peer"
+    "type": "debug",
+    "content": "luid-ff391762 [SYNC] Already at the highest height, no need to sync"
   },
-  "luid-5abadb62": {
+  "luid-a050ac5b": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 181,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 178,
+    "type": "info",
+    "content": "luid-a050ac5b [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}"
+  },
+  "luid-89219133": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 184,
+    "type": "info",
+    "content": "luid-89219133 Attempting to sync with peer"
+  },
+  "luid-5eb266ed": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 187,
+    "type": "info",
+    "content": "luid-5eb266ed Successfully synced with peer"
+  },
+  "luid-75e514b1": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 195,
     "type": "error",
-    "content": "luid-5abadb62 Sync restart error occurred"
+    "content": "luid-75e514b1 Sync restart error occurred"
   },
-  "luid-1b356e8a": {
+  "luid-8e1fa028": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 190,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 204,
     "type": "debug",
-    "content": "luid-1b356e8a [SYNC] Need to sync more blocks, restarting sync process"
+    "content": "luid-8e1fa028 [SYNC] Need to sync more blocks, restarting sync process"
   },
-  "luid-8085b169": {
+  "luid-29036e62": {
     "active": true,
-    "file": "src\\sync.mjs",
-    "line": 197,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 208,
     "type": "debug",
-    "content": "luid-8085b169 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight} compared to highestPeerHeight: ${highestPeerHeight}"
-  },
-  "luid-c2de8bdd": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 205,
-    "type": "debug",
-    "content": "luid-c2de8bdd [SYNC] unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics"
-  },
-  "luid-dd53ca26": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 209,
-    "type": "info",
-    "content": "luid-dd53ca26 [SYNC] Starting syncWithPeer at #${this.node.blockchain.currentHeight}"
-  },
-  "luid-ab252bfd": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 218,
-    "type": "debug",
-    "content": "luid-ab252bfd [SYNC] Already at the highest height, no need to sync"
-  },
-  "luid-9290410c": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 223,
-    "type": "info",
-    "content": "luid-9290410c [SYNC] Peer height: ${peerHeight}, current height: ${this.node.blockchain.currentHeight}"
-  },
-  "luid-94a3cd1a": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 226,
-    "type": "info",
-    "content": "luid-94a3cd1a Successfully synced with peer"
-  },
-  "luid-21d53280": {
-    "active": true,
-    "file": "src\\sync.mjs",
-    "line": 234,
-    "type": "error",
-    "content": "luid-21d53280 Sync restart error occurred"
+    "content": "luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}"
   },
   "luid-0269246d": {
     "active": false,
