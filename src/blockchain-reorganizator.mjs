@@ -180,6 +180,7 @@ export class Reorganizator {
         return tasks;
     }
     async reorgIfMostLegitimateChain() {
+        if (!this.node.blockchain.lastBlock) { return false; }
         const legitimateReorg = await this.#getLegitimateReorg();
         if (legitimateReorg.tasks.length === 0) {
             console.warn(`[REORGANIZATOR] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
