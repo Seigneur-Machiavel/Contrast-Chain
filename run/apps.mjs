@@ -81,6 +81,7 @@ class AppStaticFncs {
         result.peerHeights = node.syncHandler.getAllPeerHeights() ?? 'No Peer Height';
         result.listenAddress = node.p2pNetwork?.options?.listenAddress ?? 'No Listen Address';
         result.lastLegitimacy = node.blockchainStats?.lastLegitimacy ?? 'No Legitimacy';
+        result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
         return result;
     }
     /** @param {Node} node */

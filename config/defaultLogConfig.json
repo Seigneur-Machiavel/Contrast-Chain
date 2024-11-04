@@ -622,12 +622,12 @@
     "type": "warn",
     "content": "luid-07277de5 Stream is undefined; cannot close stream"
   },
-  "luid-5651c3a3": {
-    "active": true,
+  "luid-7b1b1b7d": {
+    "active": false,
     "file": "src\\p2p.mjs",
-    "line": 475,
+    "line": 414,
     "type": "warn",
-    "content": "luid-5651c3a3 Attempted to bind duplicate callback to topic"
+    "content": "luid-7b1b1b7d Attempting to subscribe to already subscribed topic"
   },
   "luid-0f2f018d": {
     "active": false,
@@ -636,31 +636,24 @@
     "type": "debug",
     "content": "luid-0f2f018d Subscribing to topic"
   },
-  "luid-1d1d61f7": {
+  "luid-fc18ad60": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 529,
+    "line": 428,
     "type": "error",
-    "content": "luid-1d1d61f7 Failed to subscribe to topic"
-  },
-  "luid-7c191bc3": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 491,
-    "type": "error",
-    "content": "luid-7c191bc3 Attempting to unsubscribe from a topic that was not subscribed to"
+    "content": "luid-fc18ad60 Failed to subscribe to topic"
   },
   "luid-4d686b67": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 499,
+    "line": 462,
     "type": "debug",
     "content": "luid-4d686b67 Unsubscribed from topic"
   },
   "luid-fb112b3b": {
     "active": true,
     "file": "src\\p2p.mjs",
-    "line": 501,
+    "line": 464,
     "type": "error",
     "content": "luid-fb112b3b Error unsubscribing from topic"
   },
@@ -671,19 +664,19 @@
     "type": "debug",
     "content": "luid-3d55ce46 Peer updated"
   },
-  "luid-09602c57": {
-    "active": true,
-    "file": "src\\p2p.mjs",
-    "line": 529,
-    "type": "debug",
-    "content": "luid-09602c57 Closing connections to ${peerId}"
-  },
   "luid-9d42e1f5": {
     "active": true,
     "file": "src\\p2p.mjs",
     "line": 577,
     "type": "info",
     "content": "luid-9d42e1f5 Disconnected peer"
+  },
+  "luid-09602c57": {
+    "active": true,
+    "file": "src\\p2p.mjs",
+    "line": 529,
+    "type": "debug",
+    "content": "luid-09602c57 Closing connections to ${peerId}"
   },
   "luid-26a3359e": {
     "active": true,

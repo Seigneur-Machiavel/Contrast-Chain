@@ -216,8 +216,8 @@ function displayNodeInfo(data) {
     eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
     eHTML.listenAddress.textContent = data.listenAddress ? data.listenAddress : 'No Listen Address';
     eHTML.lastLegitimacy.textContent = data.lastLegitimacy;
-    if (Array.isArray(data.peerIds)) {
-        renderPeers(data.peerIds);
+    if (data.peers) {
+        renderPeers(data.peers);
     } else {
         console.warn('peerIds is not an array:', data.peerIds);
         eHTML.peersConnectedList.innerHTML = '<li>No peers available.</li>';
@@ -233,14 +233,16 @@ function displayNodeInfo(data) {
 function renderPeers(peers) {
     eHTML.peersConnectedList.innerHTML = ''; // Clear existing list
 
-    if (peers.length === 0) {
+    const peerEntries = Object.entries(peers);
+
+    if (peerEntries.length === 0) {
         const li = document.createElement('li');
         li.textContent = 'No peers connected.';
         eHTML.peersConnectedList.appendChild(li);
         return;
     }
 
-    peers.forEach(peerId => {
+    peerEntries.forEach(([peerId, peerInfo]) => {
         const li = document.createElement('li');
         li.classList.add('peer-item'); // Optional: Add a class for styling
 
@@ -248,6 +250,33 @@ function renderPeers(peers) {
         const peerSpan = document.createElement('span');
         peerSpan.textContent = peerId.replace('12D3KooW', '');
         peerSpan.classList.add('peer-id'); // Optional: Add a class for styling
+
+        // Create a div to hold peer information
+        const infoDiv = document.createElement('div');
+        infoDiv.classList.add('peer-info');
+
+        // Add peer status
+        const statusSpan = document.createElement('span');
+        statusSpan.textContent = `Status: ${peerInfo.status || 'Unknown'}`;
+        statusSpan.classList.add('peer-status');
+
+        // Add peer address
+        const addressSpan = document.createElement('span');
+        addressSpan.textContent = `Address: ${peerInfo.address || 'N/A'}`;
+        addressSpan.classList.add('peer-address');
+
+        // Add dialable info
+        const dialableSpan = document.createElement('span');
+        const isDialable = peerInfo.dialable ? 'Yes' : 'No';
+        dialableSpan.textContent = `Dialable: ${isDialable}`;
+        dialableSpan.classList.add('peer-dialable');
+
+        // Append info to infoDiv
+        infoDiv.appendChild(statusSpan);
+        infoDiv.appendChild(document.createElement('br')); // Line break
+        infoDiv.appendChild(addressSpan);
+        infoDiv.appendChild(document.createElement('br')); // Line break
+        infoDiv.appendChild(dialableSpan);
 
         // Create Disconnect Button
         const disconnectBtn = document.createElement('button');
@@ -269,6 +298,7 @@ function renderPeers(peers) {
 
         // Append elements to the list item
         li.appendChild(peerSpan);
+        li.appendChild(infoDiv);
         li.appendChild(disconnectBtn);
         li.appendChild(banBtn);
         li.appendChild(askSyncBtn);
@@ -306,7 +336,6 @@ function renderPeersHeight (peers) {
     }
 
 }
-
 
 function renderScores(scores) {
     eHTML.repScoresList.innerHTML = ''; // Clear existing list
