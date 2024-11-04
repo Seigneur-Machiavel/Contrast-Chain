@@ -213,9 +213,8 @@ class Logger {
       * @returns {string} - Formatted colored log string
       */
     formatConsoleLog(type, message) {
-        const timestamp = new Date().toISOString();
         const color = this.getColorForType(type);
-        return `${color}[${timestamp}] [${type.toUpperCase()}] ${message}${colors.reset}`;
+        return `${color}[${type.toUpperCase()}]${colors.reset} ${message}`;
     }
 
     /**
@@ -243,7 +242,7 @@ class Logger {
             console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
         }
     }
-
+        
     /**
      * Logs data based on the type and configuration
      * @param {string} type - The type of log (e.g., info, error)
@@ -280,15 +279,16 @@ class Logger {
                 consoleMessage += ' ' + this.serializeArgs(args, true);  // With colors for console
                 fileMessage += ' ' + this.serializeArgs(args, false);    // Without colors for file
             }
-
+            let callerLine = '';
+            if (this.logConfig[id] && this.logConfig[id].file && this.logConfig[id].line) {
+                callerLine = ` (${this.logConfig[id].file}:${this.logConfig[id].line})`;
+            }
             // Log to console with colors
             if (typeof console[type] === 'function') {
-                const color = this.getColorForType(type);
-                const timestamp = new Date().toISOString();
-                const coloredLogMessage = `${color}[${timestamp}] [${type.toUpperCase()}] ${consoleMessage}${colors.reset}`;
-                console[type](coloredLogMessage);
+                const formattedMessage = this.formatConsoleLog(type, consoleMessage);
+                console[type](formattedMessage + callerLine);
             } else {
-                console.log(consoleMessage);
+                console.log(consoleMessage + callerLine);
             }
 
             // Write to file without colors
@@ -307,7 +307,7 @@ class Logger {
                 return util.inspect(arg, {
                     depth: null,
                     colors: withColors,
-                    compact: false
+                    compact: true
                 });
             }
             return String(arg);
