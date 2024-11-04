@@ -323,11 +323,11 @@ ${hashConfInfo.message}`);
             throw new Error(`!store! !reorg! Rejected: #${finalizedBlock.index} -> invalid prevHash: ${finalizedBlock.prevHash} - expected: ${lastBlockHash}`);
         }
 
-         // verify the POS timestamp
-         if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
-         if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
-         const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
-         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
+        // verify the POS timestamp
+        if (typeof finalizedBlock.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (Number.isInteger(finalizedBlock.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
+        const timeDiffPos = this.blockchain.lastBlock === null ? 1 : finalizedBlock.posTimestamp - this.blockchain.lastBlock.timestamp;
+        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
         if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
