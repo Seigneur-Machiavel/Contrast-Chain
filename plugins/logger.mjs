@@ -96,9 +96,32 @@ class Logger {
      * Initializes the logger by synchronizing configurations.
      */
     async initializeLogger() {
-        await this.syncConfig('config/defaultLogConfig.json');
+        await this.syncConfig('storage/logConfig.json');
     }
+    /**
+     * Initializes the logger by loading configuration from a specified JSON file.
+     * @param {string} configFilePath - Path to the configuration file.
+     */
+    async initializeLoggerFromFile(configFilePath = 'storage/logConfig.json') {
+        try {
+            const resolvedPath = path.isAbsolute(configFilePath)
+                ? configFilePath
+                : path.resolve(this.projectRoot, configFilePath);
 
+            if (!existsSync(resolvedPath)) {
+                console.warn(`Configuration file not found at ${resolvedPath}. Proceeding with empty configuration.`);
+                this.logConfig = {};
+                return;
+            }
+
+            const configContent = await fsPromises.readFile(resolvedPath, 'utf-8');
+            this.logConfig = JSON.parse(configContent);
+            console.log(`Log configuration loaded from ${resolvedPath}`);
+        } catch (error) {
+            console.error(`Failed to load log configuration from ${configFilePath}:`, error);
+            throw error;
+        }
+    }
     /**
      * Finds the project root by locating the nearest package.json
      * Starts searching from the current working directory upwards
