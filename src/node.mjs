@@ -541,6 +541,9 @@ ${hashConfInfo.message}`);
     //testRejectedIndexes = [];
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
+        // test fork
+        if (data.index > 10 && data.index < 15) { return; }
+
         // { content: parsedMessage, from, byteLength }
         const data = message.content;
         const from = message.from;
@@ -585,7 +588,6 @@ ${hashConfInfo.message}`);
                     break;
                 case 'new_block_finalized':
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
-                    if (data.index > 10 && data.index < 15) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
                         this.testRejectedIndexes.push(data.index);
