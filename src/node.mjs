@@ -585,6 +585,7 @@ ${hashConfInfo.message}`);
                     break;
                 case 'new_block_finalized':
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
+                    if (data.index > 10 && data.index < 15) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
                         this.testRejectedIndexes.push(data.index);
