@@ -1717,7 +1717,7 @@ const serializerFast = {
             const rule = UTXO_RULESNAME_FROM_CODE[ruleCode];
             const address = fastConverter.addressUint8ArrayToBase58(serializedminiUTXO.slice(7, 23)); // 16 bytes
 
-            return { amount, rule, address };
+            return { address, amount, rule };
         },
         /** @param {Uint8Array} serializedminiUTXOs */
         miniUTXOsArray(serializedminiUTXOs) {
