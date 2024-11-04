@@ -3,7 +3,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import ntpClient from 'ntp-client';
-import TimeSynchronizer from '../src/time.mjs';
+import TimeSynchronizer from '../plugins/time.mjs';
 
 describe('TimeSynchronizer', () => {
     let timeSynchronizer;

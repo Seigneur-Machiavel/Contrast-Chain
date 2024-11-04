@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { describe, it, beforeEach, afterEach } from 'mocha';
 import P2PNetwork from '../src/p2p.mjs';
 import { multiaddr } from '@multiformats/multiaddr';
-import ReputationManager from '../src/reputation.mjs';
+import ReputationManager from '../src/peers-reputation.mjs';
 
 class TimeSynchronizer {
     getCurrentTime() {
@@ -10,7 +10,7 @@ class TimeSynchronizer {
     }
 }
 
-describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', function () {
+describe('ReputationManager with P2PNetwork Integration (Updated Tests)', function () {
     this.timeout(20000); // Adjust as needed
 
     let nodeA, nodeB, nodeC;
@@ -23,14 +23,17 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
     };
 
     beforeEach(async () => {
+        // Initialize nodes with options
         nodeA = new P2PNetwork({
             listenAddress: '/ip4/0.0.0.0/tcp/0',
             reputationOptions: {
-                banThreshold: -5,
-                banPermanentScore: -10,
+                banThreshold: -10, // Default ban threshold
+                banPermanentScore: -50, // Adjusted for testing
                 tempBanDuration: 3000, // 3 seconds
                 cleanupInterval: 1000, // 1 second
                 defaultScore: 0,
+                spamMaxActions: 100, // For spam detection
+                spamTimeWindow: 1000, // 1 second
             },
             bootstrapNodes: [],
         }, new TimeSynchronizer());
@@ -38,11 +41,13 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         nodeB = new P2PNetwork({
             listenAddress: '/ip4/0.0.0.0/tcp/0',
             reputationOptions: {
-                banThreshold: -5,
-                banPermanentScore: -10,
-                tempBanDuration: 3000,
-                cleanupInterval: 1000,
+                banThreshold: -10, // Default ban threshold
+                banPermanentScore: -50, // Adjusted for testing
+                tempBanDuration: 3000, // 3 seconds
+                cleanupInterval: 1000, // 1 second
                 defaultScore: 0,
+                spamMaxActions: 100, // For spam detection
+                spamTimeWindow: 1000, // 1 second
             },
             bootstrapNodes: [],
         }, new TimeSynchronizer());
@@ -50,11 +55,13 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         nodeC = new P2PNetwork({
             listenAddress: '/ip4/0.0.0.0/tcp/0',
             reputationOptions: {
-                banThreshold: -5,
-                banPermanentScore: -10,
-                tempBanDuration: 3000,
-                cleanupInterval: 1000,
+                banThreshold: -10, // Default ban threshold
+                banPermanentScore: -50, // Adjusted for testing
+                tempBanDuration: 3000, // 3 seconds
+                cleanupInterval: 1000, // 1 second
                 defaultScore: 0,
+                spamMaxActions: 100, // For spam detection
+                spamTimeWindow: 1000, // 1 second
             },
             bootstrapNodes: [],
         }, new TimeSynchronizer());
@@ -86,19 +93,19 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
 
         console.log(`Associating Peer ID: ${peerCId}, IP: ${ip}, Address: ${address}`);
 
-        // Initial offense with peerId and ip
-        nodeA.reputationManager.applyOffense(
-            { peerId: peerCId, ip },
-            ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS
-        );
-
         // Update associations
         nodeA.reputationManager.updateAssociations({ peerId: peerCId, ip, address });
+
+        // Initial offense with peerId
+        nodeA.reputationManager.applyOffense(
+            { peerId: peerCId },
+            ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS
+        );
 
         // Apply offense with address
         nodeA.reputationManager.applyOffense(
             { address },
-            ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING
+            ReputationManager.OFFENSE_TYPES.INVALID_TRANSACTION_PROPAGATION
         );
 
         await wait(500);
@@ -123,8 +130,6 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
     });
 
     it('should apply offense by only ip and ban correctly', async () => {
-        console.warn('This test WILL FAIL if you have a peer-reputation.json file in the root directory of the project. Please move or delete the file before running the test again.');
-
         const peerCAddr = getFirstAddress(nodeC);
         const addr = multiaddr(peerCAddr);
         const ip = addr.nodeAddress().address; // Extracts IP address
@@ -184,22 +189,25 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
 
         console.log(`Applying severe offenses to Peer ID: ${peerBId}, IP: ${ip}, Address: ${address}`);
 
-        const severeOffenses = [
-            ReputationManager.OFFENSE_TYPES.DOUBLE_SIGNING,
-            ReputationManager.OFFENSE_TYPES.DOS_ATTACK,
-            ReputationManager.OFFENSE_TYPES.CONSENSUS_MANIPULATION,
-            ReputationManager.OFFENSE_TYPES.SYBIL_ATTACK,
-        ];
+        // Update associations
+        nodeA.reputationManager.updateAssociations({ peerId: peerBId, ip, address });
 
-        // Apply severe offenses
-        severeOffenses.forEach(offense => {
+        // Apply MESSAGE_SPAMMING offenses multiple times
+        const offense = ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING; // score decrement 30
+        const numOffenses = 2; // 30 * 2 = 60, which will make score -60
+
+        for (let i = 0; i < numOffenses; i++) {
             nodeA.reputationManager.applyOffense(
                 { peerId: peerBId, ip, address },
                 offense
             );
-        });
+        }
 
         await wait(500);
+
+        // Get the score
+        const score = nodeA.reputationManager.getIdentifierScore(peerBId);
+        expect(score).to.be.below(nodeA.reputationManager.options.banPermanentScore);
 
         // Check if all identifiers are permanently banned
         expect(nodeA.reputationManager.isIdentifierBanned(peerBId)).to.be.true;
@@ -248,7 +256,6 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         }).to.throw(`Unknown offense type: ${unsupportedOffense}`);
     });
 
-
     it('should reset scores upon unban', async () => {
         const peerCId = nodeC.p2pNode.peerId.toString();
 
@@ -272,31 +279,33 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         score = nodeA.reputationManager.getIdentifierScore(peerCId);
         expect(score).to.equal(nodeA.reputationManager.options.defaultScore);
     });
+
     it('should apply positive actions and increase score correctly', async () => {
         const peerCId = nodeC.p2pNode.peerId.toString();
-        
+
         console.log(`Applying positive actions to Peer ID: ${peerCId}`);
-        
+
         // Apply multiple positive actions
         nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.VALID_BLOCK_SUBMISSION);
-        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.ACTIVE_PARTICIPATION);
-        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.RELIABLE_NODE);
+        nodeA.reputationManager.applyPositive({ peerId: peerCId }, ReputationManager.POSITIVE_ACTIONS.NO_OFFENSES);
 
         await wait(500);
 
         // Check if the score has increased correctly
         const score = nodeA.reputationManager.getIdentifierScore(peerCId);
-        expect(score).to.equal(22); // 10 + 5 + 7 = 22 (from positiveScoreMap)
+        const expectedScore = nodeA.reputationManager.positiveScoreMap[ReputationManager.POSITIVE_ACTIONS.VALID_BLOCK_SUBMISSION] +
+            nodeA.reputationManager.positiveScoreMap[ReputationManager.POSITIVE_ACTIONS.NO_OFFENSES];
+        expect(score).to.equal(expectedScore);
     });
 
     it('should detect spamming and apply MESSAGE_SPAMMING offense', async () => {
         const peerCId = nodeC.p2pNode.peerId.toString();
-        
+
         console.log(`Simulating spam actions for Peer ID: ${peerCId}`);
 
         // Simulate actions exceeding the spam threshold
         for (let i = 0; i <= nodeA.reputationManager.options.spamMaxActions; i++) {
-            nodeA.reputationManager.recordAction({ peerId: peerCId });
+            nodeA.reputationManager.recordAction({ peerId: peerCId }, 'someAction');
         }
 
         await wait(500);
@@ -309,5 +318,4 @@ describe('ReputationManager with P2PNetwork Integration (Multiple Nodes)', funct
         const expectedScore = nodeA.reputationManager.options.defaultScore - nodeA.reputationManager.offenseScoreMap[ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING];
         expect(score).to.equal(expectedScore);
     });
-    
 });

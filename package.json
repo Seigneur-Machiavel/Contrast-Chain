@@ -5,7 +5,8 @@
   "main": "",
   "scripts": {
     "test": "mocha --experimental-modules --timeout 30000000 --parallel",
-    "test_local": "node ./test_local/test-NodeJS-FrontES6.mjs"
+    "test_local": "node ./test_local/test-NodeJS-FrontES6.mjs",
+    "logscan" : "npx mocha test/test-logger-config.mjs"
   },
   "keywords": [],
   "author": "Doc. Pink Parrot",

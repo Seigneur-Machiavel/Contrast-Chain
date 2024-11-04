@@ -45,7 +45,7 @@ class ReputationManager extends EventEmitter {
         this.offenseScoreMap = {
             // Major Faults
             [ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION]: 15,
-            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 15,
+            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 30,
             [ReputationManager.OFFENSE_TYPES.LOW_LEGITIMACY_BLOCK_SUBMISSION]: 7,
             [ReputationManager.OFFENSE_TYPES.INVALID_TRANSACTION_PROPAGATION]: 8,
             // Minor Faults

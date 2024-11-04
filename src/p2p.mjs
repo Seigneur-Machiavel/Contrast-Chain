@@ -63,7 +63,8 @@ class P2PNetwork extends EventEmitter {
 
     static ALLOWED_TOPICS = new Set(['new_transaction', 'new_block_candidate', 'new_block_finalized']);
 
-    async start(uniqueHash) {
+    async start(_uniqueHash) {
+        let uniqueHash = _uniqueHash ? _uniqueHash : utils.mining.generateRandomNonce(32).Hex;
         const hashUint8Array = this.toUint8Array(uniqueHash);
         const privateKeyObject = await generateKeyPairFromSeed("Ed25519", hashUint8Array);
         try {
