@@ -214,7 +214,11 @@ function displayNodeInfo(data) {
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId.replace('12D3KooW', '') : 'No Peer ID';
     eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
-    eHTML.listenAddress.textContent = data.listenAddress ? data.listenAddress : 'No Listen Address';
+    if (Array.isArray(data.listenAddress) && data.listenAddress.length > 0) {
+        eHTML.listenAddress.innerHTML = data.listenAddress.map(address => `<li>${address}</li>`).join('');
+    } else {
+        eHTML.listenAddress.innerHTML = '<li>No Listen Address</li>';
+    }
     eHTML.lastLegitimacy.textContent = data.lastLegitimacy;
     if (data.peers) {
         renderPeers(data.peers);
