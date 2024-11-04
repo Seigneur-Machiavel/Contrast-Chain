@@ -243,11 +243,18 @@ export class Node {
     }
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
         console.warn(`Last known snapshot index: ${snapshotIndex}`);
-        await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
-        this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
         this.blockchain.currentHeight = snapshotIndex;
         this.blockCandidate = null;
+        await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
         console.warn(`Snapshot loaded: ${snapshotIndex}`);
+        if (snapshotIndex === 0) { 
+            await this.blockchain.eraseEntireDatabase();
+            // place snapshot to trash folder, we can restaure it if needed
+            if (eraseHigher) { this.snapshotSystemDoc.eraseSnapshotsHigherThan(snapshotIndex - 1); }
+            return;
+        }
+
+        this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
         if (!eraseHigher) { return; }
 
         // place snapshot to trash folder, we can restaure it if needed
