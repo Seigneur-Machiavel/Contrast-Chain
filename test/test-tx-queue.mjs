@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { TransactionPriorityQueue } from '../src/tx-queue.mjs';
+import { TransactionPriorityQueue } from '../src/memPool-tx-queue.mjs';
 
 describe('TransactionPriorityQueue', () => {
     let queue;
