@@ -2036,12 +2036,12 @@ const mining = {
         const periodInterval = lastBlock.timestamp - olderBlock.posTimestamp;
         return periodInterval / MINING_PARAMS.blocksBeforeAdjustment;
     },
+    /** @param {number} length - Nonce length in bytes */
     generateRandomNonce: (length = MINING_PARAMS.nonceLength) => {
         const Uint8 = new Uint8Array(length);
         crypto.getRandomValues(Uint8);
 
         const Hex = Array.from(Uint8).map(b => b.toString(16).padStart(2, '0')).join('');
-
         return { Uint8, Hex };
     },
     /**

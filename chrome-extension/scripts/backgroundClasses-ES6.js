@@ -152,9 +152,9 @@ Bits: ${bitsArray.join('')}`);
     /** @param {string} nonceHex @param {string} address @param {number} amount */
     static async createCoinbase(nonceHex, address, amount) {
         const coinbaseOutput = {
+            address,
             amount,
-            rule: 'sig',
-            address
+            rule: 'sig'
         };
 
         const inputs = [nonceHex];
@@ -168,10 +168,7 @@ Bits: ${bitsArray.join('')}`);
             outputs
         };
         
-        const inputsStr = JSON.stringify(transaction.inputs);
-        const outputsStr = JSON.stringify(transaction.outputs);
-        const versionStr = JSON.stringify(transaction.version);
-        transaction.id = Pow.hashId(`${inputsStr}${outputsStr}${versionStr}`);
+        transaction.id = Pow.hashId(transaction);
 
         return transaction;
     }
@@ -219,13 +216,20 @@ Bits: ${bitsArray.join('')}`);
 
         return await Pow.SHA256(signatureStr);
     }
-    static hashId(input = 'toto', hashHexLength = 8) {
-        const hashNumber = xxHash32(input);
+    /** @param {Transaction} transaction @param {number} minLength */
+    static hashId(transaction, minLength = 8) {
+        const inputsStr = JSON.stringify(transaction.inputs);
+        const outputsStr = JSON.stringify(transaction.outputs);
+        const versionStr = JSON.stringify(transaction.version);
+        const idStr = `${inputsStr}${outputsStr}${versionStr}`;
+        //console.log(`idStr: ${idStr}`);
+
+        const hashNumber = xxHash32(idStr);
         const hashHex = hashNumber.toString(16);
-        const padding = '0'.repeat(hashHexLength - hashHex.length);
+        const padding = '0'.repeat(minLength - hashHex.length);
         const finalHashHex = `${padding}${hashHex}`;
 
-        return finalHashHex.slice(0, hashHexLength);
+        return finalHashHex.slice(0, minLength);
     }
     static async SHA256(message) {
         const messageUint8 = Pow.stringToUint8Array(message);
@@ -274,7 +278,7 @@ Bits: ${bitsArray.join('')}`);
 
         // uint8Array to bitsArray (0 or 1)
         //const bitsArray = Pow.uint8ArrayToBitsArray(hash);
-        const bitsArray = Pow.hexToBitsArray(hash);
+        const bitsArray = Pow.hexToBitsArray(hashHex);
 
         return { encoded, hash, hashHex, bitsArray };
     }
@@ -361,9 +365,11 @@ Bits: ${bitsArray.join('')}`);
         const condition2 = this.binaryStringSupOrEqual(next5Bits, adjust);
         if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust}  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
-        if (result.message === 'na') { result.conform = true; result.message = 'lucky'; }
-
-        console.info(`lucky=> hash starts with ${zeros} zeros and ${next5Bits} >= ${adjust}  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}`);
+        if (result.message === 'na') {
+            console.info(`lucky=> hash starts with ${zeros} zeros and ${next5Bits} >= ${adjust}  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}`);
+            result.conform = true;
+            result.message = 'lucky';
+        }
 
         //console.info(`[MINER] POW VERIFICATION - HashBitsAsString: ${HashBitsAsString}`);
         //console.info(`[MINER] POW VERIFICATION - condition1: ${condition1}, condition2: ${condition2}`);

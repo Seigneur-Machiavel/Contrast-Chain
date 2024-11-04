@@ -18,8 +18,8 @@ export class TxValidation {
      * - control the transaction hash (SHA256) 
      * @param {Transaction} transaction */
     static async controlTransactionHash(transaction) {
-        const expectedID = await Transaction_Builder.hashId(transaction);
-        if (expectedID !== transaction.id) { throw new Error('Invalid transaction hash'); }
+        const expectedID = Transaction_Builder.hashId(transaction);
+        if (expectedID !== transaction.id) { throw new Error(`Invalid transaction hash: ${transaction.id} !== ${expectedID}`); }
     }
 
     /** ==> First validation, low computation cost.
@@ -32,7 +32,7 @@ export class TxValidation {
      */
     static async isConformTransaction(involvedUTXOs, transaction, specialTx, checkSpendableUtxos = true, nodeVersion) {
         if (!transaction) { throw new Error(`missing transaction: ${transaction}`); }
-        if (typeof transaction.id !== 'string') { throw new Error('Invalid transaction ID'); }
+        if (typeof transaction.id !== 'string') { throw new Error('Invalid transaction ID !== string'); }
         if (typeof transaction.version !== 'number') { throw new Error('Invalid version !== number'); }
         if (transaction.version <= 0) { throw new Error('Invalid version value: <= 0'); }
         if (transaction.version != nodeVersion) { throw new Error(`Invalid version value: ${transaction.version} !== ${nodeVersion}`); }

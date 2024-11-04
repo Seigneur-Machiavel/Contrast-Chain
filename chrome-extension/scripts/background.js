@@ -10,7 +10,7 @@ import { cryptoLight } from './cryptoLight.js';
 
 cryptoLight.argon2 = argon2;
 
-let pow = new Pow(argon2);
+const pow = new Pow(argon2);
 const sanitizer = new Sanitizer();
 const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https

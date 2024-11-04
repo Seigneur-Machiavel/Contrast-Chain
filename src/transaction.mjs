@@ -59,9 +59,9 @@ export class TxIO_Builder {
  **/
 export const TxOutput = (amount, rule, address) => {
     return {
+        address,
         amount,
-        rule,
-        address
+        rule
     };
 }
 /** @typedef {string} TxInput - the path to the UTXO blockHeight:txID:vout */
@@ -294,7 +294,7 @@ export class Transaction_Builder {
         const inputs = utxos.map(utxo => utxo.anchor);
 
         const transaction = Transaction(inputs, outputs);
-        transaction.id = await Transaction_Builder.hashId(transaction);
+        transaction.id = Transaction_Builder.hashId(transaction);
 
         return transaction;
     }
@@ -374,8 +374,10 @@ export class Transaction_Builder {
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
+        const idStr = `${inputsStr}${outputsStr}${versionStr}`;
+        //console.log(`idStr: ${idStr}`);
 
-        const hashHex = HashFunctions.xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
+        const hashHex = HashFunctions.xxHash32(idStr);
         return hashHex.slice(0, hashHexLength);
     }
     /** @param {Transaction} transaction */
