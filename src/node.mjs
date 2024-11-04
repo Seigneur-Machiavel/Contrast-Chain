@@ -542,10 +542,10 @@ ${hashConfInfo.message}`);
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // test fork
-        if (data.index > 10 && data.index < 15) { return; }
 
         // { content: parsedMessage, from, byteLength }
         const data = message.content;
+
         const from = message.from;
         const byteLength = message.byteLength;
         //console.log(`[P2P-HANDLER] ${topic} -> ${from} | ${byteLength} bytes`);
@@ -561,11 +561,12 @@ ${hashConfInfo.message}`);
                     });
                     break;
                 case 'new_block_candidate':
+                    if (data.index > 10 && data.index < 15) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
                         console.info(`[P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
-                        return; 
+                        return;
                     }
                     if (this.blockCandidate && this.blockCandidate.index > data.index) {
                         console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> skip`);
@@ -583,17 +584,18 @@ ${hashConfInfo.message}`);
                         console.info(`[P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
                         return;
                     }
-                    
+
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
+                    if (data.index > 10 && data.index < 15) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
-                        this.testRejectedIndexes.push(data.index);
-                        console.warn(`[TEST] rejecting block #${data.index} -> rejected: ${this.testRejectedIndexes}`);
-                        return;
-                    }*/
+                this.testRejectedIndexes.push(data.index);
+                console.warn(`[TEST] rejecting block #${data.index} -> rejected: ${this.testRejectedIndexes}`);
+                return;
+            }*/
                     if (!this.roles.includes('validator')) { break; }
                     if (this.reorganizator.isFinalizedBlockInCache(message.content)) {
                         console.warn(`[P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
