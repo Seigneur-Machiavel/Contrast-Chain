@@ -101,7 +101,7 @@ const minerVars = {
 
 	sendUpdateHashEvery: 10,
 	hashCount: 0,
-	testMiningSpeedPenality: 10000 // TODO: remove this after testing
+	testMiningSpeedPenality: 0 // TODO: set to 0 after testing
 };
 parentPort.on('message', async (task) => {
 	//console.log('miner-worker-nodejs', task);
