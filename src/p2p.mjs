@@ -47,7 +47,7 @@ class P2PNetwork extends EventEmitter {
 
         // Event listener for when an identifier is banned
         this.reputationManager.on('identifierBanned', ({ identifier }) => {
-            this.disconnectPeer(identifier);
+            //this.disconnectPeer(identifier);
             this.logger.info('luid-f7a23b4c Peer banned and disconnected', { identifier });
         });
 
@@ -156,8 +156,8 @@ class P2PNetwork extends EventEmitter {
 
         if (isBanned) {
             this.logger.warn('luid-33c7015e Peer is banned, closing connection', { peerId });
-            this.closeConnection(peerId);
-            return;
+            //this.closeConnection(peerId);
+            //return;
         }
         // Retrieve multiaddrs of the connected peer
         const connections = this.p2pNode.getConnections(peerId);
