@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
-
+import localStorage_v1 from '../storage/local-storage-management.mjs';
 /**
  * @typedef {Object} PeerInfo
  * @property {string} [peerId] - The unique identifier of the peer.
@@ -15,7 +15,7 @@ class ReputationManager extends EventEmitter {
         const defaultOptions = {
             banThreshold: -10, // Default ban threshold
             banPermanentScore: -100,
-            scoreFilePath: path.resolve('peer-reputation.json'),
+            scoreFilePath: 'peer-reputation',
             defaultScore: 0,
             tempBanDuration: 24 * 60 * 60 * 1000, // 24 hours
             cleanupInterval: 60 * 60 * 1000, // 1 hour
@@ -120,11 +120,10 @@ class ReputationManager extends EventEmitter {
      * Load scores and bans from disk when the node starts.
      */
     loadScoresFromDisk() {
-        if (fs.existsSync(this.options.scoreFilePath)) {
+        const loaded = localStorage_v1.loadJSON(this.options.scoreFilePath);
+        if (loaded) {
             try {
-                const data = JSON.parse(
-                    fs.readFileSync(this.options.scoreFilePath, 'utf8')
-                );
+                const data = loaded;
                 this.identifierScores = new Map(
                     data.identifierScores.map(([key, value]) => [
                         String(key),
@@ -200,16 +199,7 @@ class ReputationManager extends EventEmitter {
                 uniqueAssociations.entries()
             ).map(([key, set]) => [key, Array.from(set)]),
         };
-        fs.writeFile(
-            this.options.scoreFilePath,
-            JSON.stringify(data, null, 2),
-            (err) => {
-                if (err) {
-                    console.error('Error saving reputation scores:', err);
-                } else {
-                }
-            }
-        );
+        localStorage_v1.saveJSON(this.options.scoreFilePath, data);
     }
 
     /**
@@ -517,7 +507,7 @@ class ReputationManager extends EventEmitter {
         clearInterval(this.associationCleanupInterval);
         clearInterval(this.spamCleanupInterval);
         clearInterval(this.scoreSaveInterval); // Clear the save interval
-        await this.saveScoresToDisk();
+        //await this.saveScoresToDisk();
         this.emit('shutdown');
     }
 

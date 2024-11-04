@@ -96,9 +96,32 @@ class Logger {
      * Initializes the logger by synchronizing configurations.
      */
     async initializeLogger() {
-        await this.syncConfig('config/defaultLogConfig.json');
+        await this.syncConfig('storage/logConfig.json');
     }
+    /**
+     * Initializes the logger by loading configuration from a specified JSON file.
+     * @param {string} configFilePath - Path to the configuration file.
+     */
+    async initializeLoggerFromFile(configFilePath = 'storage/logConfig.json') {
+        try {
+            const resolvedPath = path.isAbsolute(configFilePath)
+                ? configFilePath
+                : path.resolve(this.projectRoot, configFilePath);
 
+            if (!existsSync(resolvedPath)) {
+                console.warn(`Configuration file not found at ${resolvedPath}. Proceeding with empty configuration.`);
+                this.logConfig = {};
+                return;
+            }
+
+            const configContent = await fsPromises.readFile(resolvedPath, 'utf-8');
+            this.logConfig = JSON.parse(configContent);
+            console.log(`Log configuration loaded from ${resolvedPath}`);
+        } catch (error) {
+            console.error(`Failed to load log configuration from ${configFilePath}:`, error);
+            throw error;
+        }
+    }
     /**
      * Finds the project root by locating the nearest package.json
      * Starts searching from the current working directory upwards
@@ -190,9 +213,8 @@ class Logger {
       * @returns {string} - Formatted colored log string
       */
     formatConsoleLog(type, message) {
-        const timestamp = new Date().toISOString();
         const color = this.getColorForType(type);
-        return `${color}[${timestamp}] [${type.toUpperCase()}] ${message}${colors.reset}`;
+        return `${color}[${type.toUpperCase()}]${colors.reset} ${message}`;
     }
 
     /**
@@ -220,7 +242,7 @@ class Logger {
             console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
         }
     }
-
+        
     /**
      * Logs data based on the type and configuration
      * @param {string} type - The type of log (e.g., info, error)
@@ -257,15 +279,16 @@ class Logger {
                 consoleMessage += ' ' + this.serializeArgs(args, true);  // With colors for console
                 fileMessage += ' ' + this.serializeArgs(args, false);    // Without colors for file
             }
-
+            let callerLine = '';
+            if (this.logConfig[id] && this.logConfig[id].file && this.logConfig[id].line) {
+                callerLine = ` (${this.logConfig[id].file}:${this.logConfig[id].line})`;
+            }
             // Log to console with colors
             if (typeof console[type] === 'function') {
-                const color = this.getColorForType(type);
-                const timestamp = new Date().toISOString();
-                const coloredLogMessage = `${color}[${timestamp}] [${type.toUpperCase()}] ${consoleMessage}${colors.reset}`;
-                console[type](coloredLogMessage);
+                const formattedMessage = this.formatConsoleLog(type, consoleMessage);
+                console[type](formattedMessage + callerLine);
             } else {
-                console.log(consoleMessage);
+                console.log(consoleMessage + callerLine);
             }
 
             // Write to file without colors
@@ -284,7 +307,7 @@ class Logger {
                 return util.inspect(arg, {
                     depth: null,
                     colors: withColors,
-                    compact: false
+                    compact: true
                 });
             }
             return String(arg);
