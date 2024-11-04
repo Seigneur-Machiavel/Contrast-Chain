@@ -109,29 +109,39 @@ export default class SnapshotSystemDoc {
 		const logPerf = true;
 		const heightPath = path.join(this.__snapshotPath, `${height}`);
 
-		performance.mark('startLoadSpectrum'); // LOAD VSS SPECTRUM
-		const serializedSpectrum = storage.loadBinary('vss', heightPath);
-		vss.spectrum = utils.serializer.rawData.fromBinary_v1(serializedSpectrum);
-		performance.mark('endLoadSpectrum');
-
-		performance.mark('startLoadMemPool'); // LOAD MEMPOOL (KNOWN PUBKEYS-ADDRESSES)
-		const serializedPKAddresses = storage.loadBinary('memPool', heightPath);
-		memPool.knownPubKeysAddresses = utils.serializerFast.deserialize.pubkeyAddressesObj(serializedPKAddresses);
-		performance.mark('endLoadMemPool');
-
-		performance.mark('startLoadUtxoCache'); // LOAD UTXO CACHE
-		const utxoCacheDataSerialized = storage.loadBinary('utxoCache', heightPath);
-		utxoCache.totalOfBalances = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(0, 6));
-		utxoCache.totalSupply = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(6, 12));
-		//const deserializationStart = performance.now();
-		utxoCache.unspentMiniUtxos = utils.serializerFast.deserialize.miniUTXOsObj(utxoCacheDataSerialized.subarray(12));
-		//const deserializationEnd = performance.now();
-		//if (logPerf) { console.log(`Deserialization time: ${deserializationEnd - deserializationStart}ms`); }
-		performance.mark('endLoadUtxoCache');
-
-		performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
-		utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
-		performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
+		if (height > 0) {
+			performance.mark('startLoadSpectrum'); // LOAD VSS SPECTRUM
+			const serializedSpectrum = storage.loadBinary('vss', heightPath);
+			vss.spectrum = utils.serializer.rawData.fromBinary_v1(serializedSpectrum);
+			performance.mark('endLoadSpectrum');
+	
+			performance.mark('startLoadMemPool'); // LOAD MEMPOOL (KNOWN PUBKEYS-ADDRESSES)
+			const serializedPKAddresses = storage.loadBinary('memPool', heightPath);
+			memPool.knownPubKeysAddresses = utils.serializerFast.deserialize.pubkeyAddressesObj(serializedPKAddresses);
+			performance.mark('endLoadMemPool');
+	
+			performance.mark('startLoadUtxoCache'); // LOAD UTXO CACHE
+			const utxoCacheDataSerialized = storage.loadBinary('utxoCache', heightPath);
+			utxoCache.totalOfBalances = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(0, 6));
+			utxoCache.totalSupply = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(6, 12));
+			//const deserializationStart = performance.now();
+			utxoCache.unspentMiniUtxos = utils.serializerFast.deserialize.miniUTXOsObj(utxoCacheDataSerialized.subarray(12));
+			//const deserializationEnd = performance.now();
+			//if (logPerf) { console.log(`Deserialization time: ${deserializationEnd - deserializationStart}ms`); }
+			performance.mark('endLoadUtxoCache');
+	
+			performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
+			utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
+			performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
+		} else {
+			// just clear the utxoCache and vss
+			vss.spectrum = {};
+			memPool.knownPubKeysAddresses = {};
+			
+			utxoCache.totalOfBalances = 0;
+			utxoCache.totalSupply = 0;
+			utxoCache.unspentMiniUtxos = {};
+		}
 
 		this.loadedSnapshotHeight = height;
 
