@@ -115,9 +115,13 @@ export class SyncHandler {
     }
 
     async syncWithPeers(peerIds = [], unsubscribe = false) {
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+        await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+
+
         return true
         this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
-        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+ 
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
     
