@@ -133,6 +133,14 @@ export default class SnapshotSystemDoc {
 			performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
 			utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
 			performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
+			if (logPerf) {
+				performance.mark('rollBackTo end');
+				performance.measure('loadSpectrum', 'startLoadSpectrum', 'endLoadSpectrum');
+				performance.measure('loadMemPool', 'startLoadMemPool', 'endLoadMemPool');
+				performance.measure('loadUtxoCache', 'startLoadUtxoCache', 'endLoadUtxoCache');
+				performance.measure('buildAddressesAnchorsFromUnspentMiniUtxos', 'buildAddressesAnchorsFromUnspentMiniUtxos', 'endBuildAddressesAnchorsFromUnspentMiniUtxos');
+				performance.measure('totalRollBack', 'startLoadSpectrum', 'rollBackTo end');
+			}
 		} else {
 			// just clear the utxoCache and vss
 			vss.spectrum = {};
@@ -145,14 +153,6 @@ export default class SnapshotSystemDoc {
 
 		this.loadedSnapshotHeight = height;
 
-		if (logPerf) {
-			performance.mark('rollBackTo end');
-			performance.measure('loadSpectrum', 'startLoadSpectrum', 'endLoadSpectrum');
-			performance.measure('loadMemPool', 'startLoadMemPool', 'endLoadMemPool');
-			performance.measure('loadUtxoCache', 'startLoadUtxoCache', 'endLoadUtxoCache');
-			performance.measure('buildAddressesAnchorsFromUnspentMiniUtxos', 'buildAddressesAnchorsFromUnspentMiniUtxos', 'endBuildAddressesAnchorsFromUnspentMiniUtxos');
-			performance.measure('totalRollBack', 'startLoadSpectrum', 'rollBackTo end');
-		}
 
 		return true;
 	}
