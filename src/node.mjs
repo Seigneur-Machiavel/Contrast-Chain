@@ -588,7 +588,7 @@ ${hashConfInfo.message}`);
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
-                    if (this.blockCandidate.index < 18 && data.index === 10) { return; }
+                    if (this.blockCandidate.index < 12 && data.index === 10) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
