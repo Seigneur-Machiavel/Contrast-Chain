@@ -149,6 +149,7 @@ export default class SnapshotSystemDoc {
 			utxoCache.totalOfBalances = 0;
 			utxoCache.totalSupply = 0;
 			utxoCache.unspentMiniUtxos = {};
+			await this.blockchain.eraseEntireDatabase();
 		}
 
 		this.loadedSnapshotHeight = height;
