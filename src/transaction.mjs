@@ -375,7 +375,7 @@ export class Transaction_Builder {
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
         const idStr = `${inputsStr}${outputsStr}${versionStr}`;
-        console.log(`idStr: ${idStr}`);
+        //console.log(`idStr: ${idStr}`);
 
         const hashHex = HashFunctions.xxHash32(idStr);
         return hashHex.slice(0, hashHexLength);

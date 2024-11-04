@@ -39,7 +39,7 @@ class Pow {
         this.bestCandidate = null;
         this.#miningLoop();
 
-        this.targetBlockTime = 20_000, // 2 min
+        this.targetBlockTime = 120_000, // 2 min
         this.nonceLength = 4,
         this.blocksBeforeAdjustment = 30, // ~120sec * 30 = ~3600 sec = ~1 hour
         this.thresholdPerDiffIncrement = 3.2, // meaning 3.4% threshold for 1 diff point
