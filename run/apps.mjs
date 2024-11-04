@@ -658,7 +658,7 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { transaction: data.transaction, txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
                     break;
                 case 'broadcast_finalized_block':
-                    console.log(`--- Broadcasting finalized block from observer ---`);
+                    console.log(`--- Broadcasting finalized block #${data.index} from observer ---`);
                     if (this.node.blockCandidate.index !== data.index) {
                         console.error(`[OBSERVER] Block index mismatch: ${this.node.blockCandidate.index} !== ${data.index}`);
                         return;

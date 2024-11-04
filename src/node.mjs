@@ -480,16 +480,19 @@ ${hashConfInfo.message}`);
 
         this.blockCandidate = await this.#createBlockCandidate();
         if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
-        try {
-            // delay before broadcasting the new block candidate to ensure anyone digested the new block
-            const delay = Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart));
-            await new Promise(resolve => setTimeout(resolve, delay));
-            await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
-            if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
-        } catch (error) {
-            this.requestRestart('broadcastNewCandidate - error');
-            console.error(`Failed to broadcast new block candidate: ${error}`);
-        }
+
+        const delay = Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart));
+        setTimeout(async () => {
+            try {
+                // delay before broadcasting the new block candidate to ensure anyone digested the new block
+                await new Promise(resolve => setTimeout(resolve, delay));
+                await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
+                if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
+            } catch (error) {
+                this.requestRestart('broadcastNewCandidate - error');
+                console.error(`Failed to broadcast new block candidate: ${error}`);
+            }
+        }, delay);
 
         return true;
     }

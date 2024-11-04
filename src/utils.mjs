@@ -2093,11 +2093,11 @@ const mining = {
         const result = { conform: false, message: 'na', difficulty, timeDiffAdjustment, legitimacy, finalDifficulty, zeros, adjust };
 
         const condition1 = conditionnals.binaryStringStartsWithZeros(HashBitsAsString, zeros);
-        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros` };
+        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
         const next5Bits = HashBitsAsString.substring(zeros, zeros + 5);
         const condition2 = conditionnals.binaryStringSupOrEqual(next5Bits, adjust);
-        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust}` };
+        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust} | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
         if (result.message === 'na') { result.conform = true; result.message = 'lucky'; }
         return result;
