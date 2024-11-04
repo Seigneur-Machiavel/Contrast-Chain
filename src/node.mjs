@@ -485,6 +485,7 @@ ${hashConfInfo.message}`);
         setTimeout(async () => {
             try {
                 // delay before broadcasting the new block candidate to ensure anyone digested the new block
+                if (!this.blockCandidate) { throw new Error('No block candidate to broadcast'); }
                 await new Promise(resolve => setTimeout(resolve, delay));
                 await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
                 if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
