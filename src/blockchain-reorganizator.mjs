@@ -87,13 +87,13 @@ export class Reorganizator {
         // the most legitimate chain is the one with the lowest mining final difficulty
         // mining final difficulty affected by: posTimestamp
         const snapshotsHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
-        if (snapshotsHeights.length < 2) { return legitimateReorg; }
+        if (snapshotsHeights.length < 1) { return legitimateReorg; }
 
         const usableSnapshots = {
             lastBlock: null,
             lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
             preLastBlock: null,
-            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
+            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2] || 0
         }
         usableSnapshots.lastBlock = await this.node.blockchain.getBlockByHeight(usableSnapshots.lastHeight);
         usableSnapshots.preLastBlock = await this.node.blockchain.getBlockByHeight(usableSnapshots.preLastHeight);
