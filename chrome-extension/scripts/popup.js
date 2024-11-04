@@ -87,7 +87,9 @@ class AddressExhaustiveData {
         return highestHeight;
     }
     highestKnownTxsHeight() {
-        return this.addressTxsReferences.length === 0 ? 0 : this.addressTxsReferences[this.addressTxsReferences.length - 1];
+        if (this.addressTxsReferences.length === 0) { return 0; }
+        const highestTxRef = this.addressTxsReferences[this.addressTxsReferences.length - 1];
+        return highestTxRef.split(':')[0];
     }
 }
 cryptoLight.useArgon2Worker = true; console.log('Argon2 worker enabled!');

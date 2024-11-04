@@ -46,7 +46,7 @@ export class OpStack {
             const lastDigestOrSyncTime = Math.max(this.healthInfo.lastDigestTime, this.healthInfo.lastSyncTime);
             const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
-            if (timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
+            if (!this.syncRequested && timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
                 this.pushFirst('syncWithKnownPeers', null);
                 console.warn(`[OpStack] SyncWithKnownPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                 continue;
@@ -139,6 +139,7 @@ export class OpStack {
                             if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
                         }
                         if (error.message.includes('!ban!')) {
+                            console.info(`[OpStack] Finalized block #${content.index} has been banned, reason: ${error.message}`);
                             this.node.reorganizator.banFinalizedBlock(content); // avoid using the block in future reorgs
                             if (task.data.from === undefined) { return }
                             this.node.p2pNetwork.reputationManager.applyOffense(

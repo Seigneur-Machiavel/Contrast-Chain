@@ -114,6 +114,7 @@ export class DashboardWsApp {
 
         this.readableNow = () => { return `${new Date().toLocaleTimeString()}:${new Date().getMilliseconds()}` };
         if (autoInit) this.init();
+        this.#nodeRestartCheckLoop();
     }
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
@@ -201,12 +202,7 @@ export class DashboardWsApp {
         }
 
         this.#injectNodeSettings(this.node.account.address);
-
-        const callbacksModes = []; // we will add the modes related to the callbacks we want to init
-        if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
-        if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
-        this.callBackManager = new CallBackManager(this.node);
-        this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
+        this.#injectCallbacks();
     }
     async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
         const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
@@ -271,49 +267,35 @@ export class DashboardWsApp {
             node.miner.nbOfWorkers = associatedMinerThreads;
         }
     }
-
-    #hardResetAndClose() {
-        exec('git reset --hard HEAD', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Git reset error: ${error.message}`);
-                console.error(`stderr: ${stderr}`);
-                res.status(500).send('Git reset failed');
-                return;
-            }
-            console.log(`Git reset output: ${stdout}`);
-
-            console.log('Exiting process to allow PM2 to restart the application');
-            process.exit(0);
-        });
+    #injectCallbacks() {
+        const callbacksModes = []; // we will add the modes related to the callbacks we want to init
+        if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
+        if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
+        this.callBackManager = new CallBackManager(this.node);
+        this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
     }
+    async #nodeRestartCheckLoop() {
+        let restartCounter = 0;
+        while (true) {
+            if (this.factory.restartCounter > restartCounter) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.callBackManager = new CallBackManager(this.node);
+                this.#injectCallbacks();
 
-    #updateAndClose() {
-        exec('git pull', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Git pull error: ${error.message}`);
-                console.error(`stderr: ${stderr}`);
-                res.status(500).send('Git pull failed');
-                return;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.info(`[DASHBOARD] Node restarted, counter: ${restartCounter}, closing connections`);
+                this.#closeAllConnections();
+                restartCounter = this.factory.restartCounter;
             }
-            console.log(`Git pull output: ${stdout}`);
-
-            console.log('Exiting process to allow PM2 to restart the application');
-            process.exit(0);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }   
+    #closeAllConnections() {
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+                client.close(1001, 'Server is shutting down');
+            }
         });
-    }
-
-    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
-        console.log('Modifying account and restarting node id:', nodeId);
-        const wallet = new contrast.Wallet(newPrivateKey, false);
-        const restored = await wallet.restore();
-        if (!restored) { console.error('Failed to restore wallet.'); return; }
-        wallet.loadAccounts();
-        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
-        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
-        wallet.saveAccounts();
-
-        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
-
     }
 
     /** @param {Buffer} message @param {WebSocket} ws */
@@ -440,6 +422,46 @@ export class DashboardWsApp {
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
     }
+    #hardResetAndClose() {
+        exec('git reset --hard HEAD', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git reset error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git reset failed');
+                return;
+            }
+            console.log(`Git reset output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+    #updateAndClose() {
+        exec('git pull', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git pull error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git pull failed');
+                return;
+            }
+            console.log(`Git pull output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
+        console.log('Modifying account and restarting node id:', nodeId);
+        const wallet = new contrast.Wallet(newPrivateKey, false);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
+    }
 }
 
 export class ObserverWsApp {
@@ -459,6 +481,7 @@ export class ObserverWsApp {
 
         this.readableNow = () => { return `${new Date().toLocaleTimeString()}:${new Date().getMilliseconds()}` };
         this.init();
+        this.#nodeRestartCheckLoop();
     }
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
@@ -517,6 +540,29 @@ export class ObserverWsApp {
 
         const time = this.node.timeSynchronizer.getCurrentTime();
         ws.send(JSON.stringify({ type: 'current_time', data: time }));
+    }
+    async #nodeRestartCheckLoop() {
+        let restartCounter = 0;
+        while (true) {
+            if (this.factory.restartCounter > restartCounter) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.callBackManager = new CallBackManager(this.node);
+                this.callBackManager.initAllCallbacksOfMode('observer', this.wss.clients);
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.info(`[DASHBOARD] Node restarted, counter: ${restartCounter}, closing connections`);
+                this.#closeAllConnections();
+                restartCounter = this.factory.restartCounter;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }   
+    #closeAllConnections() {
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+                client.close(1001, 'Server is shutting down');
+            }
+        });
     }
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {

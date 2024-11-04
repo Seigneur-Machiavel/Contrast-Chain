@@ -27,7 +27,7 @@ export class Reorganizator {
         if (this.finalizedBlocksCache[index][hash]) { return; }
 
         this.finalizedBlocksCache[index][hash] = finalizedBlock;
-        console.info(`[REORGANIZATOR] Stored finalized block #${index} | hash:${hash.slice(0, 10)}...`);
+        console.info(`[REORGANIZATOR] Stored finalized block #${index} | hash: ${hash.slice(0, 10)}...`);
     }
     /** @param {BlockData} finalizedBlock */
     isFinalizedBlockInCache(finalizedBlock) {

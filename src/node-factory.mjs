@@ -108,13 +108,13 @@ export class NodeFactory {
             nodeSettings.minerAddress
         );
 
-        this.restartCounter++;
         await newNode.start(startFromScratch);
         newNode.validatorRewardAddress = nodeSettings.validatorRewardAddress;
         console.log(`\nNode ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
         console.info(`Restart counter: ${this.restartCounter}\n`);
         
         this.nodes.set(nodeId, newNode);
+        this.restartCounter++;
     }
     getFirstNode() {
         return this.nodes.values().next().value;

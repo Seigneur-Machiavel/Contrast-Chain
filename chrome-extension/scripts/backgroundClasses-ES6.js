@@ -28,8 +28,9 @@ class Sanitizer {
 class Pow {
     constructor(argon2) {
         this.timeOffset = 0;
+        this.anticipationOffset = 2000;
         this.argon2 = argon2;
-        this.rewardAddress = 'CpkQiTemFSZH1zyGUKsM';
+        this.rewardAddress = 'CQW1cPEiCnJ6nj6e7kzA';
         this.argon2Params = { time: 1, mem: 2**20, hashLen: 32, parallelism: 1, type: 2 };
         this.miningIntensity = 0; // 0 = off, 1 = low, 10 = high
         this.state = { miningActive: false, updateHashActive: false };
@@ -38,7 +39,7 @@ class Pow {
         this.bestCandidate = null;
         this.#miningLoop();
 
-        this.targetBlockTime = 120_000, // 2 min
+        this.targetBlockTime = 20_000, // 2 min
         this.nonceLength = 4,
         this.blocksBeforeAdjustment = 30, // ~120sec * 30 = ~3600 sec = ~1 hour
         this.thresholdPerDiffIncrement = 3.2, // meaning 3.4% threshold for 1 diff point
@@ -110,6 +111,7 @@ class Pow {
                 console.log(`conform: ${result.conform}`);
                 console.log(clonedCandidate);
                 chrome.storage.local.set({blockFinalized: clonedCandidate});
+                this.bestCandidate = null;
             }
 
             //const pauseDuration = this.#calculatePauseDuration(Date.now() - chrono.powStart);
@@ -132,7 +134,7 @@ class Pow {
         const headerNonce = this.#generateNonce().Hex;
         const coinbaseNonce = this.#generateNonce().Hex;
         clonedCandidate.nonce = headerNonce;
-        clonedCandidate.timestamp = this.getTime();
+        clonedCandidate.timestamp = this.getTime() + this.anticipationOffset;
 
         const powReward = blockCandidate.powReward;
         delete clonedCandidate.powReward;

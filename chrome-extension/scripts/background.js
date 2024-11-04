@@ -57,21 +57,22 @@ function connectWS() {
     //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    try {
+        ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    } catch (error) {
+        return false;
+    }
     console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
 
     ws.onopen = function() {
-        console.log('Connection opened');
+        console.log('----- Connection opened -----');
         //console.log(ws);
         ws.send(JSON.stringify({ type: 'get_best_block_candidate' }));
         ws.send(JSON.stringify({ type: 'subscribe_best_block_candidate_change' }));
     };
     ws.onclose = function() {
-        console.info('Connection closed');
-        setTimeout( () => {
-            ws = undefined;
-            //connectWS();
-        }, SETTINGS.RECONNECT_INTERVAL);
+        console.info('----- Connection closed -----');
+        ws = undefined;
     };
     ws.onmessage = async function(event) {
         const message = JSON.parse(event.data);
@@ -164,6 +165,7 @@ async function connectWSLoop() {
         if (connecting || ws) { continue; }
         connecting = true;
         try {
+            console.log('----- Connecting to WS -----');
             connectWS();
         } catch (error) {}
         connecting = false;
@@ -282,8 +284,11 @@ chrome.storage.onChanged.addListener(async function(changes, namespace) {
             //chrome.storage.local.set({blockFinalized: undefined});
 
             alreadyWaitingForWS = true;
+            console.log('----- waiting for ws -----');
             await readyWS();
+            console.log('----- ws ready -----');
             ws.send(JSON.stringify({ type: 'broadcast_finalized_block', data: blockFinalized }));
+            console.log('----- block broadcasted -----');
             alreadyWaitingForWS = false;
         }
     }
