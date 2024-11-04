@@ -561,7 +561,7 @@ ${hashConfInfo.message}`);
                     });
                     break;
                 case 'new_block_candidate':
-                    if (data.index > 10 && data.index < 15) { return; }
+                    if (this.blockCandidate < 11 && data.index === 10) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
@@ -588,7 +588,7 @@ ${hashConfInfo.message}`);
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
-                    if (data.index > 10 && data.index < 15) { return; }
+                    if (this.blockCandidate < 11 && data.index === 10) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
