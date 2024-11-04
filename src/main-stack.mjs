@@ -25,7 +25,7 @@ export class OpStack {
         lastSyncTime: null,
         lastReorgCheckTime: null,
         delayBeforeReorgCheck: utils.SETTINGS.targetBlockTime,
-        delayBeforeSyncCheck: utils.SETTINGS.targetBlockTime * 20
+        delayBeforeSyncCheck: utils.SETTINGS.targetBlockTime * 2
     }
 
     /** @param {Node} node */
