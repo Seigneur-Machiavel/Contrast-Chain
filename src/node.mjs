@@ -225,7 +225,8 @@ export class Node {
 
         // Cache the blocks from the last snapshot +1 to the last block
         // cacheStart : 0, 11, 21, etc...
-        const cacheStart = olderSnapshotHeight > 10 ? olderSnapshotHeight - 9 : 0;
+        const snapModulo = this.snapshotSystemDoc.snapshotHeightModulo;
+        const cacheStart = olderSnapshotHeight > snapModulo ? olderSnapshotHeight - (snapModulo-1) : 0;
         await this.blockchain.loadBlocksFromStorageToCache(cacheStart, startHeight);
         this.blockchain.currentHeight = startHeight;
         this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(startHeight);
@@ -238,7 +239,6 @@ export class Node {
         }
 
         await this.loadSnapshot(startHeight);
-
         return true;
     }
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
@@ -246,13 +246,9 @@ export class Node {
         this.blockchain.currentHeight = snapshotIndex;
         this.blockCandidate = null;
         await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
+
         console.warn(`Snapshot loaded: ${snapshotIndex}`);
-        if (snapshotIndex === 0) { 
-            await this.blockchain.eraseEntireDatabase();
-            // place snapshot to trash folder, we can restaure it if needed
-            if (eraseHigher) { this.snapshotSystemDoc.eraseSnapshotsHigherThan(snapshotIndex - 1); }
-            return;
-        }
+        if (snapshotIndex < 1) {  await this.blockchain.eraseEntireDatabase(); }
 
         this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
         if (!eraseHigher) { return; }
@@ -498,8 +494,8 @@ ${hashConfInfo.message}`);
                 await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
                 if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
             } catch (error) {
-                this.requestRestart('broadcastNewCandidate - error');
-                console.error(`Failed to broadcast new block candidate: ${error}`);
+                //this.requestRestart('broadcastNewCandidate - error'); //TODO ACTIVE IN PROD
+                console.error(`Failed to broadcast new block candidate: ${error.message}`);
             }
         }, delay);
 
@@ -570,7 +566,6 @@ ${hashConfInfo.message}`);
                     });
                     break;
                 case 'new_block_candidate':
-                    if (this.blockCandidate.index < 18 && data.index === 10) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
@@ -597,7 +592,6 @@ ${hashConfInfo.message}`);
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
-                    if (this.blockCandidate.index < 12 && data.index === 10) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {

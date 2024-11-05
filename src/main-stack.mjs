@@ -58,7 +58,7 @@ export class OpStack {
             if (timeSinceLastDigestOrSync < this.healthInfo.delayBeforeReorgCheck) { continue; }
             if (timeSinceLastReorgCheck > this.healthInfo.delayBeforeReorgCheck) {
                 this.healthInfo.lastReorgCheckTime = Date.now();
-                const reorgInitiated = await this.node.reorganizator.reorgIfMostLegitimateChain();
+                const reorgInitiated = await this.node.reorganizator.reorgIfMostLegitimateChain('healthCheck');
                 if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
             }
         }
@@ -135,7 +135,7 @@ export class OpStack {
                         }
                         if (error.message.includes('!reorg!')) {
                             this.healthInfo.lastReorgCheckTime = Date.now();
-                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain();
+                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain('digestPowProposal: !reorg!');
                             if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
                         }
                         if (error.message.includes('!ban!')) {

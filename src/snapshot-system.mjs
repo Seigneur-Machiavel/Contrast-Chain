@@ -56,7 +56,6 @@ export default class SnapshotSystemDoc {
 			if (dirs.length === 0) { return []; }
 			const snapshotsHeights = dirs.map(dirName => Number(dirName));
 			snapshotsHeights.sort((a, b) => a - b);
-			if (snapshotsHeights.length === 1) { snapshotsHeights.unshift(0); }
 			return snapshotsHeights;
 		} catch (error) {
 			//console.error(error.stack);
@@ -113,51 +112,39 @@ export default class SnapshotSystemDoc {
 		const logPerf = true;
 		const heightPath = path.join(this.__snapshotPath, `${height}`);
 
-		if (height > 0) {
-			performance.mark('startLoadSpectrum'); // LOAD VSS SPECTRUM
-			const serializedSpectrum = storage.loadBinary('vss', heightPath);
-			vss.spectrum = utils.serializer.rawData.fromBinary_v1(serializedSpectrum);
-			performance.mark('endLoadSpectrum');
-	
-			performance.mark('startLoadMemPool'); // LOAD MEMPOOL (KNOWN PUBKEYS-ADDRESSES)
-			const serializedPKAddresses = storage.loadBinary('memPool', heightPath);
-			memPool.knownPubKeysAddresses = utils.serializerFast.deserialize.pubkeyAddressesObj(serializedPKAddresses);
-			performance.mark('endLoadMemPool');
-	
-			performance.mark('startLoadUtxoCache'); // LOAD UTXO CACHE
-			const utxoCacheDataSerialized = storage.loadBinary('utxoCache', heightPath);
-			utxoCache.totalOfBalances = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(0, 6));
-			utxoCache.totalSupply = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(6, 12));
-			//const deserializationStart = performance.now();
-			utxoCache.unspentMiniUtxos = utils.serializerFast.deserialize.miniUTXOsObj(utxoCacheDataSerialized.subarray(12));
-			//const deserializationEnd = performance.now();
-			//if (logPerf) { console.log(`Deserialization time: ${deserializationEnd - deserializationStart}ms`); }
-			performance.mark('endLoadUtxoCache');
-	
-			performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
-			utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
-			performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
-			if (logPerf) {
-				performance.mark('rollBackTo end');
-				performance.measure('loadSpectrum', 'startLoadSpectrum', 'endLoadSpectrum');
-				performance.measure('loadMemPool', 'startLoadMemPool', 'endLoadMemPool');
-				performance.measure('loadUtxoCache', 'startLoadUtxoCache', 'endLoadUtxoCache');
-				performance.measure('buildAddressesAnchorsFromUnspentMiniUtxos', 'buildAddressesAnchorsFromUnspentMiniUtxos', 'endBuildAddressesAnchorsFromUnspentMiniUtxos');
-				performance.measure('totalRollBack', 'startLoadSpectrum', 'rollBackTo end');
-			}
-		} else {
-			// just clear the utxoCache and vss
-			vss.spectrum = {};
-			memPool.knownPubKeysAddresses = {};
-			
-			utxoCache.totalOfBalances = 0;
-			utxoCache.totalSupply = 0;
-			utxoCache.unspentMiniUtxos = {};
+		performance.mark('startLoadSpectrum'); // LOAD VSS SPECTRUM
+		const serializedSpectrum = storage.loadBinary('vss', heightPath);
+		vss.spectrum = utils.serializer.rawData.fromBinary_v1(serializedSpectrum);
+		performance.mark('endLoadSpectrum');
+
+		performance.mark('startLoadMemPool'); // LOAD MEMPOOL (KNOWN PUBKEYS-ADDRESSES)
+		const serializedPKAddresses = storage.loadBinary('memPool', heightPath);
+		memPool.knownPubKeysAddresses = utils.serializerFast.deserialize.pubkeyAddressesObj(serializedPKAddresses);
+		performance.mark('endLoadMemPool');
+
+		performance.mark('startLoadUtxoCache'); // LOAD UTXO CACHE
+		const utxoCacheDataSerialized = storage.loadBinary('utxoCache', heightPath);
+		utxoCache.totalOfBalances = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(0, 6));
+		utxoCache.totalSupply = utils.fastConverter.uint86BytesToNumber(utxoCacheDataSerialized.subarray(6, 12));
+		//const deserializationStart = performance.now();
+		utxoCache.unspentMiniUtxos = utils.serializerFast.deserialize.miniUTXOsObj(utxoCacheDataSerialized.subarray(12));
+		//const deserializationEnd = performance.now();
+		//if (logPerf) { console.log(`Deserialization time: ${deserializationEnd - deserializationStart}ms`); }
+		performance.mark('endLoadUtxoCache');
+
+		performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
+		utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
+		performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
+		if (logPerf) {
+			performance.mark('rollBackTo end');
+			performance.measure('loadSpectrum', 'startLoadSpectrum', 'endLoadSpectrum');
+			performance.measure('loadMemPool', 'startLoadMemPool', 'endLoadMemPool');
+			performance.measure('loadUtxoCache', 'startLoadUtxoCache', 'endLoadUtxoCache');
+			performance.measure('buildAddressesAnchorsFromUnspentMiniUtxos', 'buildAddressesAnchorsFromUnspentMiniUtxos', 'endBuildAddressesAnchorsFromUnspentMiniUtxos');
+			performance.measure('totalRollBack', 'startLoadSpectrum', 'rollBackTo end');
 		}
 
 		this.loadedSnapshotHeight = height;
-
-
 		return true;
 	}
 	/** Erase a snapshot @param {number} height */

@@ -56,6 +56,8 @@ export class Reorganizator {
         if (preLastSnapshot === undefined) { return; }
 
         const eraseUntil = preLastSnapshot -1;
+        if (eraseUntil < 0) { return; }
+
         const blocksHeight = Object.keys(this.finalizedBlocksCache);
         for (const height of blocksHeight) {
             if (height > eraseUntil) { continue; }
@@ -93,7 +95,7 @@ export class Reorganizator {
             lastBlock: null,
             lastHeight: snapshotsHeights[snapshotsHeights.length - 1],
             preLastBlock: null,
-            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2] || 0
+            preLastHeight: snapshotsHeights[snapshotsHeights.length - 2]
         }
         usableSnapshots.lastBlock = await this.node.blockchain.getBlockByHeight(usableSnapshots.lastHeight);
         usableSnapshots.preLastBlock = await this.node.blockchain.getBlockByHeight(usableSnapshots.preLastHeight);
@@ -143,6 +145,9 @@ export class Reorganizator {
             if (this.#isFinalizedBlockBanned(block)) { return false; }
 
             blocks.push(block);
+            if (this.node.blockchain.lastBlock.hash === block.prevHash) {
+                break; // can build the chain with the last block
+            }
             if (usableSnapshots.lastBlock.hash === block.prevHash) {
                 break; // can build the chain with the last snapshot
             }
@@ -155,11 +160,6 @@ export class Reorganizator {
                 return false; } // missing block
 
             block = prevBlocks[block.prevHash];
-            if (block.index === 0) { // can build the chain from the genesis block
-                if (this.#isFinalizedBlockBanned(block)) { return false; }
-                blocks.push(block);
-                break;
-            }
         }
 
         // ensure we can build the chain
@@ -177,17 +177,19 @@ export class Reorganizator {
             broadcastNewCandidate = false;
         }
 
+        if (this.node.blockchain.lastBlock.hash === block.prevHash) { return tasks; }
+
         tasks.push({ type: 'rollBackTo', data: block.index - 1 });
         return tasks;
     }
-    async reorgIfMostLegitimateChain() {
+    async reorgIfMostLegitimateChain(reason = false) {
         if (!this.node.blockchain.lastBlock) { return false; }
         const legitimateReorg = await this.#getLegitimateReorg();
         if (legitimateReorg.tasks.length === 0) {
             console.warn(`[REORGANIZATOR] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
             return false;
         }
-        console.warn(`[REORGANIZATOR] --- Reorg --- (from #${this.node.blockchain.lastBlock.index})`);
+        console.warn(`[REORGANIZATOR] --- Reorg --- (from #${this.node.blockchain.lastBlock.index} ${reason ? `| ${reason}` : ''})`);
         this.node.opStack.securelyPushFirst(legitimateReorg.tasks);
         return true;
     }
