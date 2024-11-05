@@ -114,7 +114,7 @@ const communication = new Communication(settings.serverUrl);
 const centerScreenBtn = new CenterScreenBtn();
 centerScreenBtn.state = 'welcome';
 centerScreenBtn.init(7);
-const miner = new Miner(centerScreenBtn, communication);
+//const miner = new Miner(centerScreenBtn, communication);
 const selectedWalletIndex = 0;
 
 const animations = {};
@@ -230,7 +230,7 @@ function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
 
 function setVisibleForm(formId, applyBLur = true) {
     //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
-    miner.paused = true;
+    //miner.paused = true;
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
@@ -284,7 +284,7 @@ function setVisibleForm(formId, applyBLur = true) {
     }
 
     if (formId === "miningForm") {
-        miner.paused = false;
+        //miner.paused = false;
         eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         centerScreenBtn.centerScreenBtnWrap.classList.add('active');
         eHTML.miningBtn.classList.remove('active');
@@ -1541,10 +1541,10 @@ document.addEventListener('focusin', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
     if (amountInput) { event.target.value = ''; }
 
-    if (event.target.classList.contains('animationTrigger')) {
+    /*if (event.target.classList.contains('animationTrigger')) {
         welcomeAnimationBlob.paused = false;
         return;
-    }
+    }*/
 });
 document.addEventListener('focusout', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
@@ -1557,10 +1557,10 @@ document.addEventListener('focusout', async (event) => {
         event.target.value = formatedValue;
     }
 
-    if (event.target.classList.contains('animationTrigger')) {
+    /*if (event.target.classList.contains('animationTrigger')) {
         welcomeAnimationBlob.paused = true;
         return;
-    }
+    }*/
 });
 document.addEventListener('mouseover', function(event) {
     if (event.target === eHTML.contrastBlocksWidget || eHTML.contrastBlocksWidget.contains(event.target)) {
