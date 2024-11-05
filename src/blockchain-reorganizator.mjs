@@ -87,7 +87,7 @@ export class Reorganizator {
         // the most legitimate chain is the one with the lowest mining final difficulty
         // mining final difficulty affected by: posTimestamp
         const snapshotsHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
-        if (snapshotsHeights.length < 1) { return legitimateReorg; }
+        if (snapshotsHeights.length < 2) { return legitimateReorg; }
 
         const usableSnapshots = {
             lastBlock: null,
@@ -143,9 +143,6 @@ export class Reorganizator {
             if (this.#isFinalizedBlockBanned(block)) { return false; }
 
             blocks.push(block);
-            if (this.node.blockchain.lastBlock.hash === block.prevHash) {
-                break; // perfect, can build the chain without snapshot
-            }
             if (usableSnapshots.lastBlock.hash === block.prevHash) {
                 break; // can build the chain with the last snapshot
             }
@@ -158,6 +155,11 @@ export class Reorganizator {
                 return false; } // missing block
 
             block = prevBlocks[block.prevHash];
+            if (block.index === 0) { // can build the chain from the genesis block
+                if (this.#isFinalizedBlockBanned(block)) { return false; }
+                blocks.push(block);
+                break;
+            }
         }
 
         // ensure we can build the chain
@@ -174,7 +176,6 @@ export class Reorganizator {
             tasks.push({ type: 'digestPowProposal', data: block_, options });
             broadcastNewCandidate = false;
         }
-        if (this.node.blockchain.lastBlock.hash === block.prevHash) { return tasks; }
 
         tasks.push({ type: 'rollBackTo', data: block.index - 1 });
         return tasks;

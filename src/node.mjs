@@ -263,20 +263,21 @@ export class Node {
     /** @param {BlockData} finalizedBlock */
     async #saveSnapshot(finalizedBlock) {
         if (finalizedBlock.index === 0) { return; }
-        if (finalizedBlock.index % 10 !== 0) { return; }
+        if (finalizedBlock.index % this.snapshotSystemDoc.snapshotHeightModulo !== 0) { return; }
+        const eraseUnder = this.snapshotSystemDoc.snapshotHeightModulo * this.snapshotSystemDoc.snapshotToConserve;
 
         // erase the outdated blocks cache and persist the addresses transactions references to disk
-        const cacheErasable = this.blockchain.erasableCacheLowerThan(finalizedBlock.index - 99);
+        const cacheErasable = this.blockchain.erasableCacheLowerThan(finalizedBlock.index - (eraseUnder - 1));
         if (cacheErasable !== null && cacheErasable.from < cacheErasable.to) {
             await this.blockchain.persistAddressesTransactionsReferencesToDisk(this.memPool, cacheErasable.from, cacheErasable.to);
             this.blockchain.eraseCacheFromTo(cacheErasable.from, cacheErasable.to);
         }
 
         await this.snapshotSystemDoc.newSnapshot(this.utxoCache, this.vss, this.memPool);
-        this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - 100);
+        this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - eraseUnder);
         // avoid gap between the loaded snapshot and the new one
         // at this stage we know that the loaded snapshot is consistent with the blockchain
-        if (this.snapshotSystemDoc.loadedSnapshotHeight < finalizedBlock.index - 200) {
+        if (this.snapshotSystemDoc.loadedSnapshotHeight < finalizedBlock.index - (eraseUnder*2)) {
             this.snapshotSystemDoc.loadedSnapshotHeight = 0;
         }
         this.snapshotSystemDoc.restoreLoadedSnapshot();

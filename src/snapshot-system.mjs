@@ -33,6 +33,9 @@ export default class SnapshotSystemDoc {
 		this.__nodeDataPath = path.join(this.__nodesDataPath, nodeId);
 		this.__snapshotPath = path.join(this.__nodeDataPath, 'snapshots');
 		this.loadedSnapshotHeight = 0;
+
+		this.snapshotHeightModulo = 5;
+		this.snapshotToConserve = 10;
 	}
 
 	#createMissingDirectories() {
@@ -53,7 +56,8 @@ export default class SnapshotSystemDoc {
 			if (dirs.length === 0) { return []; }
 			const snapshotsHeights = dirs.map(dirName => Number(dirName));
 			snapshotsHeights.sort((a, b) => a - b);
-			return snapshotsHeights;			
+			if (snapshotsHeights.length === 1) { snapshotsHeights.unshift(0); }
+			return snapshotsHeights;
 		} catch (error) {
 			//console.error(error.stack);
 			return [];
