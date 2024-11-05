@@ -12,6 +12,7 @@ import { BlockUtils } from './block-classes.mjs';
  * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
  * @typedef {import("../plugins/logger.mjs").Logger} Logger
  */
+
 const MAX_BLOCKS_PER_REQUEST = 4;
 const DELAY_BETWEEN_PEERS = 1000; // 2 seconds
 
@@ -115,23 +116,14 @@ export class SyncHandler {
         }
     }
 
-    async syncWithPeers(peerIds = [], unsubscribe = false) {
+    async syncWithPeers(peerIds = []) {
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+        // should be done only one time
         await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
 
-
-        return true
         this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
- 
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
-    
-        if (unsubscribe && this.node.p2pNetwork.subscriptions.size > 0) {
-            this.logger.debug(`luid-0dc61aa6 [SYNC] Unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics`);
-            for (const topic of uniqueTopics) {
-                await this.node.p2pNetwork.unsubscribe(topic);
-            }
-        }
     
         let peerStatuses = [];
     
@@ -139,15 +131,13 @@ export class SyncHandler {
             // Sync with specific peers
             for (const peerId of peerIds) {
                 const peerData = this.node.p2pNetwork.peers.get(peerId);
-                if (!peerData) {
-                    continue;
-                }
+                if (!peerData) { continue; }
+
                 const { address } = peerData;
                 const ma = multiaddr(address);
                 const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma, peerId);
-                if (!peerStatus || !peerStatus.currentHeight) {
-                    continue;
-                }
+                if (!peerStatus || !peerStatus.currentHeight) { continue; }
+
                 peerStatuses.push({
                     peerId,
                     address,
@@ -177,7 +167,6 @@ export class SyncHandler {
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-ff391762 [SYNC] Already at the highest height, no need to sync`);
             this.isSyncing = false;
-            await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
             return true;
         }
     
@@ -191,9 +180,8 @@ export class SyncHandler {
             try {
                 const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight, peerId);
                 this.logger.info(`luid-5eb266ed Successfully synced with peer`, { peerId });
-                if (!synchronized) {
-                    continue;
-                }
+                if (!synchronized) { continue; }
+
                 break; // Sync successful, break out of loop
             } catch (error) {
                 await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
@@ -213,18 +201,7 @@ export class SyncHandler {
     
         this.logger.debug(`luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}`);
         this.isSyncing = false;
-        await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
         return true;
-    }
-    
-    // Update syncWithPeer to use the unified method
-    async syncWithPeer(peerId) {
-        return await this.syncWithPeers([peerId], true);
-    }
-    
-    // Update syncWithKnownPeers to use the unified method
-    async syncWithKnownPeers() {
-        return await this.syncWithPeers();
     }
     
     /** Gets the status of a peer.

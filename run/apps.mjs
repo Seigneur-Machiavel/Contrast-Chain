@@ -400,7 +400,7 @@ export class DashboardWsApp {
                 break;
             case 'ask_sync_peer':
                 console.log(`Asking peer ${data} to sync`);
-                this.node.syncHandler.syncWithPeer(data);
+                this.node.syncHandler.syncWithPeers(data);
                 break;
             case 'ban_peer':
                 console.log(`Banning peer ${data}`);

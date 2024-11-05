@@ -108,6 +108,7 @@ export class Vss {
         this.currentRoundHash = '';
         /** @type {number} */
         this.maxSupply = maxSupply; // Store the maxSupply passed in the constructor
+        this.maxLegitimacyToBroadcast = 10; // node should not broadcast block if not in the top 10
     }
 
     /** @param {UTXO} utxo @param {number | undefined} upperBound */
@@ -159,12 +160,8 @@ export class Vss {
             // everyone has considered 0 legitimacy when not enough stakes
             if (maxRange < 999_999) { this.legitimacies = roundLegitimacies; return; }
             
-            //const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
             const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
-
             const stakeReference = spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber);
-            //if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
-
             roundLegitimacies.push(stakeReference);
             
             if (roundLegitimacies.length >= spectrumLength) { break; } // If all stakes have been selected

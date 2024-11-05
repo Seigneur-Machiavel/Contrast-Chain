@@ -124,7 +124,7 @@ export class Node {
         if (!this.roles.includes('validator')) { return; }
 
         this.opStack.pushFirst('createBlockCandidateAndBroadcast', null);
-        this.opStack.pushFirst('syncWithKnownPeers', null);
+        this.opStack.pushFirst('syncWithPeers', null);
     }
     async stop() {
         console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
@@ -169,7 +169,7 @@ export class Node {
                 
                 if (peerCount >= nbOfPeers) {
                     console.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
-                    this.opStack.pushFirst('syncWithKnownPeers', null);
+                    this.opStack.pushFirst('syncWithPeers', null);
                     return peerCount;
                 }
     
@@ -197,7 +197,9 @@ export class Node {
             if (!this.roles.includes('validator')) { throw new Error('Only validator can create a block candidate'); }
 
             this.blockCandidate = await this.#createBlockCandidate();
+            if (this.blockCandidate === null) { return true; }
             if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
+
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
             return true;
         } catch (error) {
@@ -282,10 +284,6 @@ export class Node {
 
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
-        const minerAddress = finalizedBlock.Txs[0].outputs[0].address;
-        if ('CpkQiTemFSZH1zyGUKsM' === minerAddress) {
-            console.log('minerAddress:', minerAddress);
-        }
         this.blockchainStats.state = "validating block";
 
         performance.mark('validation start');
@@ -382,11 +380,6 @@ export class Node {
      * @param {boolean} [options.storeAsFiles] - default: false
      */
     async digestFinalizedBlock(finalizedBlock, options = {}, byteLength) {
-        const minerAddress = finalizedBlock.Txs[0].outputs[0].address;
-        if ('CpkQiTemFSZH1zyGUKsM' === minerAddress) {
-            console.log('minerAddress:', minerAddress);
-        }
-
         this.blockchainStats.state = "digesting finalized block";
         if (this.restartRequested) { return; }
         const blockBytes = byteLength ? byteLength : utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;
@@ -484,6 +477,7 @@ export class Node {
         if (!broadcastNewCandidate) { return true; }
 
         this.blockCandidate = await this.#createBlockCandidate();
+        if (this.blockCandidate === null) { return true; }
         if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
 
         const delay = Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart));
@@ -515,6 +509,7 @@ export class Node {
             await this.vss.calculateRoundLegitimacies(this.blockchain.lastBlock.hash);
             const myLegitimacy = this.vss.getAddressLegitimacy(this.account.address);
             if (myLegitimacy === undefined) { throw new Error(`No legitimacy for ${this.account.address}, can't create a candidate`); }
+            if (myLegitimacy < this.vss.maxLegitimacyToBroadcast) { return null; }
 
             const olderBlock = await this.blockchain.getBlockByHeight(this.blockchain.lastBlock.index - utils.MINING_PARAMS.blocksBeforeAdjustment);
             const averageBlockTimeMS = utils.mining.calculateAverageBlockTime(this.blockchain.lastBlock, olderBlock);

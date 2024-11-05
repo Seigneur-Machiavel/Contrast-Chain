@@ -47,8 +47,8 @@ export class OpStack {
             const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
             if (!this.syncRequested && timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
-                this.pushFirst('syncWithKnownPeers', null);
-                console.warn(`[OpStack] SyncWithKnownPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                this.pushFirst('syncWithPeers', null);
+                console.warn(`[OpStack] syncWithPeers requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                 continue;
             }
             
@@ -153,7 +153,7 @@ export class OpStack {
                         // sync management
                         if (error.message.includes('!sync!')) {
                             console.error(error.stack);
-                            this.pushFirst('syncWithKnownPeers', null);
+                            this.pushFirst('syncWithPeers', null);
                             console.log(`restartRequested: ${this.node.restartRequested}`);
                             return;
                         }
@@ -172,22 +172,22 @@ export class OpStack {
                     
                     this.healthInfo.lastDigestTime = Date.now();
                     break;
-                case 'syncWithKnownPeers':
+                case 'syncWithPeers':
                     if (this.node.miner) { this.node.miner.canProceedMining = false; }
 
-                    console.warn(`[NODE-${this.node.id.slice(0, 6)} - OPSTACK] SyncWithKnownPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
-                    const syncSuccessful = await this.node.syncHandler.syncWithKnownPeers();
+                    console.warn(`[NODE-${this.node.id.slice(0, 6)} - OPSTACK] syncWithPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    const syncSuccessful = await this.node.syncHandler.syncWithPeers();
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] syncWithPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                         this.terminate();
-                        if (!this.node.restartRequested) { this.node.requestRestart('OpStack.syncWithKnownPeers() -> force!'); }
+                        if (!this.node.restartRequested) { this.node.requestRestart('OpStack.syncWithPeers() -> force!'); }
                         console.log(`restartRequested: ${this.node.restartRequested}`);
                         break;
                     }
 
                     this.healthInfo.lastSyncTime = Date.now();
-                    console.warn(`[NODE-${this.node.id.slice(0, 6)}] SyncWithKnownPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    console.warn(`[NODE-${this.node.id.slice(0, 6)}] syncWithPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
                     break;
                 case 'createBlockCandidateAndBroadcast':
@@ -203,14 +203,14 @@ export class OpStack {
     }
     /** @param {string} type  @param {object} data */
     push(type, data) {
-        if (type === 'syncWithKnownPeers' && this.syncRequested) { return; }
-        if (type === 'syncWithKnownPeers') { this.syncRequested = true; }
+        if (type === 'syncWithPeers' && this.syncRequested) { return; }
+        if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.push({ type, data });
     }
     /** @param {string} type  @param {object} data */
     pushFirst(type, data) {
-        if (type === 'syncWithKnownPeers' && this.syncRequested) { return; }
-        if (type === 'syncWithKnownPeers') { this.syncRequested = true; }
+        if (type === 'syncWithPeers' && this.syncRequested) { return; }
+        if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.unshift({ type, data });
     }
 
