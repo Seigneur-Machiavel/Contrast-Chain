@@ -185,9 +185,9 @@ async function connectWSLoop() {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (connecting || ws) { continue; }
         connecting = true;
-        console.log('----- Verifying server -----');
-        const serverAvailable = await verifyServer();
-        if (!serverAvailable) { connecting = false; continue; }
+        //console.log('----- Verifying server -----');
+        //const serverAvailable = await verifyServer();
+        //if (!serverAvailable) { connecting = false; continue; }
 
         console.log('----- Connecting to WS -----');
         connectWS();

@@ -509,7 +509,7 @@ export class Node {
             await this.vss.calculateRoundLegitimacies(this.blockchain.lastBlock.hash);
             const myLegitimacy = this.vss.getAddressLegitimacy(this.account.address);
             if (myLegitimacy === undefined) { throw new Error(`No legitimacy for ${this.account.address}, can't create a candidate`); }
-            if (myLegitimacy < this.vss.maxLegitimacyToBroadcast) { return null; }
+            if (myLegitimacy > this.vss.maxLegitimacyToBroadcast) { return null; }
 
             const olderBlock = await this.blockchain.getBlockByHeight(this.blockchain.lastBlock.index - utils.MINING_PARAMS.blocksBeforeAdjustment);
             const averageBlockTimeMS = utils.mining.calculateAverageBlockTime(this.blockchain.lastBlock, olderBlock);

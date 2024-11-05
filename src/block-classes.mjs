@@ -7,7 +7,6 @@ import { TxValidation } from './validations-classes.mjs';
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
  */
 
-
 /**
  * @typedef {Object} BlockHeader
  * @property {number} index - The block height
@@ -156,10 +155,7 @@ export const BlockData = (index, supply, coinBase, difficulty, legitimacy, prevH
     };
 }
 export class BlockUtils {
-    /** 
-     * @param {BlockData} blockData
-     * @param {boolean} excludeCoinbaseAndPos
-     */
+    /** @param {BlockData} blockData @param {boolean} excludeCoinbaseAndPos */
     static async getBlockTxsHash(blockData, excludeCoinbaseAndPos = false) {
         const txsIDStrArray = blockData.Txs.map(tx => tx.id).filter(id => id);
 
@@ -171,14 +167,14 @@ export class BlockUtils {
         const txsIDStr = txsIDStrArray.join('');
         return await HashFunctions.SHA256(txsIDStr);
     };
-    /**
+    /** Get the block signature used for mining
      * @param {BlockData} blockData
      * @param {boolean} isPosHash - if true, exclude coinbase/pos Txs and blockTimestamp
-     * @returns {Promise<string>} signature Hex
-     */
+     * @returns {Promise<string>} signature Hex */
     static async getBlockSignature(blockData, isPosHash = false) {
         const txsHash = await this.getBlockTxsHash(blockData, isPosHash);
         const { index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp } = blockData;
+        
         let signatureStr = `${index}${supply}${coinBase}${difficulty}${legitimacy}${prevHash}${posTimestamp}${txsHash}`;
         if (!isPosHash) { signatureStr += blockData.timestamp; }
 
@@ -199,10 +195,7 @@ export class BlockUtils {
 
         return { hex: blockHash.hex, bitsArrayAsString: blockHash.bitsArray.join('') };
     }
-    /**
-     * @param {BlockData} blockData
-     * @param {Transaction} coinbaseTx
-     */
+    /** @param {BlockData} blockData @param {Transaction} coinbaseTx */
     static setCoinbaseTransaction(blockData, coinbaseTx) {
         if (Transaction_Builder.isMinerOrValidatorTx(coinbaseTx) === false) { console.error('Invalid coinbase transaction'); return false; }
 
@@ -219,10 +212,7 @@ export class BlockUtils {
         const firstTx = blockData.Txs[0];
         if (firstTx && Transaction_Builder.isMinerOrValidatorTx(firstTx)) { blockData.Txs.shift(); }
     }
-    /**
-     * @param {UtxoCache} utxoCache
-     * @param {Transaction[]} Txs 
-     */
+    /** @param {UtxoCache} utxoCache @param {Transaction[]} Txs */
     static async calculateTxsTotalFees(utxoCache, Txs) {
         const involvedUTXOs = await utxoCache.extractInvolvedUTXOsOfTxs(Txs);
         if (!involvedUTXOs) { throw new Error('At least one UTXO not found in utxoCache'); }
@@ -237,10 +227,7 @@ export class BlockUtils {
 
         return totalFees;
     }
-    /** 
-     * @param {UtxoCache} utxoCache
-     * @param {BlockData} blockData
-     */
+    /** @param {UtxoCache} utxoCache @param {BlockData} blockData */
     static async calculateBlockReward(utxoCache, blockData) {
         const totalFees = await this.calculateTxsTotalFees(utxoCache, blockData.Txs);
         const totalReward = totalFees + blockData.coinBase;
@@ -293,10 +280,7 @@ export class BlockUtils {
 
         return blockData;
     }
-    /** 
-     * @param {UtxoCache} utxoCache
-     * @param {BlockData} blockData
-     */
+    /** @param {UtxoCache} utxoCache @param {BlockData} blockData */
     static async getFinalizedBlockInfo(utxoCache, blockData, totalFees) {
         /** @type {BlockInfo} */
         const blockInfo = {
