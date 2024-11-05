@@ -614,7 +614,7 @@ export class ObserverWsApp {
                         to: typeof data === 'string' ? this.node.blockchain.currentHeight : data.to,
                     }
 
-                    const addTxsRefs = await this.node.blockchain.getTxsRefencesOfAddress(this.node.memPool, gatrParams.address, gatrParams.from, gatrParams.to);
+                    const addTxsRefs = await this.node.blockchain.getTxsReferencesOfAddress(this.node.memPool, gatrParams.address, gatrParams.from, gatrParams.to);
                     ws.send(JSON.stringify({ type: 'address_transactionsRefs_requested', data: addTxsRefs }));
                     break;
                 case 'get_address_exhaustive_data':

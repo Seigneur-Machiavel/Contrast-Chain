@@ -279,6 +279,20 @@ export class BlockUtils {
         const { index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp, timestamp, hash, nonce } = blockData;
         return BlockHeader(index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp, timestamp, hash, nonce);
     }
+    /** @param {Uint8Array} serializedHeader @param {Uint8Array[]} serializedTxs */
+    static blockDataFromSerializedHeaderAndTxs(serializedHeader, serializedTxs) { // Better in utils serializer ?
+        /** @type {BlockData} */
+        const blockData = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
+        blockData.Txs = [];
+        for (let i = 0; i < serializedTxs.length; i++) {
+            const serializedTx = serializedTxs[i];
+            const specialTx = i < 2 ? true : false;
+            const tx = specialTx ? utils.serializer.transaction.fromBinary_v2(serializedTx) : utils.serializerFast.deserialize.transaction(serializedTx);
+            blockData.Txs.push(tx);
+        }
+
+        return blockData;
+    }
     /** 
      * @param {UtxoCache} utxoCache
      * @param {BlockData} blockData

@@ -289,7 +289,6 @@ export class Blockchain {
             const addressesTransactionsPromises = {};
             for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
                 if (actualizedAddressesTxsRefs[address]) { continue; } // already loaded
-                //addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexStart);
                 addressesTransactionsPromises[address] = this.db.get(`${address}-txs`).catch(() => []);
             }
 
@@ -329,7 +328,7 @@ export class Blockchain {
         console.info(`[DB] Addresses transactions persisted to disk from ${indexStart} to ${indexEnd} (included)`);
     }
     /** @param {MemPool} memPool @param {string} address @param {number} [from=0] @param {number} [to=this.currentHeight] */
-    async getTxsRefencesOfAddress(memPool, address, from = 0, to = this.currentHeight) {
+    async getTxsReferencesOfAddress(memPool, address, from = 0, to = this.currentHeight) {
         const cacheStartIndex = this.cache.oldestBlockHeight();
         let txsRefs = [];
         try {
@@ -458,7 +457,7 @@ export class Blockchain {
 
             if (!deserialize) { return { header: serializedHeader, txs: await Promise.all(txsPromises) }; }
 
-            return this.blockDataFromSerializedHeaderAndTxs(serializedHeader, await Promise.all(txsPromises));
+            return BlockUtils.blockDataFromSerializedHeaderAndTxs(serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
@@ -479,25 +478,11 @@ export class Blockchain {
 
             if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
 
-            return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
+            return BlockUtils.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
         }
-    }
-    /** @param {Uint8Array} serializedHeader @param {Uint8Array[]} serializedTxs */
-    blockDataFromSerializedHeaderAndTxs(serializedHeader, serializedTxs) { // Better in utils serializer ?
-        /** @type {BlockData} */
-        const blockData = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
-        blockData.Txs = [];
-        for (let i = 0; i < serializedTxs.length; i++) {
-            const serializedTx = serializedTxs[i];
-            const specialTx = i < 2 ? true : false;
-            const tx = specialTx ? utils.serializer.transaction.fromBinary_v2(serializedTx) : utils.serializerFast.deserialize.transaction(serializedTx);
-            blockData.Txs.push(tx);
-        }
-
-        return blockData;
     }
     async getBlockInfoFromDiskByHeight(height = 0) {
         try {

@@ -293,11 +293,20 @@ export class Node {
 
         // verify the height
         const lastBlockIndex = this.blockchain.currentHeight;
-        if (typeof finalizedBlock.index !== 'number') { throw new Error('Invalid block index'); }
-        if (Number.isInteger(finalizedBlock.index) === false) { throw new Error('Invalid block index'); }
+        if (typeof finalizedBlock.index !== 'number') { throw new Error('!ban! Invalid block index'); }
+        if (Number.isInteger(finalizedBlock.index) === false) { throw new Error('!ban! Invalid block index'); }
         
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
+
+        // verify the hash
+        const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
+        if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
+        // verify the hash veracity
+        const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
+        if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
+
+
         if (finalizedBlock.index > lastBlockIndex + 9) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 10} | validator: ${validatorId} | miner: ${minerId}`);
             throw new Error(`!sync! Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);
@@ -310,15 +319,6 @@ export class Node {
             throw new Error(`!store! Rejected: #${finalizedBlock.index} <= #${lastBlockIndex}`);
         }
         // The only possible case is: finalizedBlock.index === lastBlockIndex + 1
-
-        // verify the hash
-        const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
-        if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
-        const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-        if (!hashConfInfo.conform) {
-            throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash}
-${hashConfInfo.message}`);
-        }
 
         // verify prevhash
         const lastBlockHash = this.blockchain.lastBlock ? this.blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
@@ -335,8 +335,8 @@ ${hashConfInfo.message}`);
         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${finalizedBlock.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
-        if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('Invalid block timestamp'); }
-        if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('Invalid block timestamp'); }
+        if (typeof finalizedBlock.timestamp !== 'number') { throw new Error('!ban! Invalid block timestamp'); }
+        if (Number.isInteger(finalizedBlock.timestamp) === false) { throw new Error('!ban! Invalid block timestamp'); }
         const timeDiffFinal = finalizedBlock.timestamp - this.timeSynchronizer.getCurrentTime();
         if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${finalizedBlock.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
 
@@ -729,14 +729,11 @@ ${hashConfInfo.message}`);
         return blockData;
     }
     async getAddressExhaustiveData(address, from = 0, to = this.blockchain.currentHeight) {
-        const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, from, to);
+        const addressTxsReferences = await this.blockchain.getTxsReferencesOfAddress(this.memPool, address, from, to);
         const addressUTXOs = await this.getAddressUtxos(address);
         return { addressUTXOs, addressTxsReferences };
     }
-    /**
-     * @param {string} txReference - ex: 12:0f0f0f
-     * @param {string} address - optional: also return balanceChange for this address
-     */
+    /** @param {string} txReference - ex: 12:0f0f0f @param {string} address - optional: also return balanceChange for this address */
     async getTransactionByReference(txReference, address = undefined) {
         try {
             if (address) { utils.addressUtils.conformityCheck(address); }
@@ -744,9 +741,6 @@ ${hashConfInfo.message}`);
             const transaction = await this.blockchain.getTransactionByReference(txReference);
             result.transaction = transaction;
             if (address === undefined) { return result; }
-
-            //const addressTxsReferences = await this.blockchain.getTxsRefencesOfAddress(this.memPool, address, 0, untilHeight);
-            //if (!addressTxsReferences.includes(txReference)) { return result; }
 
             for (const output of transaction.outputs) {
                 result.outAmount += output.amount;

@@ -5,6 +5,7 @@ import * as lp from 'it-length-prefixed';
 import { multiaddr } from '@multiformats/multiaddr';
 import ReputationManager from './peers-reputation.mjs';
 import { Logger } from '../plugins/logger.mjs';
+import { BlockUtils } from './block-classes.mjs';
 /**
  * @typedef {import("./node.mjs").Node} Node
  * @typedef {import("./p2p.mjs").P2PNetwork} P2PNetwork
@@ -369,7 +370,7 @@ export class SyncHandler {
             // Process blocks
             for (const serializedBlock of serializedBlocks) {
                 try {
-                    const block = this.node.blockchain.blockDataFromSerializedHeaderAndTxs(
+                    const block = BlockUtils.blockDataFromSerializedHeaderAndTxs(
                         serializedBlock.header,
                         serializedBlock.txs
                     );
@@ -413,7 +414,7 @@ export class SyncHandler {
             // Process blocks
             for (const serializedBlock of serializedBlocks) {
                 try {
-                    const block = this.node.blockchain.blockDataFromSerializedHeaderAndTxs(
+                    const block = BlockUtils.blockDataFromSerializedHeaderAndTxs(
                         serializedBlock.header,
                         serializedBlock.txs
                     );
