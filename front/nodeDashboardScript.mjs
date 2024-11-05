@@ -74,6 +74,7 @@ function connectWS() {
                 nodeId = data.nodeId;
                 validatorUTXOs = data.validatorUTXOs;
                 minerUTXOs = data.minerUTXOs;
+                
                 break;
             case 'node_restarting':
                 console.log('node_restarting', data);
@@ -180,6 +181,11 @@ const eHTML = {
     peersHeightList: document.getElementById('peersHeightList'),
     listenAddress: document.getElementById('listenAddress'),
     lastLegitimacy: document.getElementById('lastLegitimacy'),
+    ignoreBlocksToggle: {
+        wrap: document.getElementById('ignoreBlocksWrap'),
+        button: document.getElementById('ignoreBlocksToggle'),
+        status: document.getElementById('ignoreBlocksStatus')
+    },
 }
 
 // Function to display node information
@@ -232,8 +238,30 @@ function displayNodeInfo(data) {
     if (data.repScores) {
         renderScores(data.repScores);
     }
+
+    if (data.ignoreIncomingBlocks !== undefined) {
+        updateIgnoreBlocksToggle(data.ignoreIncomingBlocks);
+    }
 }
 
+function updateIgnoreBlocksToggle(isIgnoring) {
+    const button = eHTML.ignoreBlocksToggle.button;
+    const status = eHTML.ignoreBlocksToggle.status;
+    
+    if (isIgnoring) {
+        button.classList.add('active');
+        button.setAttribute('aria-pressed', 'true');
+        status.textContent = 'ON';
+        status.classList.add('bg-purple-600', 'text-white');
+        status.classList.remove('bg-gray-600', 'text-gray-100');
+    } else {
+        button.classList.remove('active');
+        button.setAttribute('aria-pressed', 'false');
+        status.textContent = 'OFF';
+        status.classList.add('bg-gray-600', 'text-gray-100');
+        status.classList.remove('bg-purple-600', 'text-white');
+    }
+}
 function renderPeers(peers) {
     eHTML.peersConnectedList.innerHTML = ''; // Clear existing list
 
@@ -532,6 +560,22 @@ eHTML.minerAddressEditBtn.addEventListener('click', () => {
     });
 });
 
+if (eHTML.ignoreBlocksToggle.button) {
+    eHTML.ignoreBlocksToggle.button.addEventListener('click', () => {
+        console.log('ignoreBlocksToggle button clicked');
+        const currentState = eHTML.ignoreBlocksToggle.button.classList.contains('active');
+        const newState = !currentState;
+        
+        // Send the new state to the backend
+        ws.send(JSON.stringify({
+            type: 'ignore_incoming_blocks',
+            data: newState
+        }));
+        
+        // Update the toggle state immediately for responsive UI
+        updateIgnoreBlocksToggle(newState);
+    });
+}
 // Prevent form submission
 document.addEventListener('submit', function(event) { event.preventDefault(); });
 

@@ -89,6 +89,7 @@ export class Node {
 
         this.blockchainStats = {};
         this.delayBeforeSendingCandidate = 10000;
+        this.ignoreIncomingBlocks = false;
     }
 
     async start(startFromScratch = false) {
@@ -566,6 +567,7 @@ ${hashConfInfo.message}`);
                     });
                     break;
                 case 'new_block_candidate':
+                    if (this.ignoreIncomingBlocks) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
@@ -592,6 +594,7 @@ ${hashConfInfo.message}`);
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
+                    if (this.ignoreIncomingBlocks) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
                     /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
