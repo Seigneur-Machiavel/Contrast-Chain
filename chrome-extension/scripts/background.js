@@ -53,16 +53,29 @@ async function getTransactionFromMemoryOrSendRequest(txReference, address = unde
 
 /** @type {WebSocket} */
 let ws;
+async function verifyServer() {
+    const wsLocalUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
+    const wsUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    console.log(`Verify server: ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}`);
+
+    // Use fetch to make an HTTP request to the server
+    try {
+        const response = await fetch(SETTINGS.LOCAL ? wsLocalUrl : wsUrl, { method: 'HEAD' }) // use HEAD method to avoid downloading the server's response body
+        if (response.ok) {
+            console.info('Server is available, ready to connect WebSocket...');
+            return true;
+        }
+    } catch (error) {}
+    return false;
+}
 function connectWS() {
-    //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
+    try { if (ws) { ws.close(); } } catch (error) {}
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    try {
-        ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
-    } catch (error) {
-        return false;
-    }
+
     console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
+    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    ws.onerror = function(error) { console.info('WebSocket error: ' + error); return false;};
 
     ws.onopen = function() {
         console.log('----- Connection opened -----');
@@ -78,7 +91,6 @@ function connectWS() {
         const message = JSON.parse(event.data);
         const trigger = message.trigger;
         const data = message.data;
-        let remainingAttempts = 10;
         switch (message.type) {
             case 'current_time':
                 const timeOffset = data - Date.now();
@@ -153,10 +165,6 @@ function connectWS() {
                 break;
         }
     }
-
-    ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
-
-    return ws;
 }
 async function connectWSLoop() {
     let connecting = false;
@@ -164,10 +172,12 @@ async function connectWSLoop() {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (connecting || ws) { continue; }
         connecting = true;
-        try {
-            console.log('----- Connecting to WS -----');
-            connectWS();
-        } catch (error) {}
+        console.log('----- Verifying server -----');
+        const serverAvailable = await verifyServer();
+        if (!serverAvailable) { connecting = false; continue; }
+
+        console.log('----- Connecting to WS -----');
+        connectWS();
         connecting = false;
     }
 }; connectWSLoop();

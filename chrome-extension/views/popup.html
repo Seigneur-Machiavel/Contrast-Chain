@@ -11,7 +11,7 @@
     <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
     <script src="../scripts/classes.js"></script>
-    <script src="../scripts/htmlAnimations.js"></script>
+    <!--<script src="../scripts/htmlAnimations.js"></script>-->
     <script src="../scripts/simplex-noise.min.js"></script>
     <script src="../scripts/welcomeAnimation.js"></script>
     <script src="../scripts/popup.js" defer></script>
@@ -75,13 +75,13 @@
             </form>
     
             <form id="passwordCreationForm" class="hidden">
-                <input type="password" placeholder="Password" autocomplete="off">
+                <input class="animationTrigger" type="password" placeholder="Password" autocomplete="off">
                 <input type="password" placeholder="Confirm password" autocomplete="off">
                 <button type="submit">Set password</button>
             </form>
     
             <form id="loginForm" class="hidden">
-                <input type="password" placeholder="Password" autocomplete="off">
+                <input class="animationTrigger" type="password" placeholder="Password" autocomplete="off">
                 <button type="submit" class="classy">UNLOCK</button>
                 <p class="textInfo"></p>
             </form>

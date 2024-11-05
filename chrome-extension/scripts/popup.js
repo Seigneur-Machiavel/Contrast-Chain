@@ -3,7 +3,8 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const PatternGenerator = require("./pattern-generator.js");
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
-    const { htmlAnimations } = require("./htmlAnimations.js");
+    //const { htmlAnimations } = require("./htmlAnimations.mjs");
+    const { WelcomeAnimationBlob, horizontalBtnLoading } = require('./htmlAnimations.mjs');
     const { Wallet } = require("../contrast/src/wallet.mjs");
     const utils = require("../contrast/src/utils.mjs").default;
     const { Account } = require("../contrast/src/wallet.mjs");
@@ -117,6 +118,7 @@ const miner = new Miner(centerScreenBtn, communication);
 const selectedWalletIndex = 0;
 
 const animations = {};
+const colors = { background: 'white', text: 'black' };
 const eHTML = {
     documentVisible: true,
     appTitle: document.getElementById('appTitle'),
@@ -187,6 +189,7 @@ const eHTML = {
     txHistoryWrap: document.getElementById('txHistoryWrap'),
     txHistoryTable: document.getElementById('txHistoryWrap').getElementsByTagName('table')[0],
 };
+const welcomeAnimationBlob = new WelcomeAnimationBlob(eHTML.welcomeCanvas, 400, 302, colors.text);
 
 /** @type {Wallet} */
 let activeWallet;
@@ -198,7 +201,6 @@ const busy = [];
 /** @type {Object<string, AddressExhaustiveData>} */
 const addressesExhaustiveData = {};
 //#region - UX FUNCTIONS
-const colors = { background: 'white', text: 'black' };
 function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
@@ -436,7 +438,7 @@ function textInfo(targetForm, text, timeout = 3000, eraseAnyCurrentTextInfo = fa
 function setWaitingForConnectionFormLoading(loading = true) {
     const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
     const loadingSvg = waitingForConnectionForm.getElementsByClassName('loadingSvgDiv')[0];
-    loadingSvg.innerHTML = loading ? htmlAnimations.horizontalBtnLoading : '';
+    loadingSvg.innerHTML = loading ? horizontalBtnLoading : '';
 }
 async function initUI() {
     document.body.style.width = "0px";
@@ -492,7 +494,9 @@ async function initUI() {
     
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
+    welcomeAnimationBlob.start();
+
+    /*welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
     const dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
     for (let i = 0; i < 50; i++) {
         if (document.visibilityState === 'hidden') {
@@ -505,7 +509,7 @@ async function initUI() {
         const rndDelay = Math.random() * 2000;
         const delay = dotAppearTimings[i] || rndDelay;
         await new Promise(resolve => setTimeout(resolve, delay));
-    }
+    }*/
 
     /*const dataURL = eHTML.welcomeCanvas.toDataURL();
     ob = [];
@@ -516,6 +520,7 @@ async function initUI() {
     eHTML.welcomeCanvas.style.backgroundImage = 'url("../images/contrast128.png")';*/
 }
 let ob = [];
+
 function welcomeCanvasAnimationDocNewBubble(canvasElement = eHTML.welcomeCanvas, amount = 1) {
     let a,b,c,d;
     let tx = canvasElement.width/2;
@@ -542,7 +547,7 @@ function welcomeCanvasAnimationDocStart(canvasElement = eHTML.welcomeCanvas) {
     tx=canvasElement.width/2;
     ty=canvasElement.height/2;
 
-    async function aaa(){
+    function aaa(){
         /*console.log(`document.visibilityState: ${document.visibilityState}`);
         while (document.visibilityState === 'hidden') {
             await new Promise(resolve => setTimeout(resolve, 20));
@@ -773,7 +778,7 @@ function newAddressBtnLoadingToggle() {
         });
     } else {
         eHTML.newAddressBtn.classList.add('loading');
-        eHTML.newAddressBtn.innerHTML = htmlAnimations.horizontalBtnLoading;
+        eHTML.newAddressBtn.innerHTML = horizontalBtnLoading;
         if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
         animations.newAddressBtn = anime({
             targets: eHTML.newAddressBtn,
@@ -1093,7 +1098,7 @@ eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
     }
 
     const button = eHTML.passwordCreationForm.getElementsByTagName('button')[0];
-    button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    button.innerHTML = horizontalBtnLoading;
     const passwordCreatedInfo = await setNewPassword(password, passComplement);
     setTimeout(() => { button.innerHTML = 'Set password'; }, 1000);
     if (!passwordCreatedInfo) { alert('Password setting failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); return; }
@@ -1135,7 +1140,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (passwordReadyUse === '') { busy.splice(busy.indexOf('loginForm'), 1); return; }
 
     const button = targetForm.getElementsByTagName('button')[0];
-    button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    button.innerHTML = horizontalBtnLoading;
     button.classList.add('clicked');
 
     function infoAndWrongAnim(text) {
@@ -1535,6 +1540,11 @@ document.addEventListener('input', async (event) => {
 document.addEventListener('focusin', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
     if (amountInput) { event.target.value = ''; }
+
+    if (event.target.classList.contains('animationTrigger')) {
+        welcomeAnimationBlob.paused = false;
+        return;
+    }
 });
 document.addEventListener('focusout', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
@@ -1545,6 +1555,11 @@ document.addEventListener('focusout', async (event) => {
         const amountMicro = parseInt(event.target.value.replace('.',''));
         const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
         event.target.value = formatedValue;
+    }
+
+    if (event.target.classList.contains('animationTrigger')) {
+        welcomeAnimationBlob.paused = true;
+        return;
     }
 });
 document.addEventListener('mouseover', function(event) {

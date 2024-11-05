@@ -8,6 +8,10 @@ window.explorerNB_OF_CONFIRMED_BLOCKS = 3;
 console.log('EXPLORER SETTINGS INJECTED!');
 
 // MODULES LOADER
+import { WelcomeAnimationBlob, horizontalBtnLoading } from './htmlAnimations.mjs';
+window.WelcomeAnimationBlob = WelcomeAnimationBlob;
+window.horizontalBtnLoading = horizontalBtnLoading;
+
 import utils from '../contrast/src/utils.mjs';
 window.utils = utils;
 
