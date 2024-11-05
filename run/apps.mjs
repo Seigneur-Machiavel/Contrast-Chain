@@ -82,6 +82,7 @@ class AppStaticFncs {
         result.listenAddress = node.p2pNetwork?.p2pNode?.getMultiaddrs() ?? 'No Listen Address';
         result.lastLegitimacy = node.blockchainStats?.lastLegitimacy ?? 'No Legitimacy';
         result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
+        result.ignoreIncomingBlocks = node.ignoreIncomingBlocks;
         return result;
     }
     /** @param {Node} node */
@@ -305,6 +306,7 @@ export class DashboardWsApp {
         const messageAsString = message.toString();
         const parsedMessage = JSON.parse(messageAsString);
         const data = parsedMessage.data;
+        //console.log(`[DASHBOARD] Received message: ${parsedMessage.type}`);
         switch (parsedMessage.type) {
             case 'ping':
                 ws.send(JSON.stringify({ type: 'pong', data: Date.now() }));
@@ -403,6 +405,11 @@ export class DashboardWsApp {
             case 'ban_peer':
                 console.log(`Banning peer ${data}`);
                 this.node.p2pNetwork.reputationManager.banIdentifier(data);
+                break;
+
+            case 'ignore_incoming_blocks':
+                console.log(`Ignore incoming blocks: ${data}`);
+                this.node.ignoreIncomingBlocks = data;
                 break;
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
