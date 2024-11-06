@@ -87,7 +87,9 @@ const UTXO_RULES_GLOSSARY = {
     sigOrSlash: { code: 1, description: "Open right to slash the UTXO if validator's fraud proof is provided", withdrawLockBlocks: 144 },
     lockUntilBlock: { code: 2, description: 'UTXO locked until block height', lockUntilBlock: 0 },
     multiSigCreate: { code: 3, description: 'Multi-signature creation' },
-    p2pExchange: { code: 4, description: 'Peer-to-peer exchange' }
+    p2pExchange: { code: 4, description: 'Peer-to-peer exchange' },
+    lightHousePause: { code: 6, description: 'LightHouse pause' },
+    lightHouseResume: { code: 7, description: 'LightHouse resume' },
 };
 const UTXO_RULESNAME_FROM_CODE = {
     0: 'sig',

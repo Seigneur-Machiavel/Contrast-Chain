@@ -176,11 +176,18 @@ export class Transaction_Builder {
         const anchors = utxos.map(utxo => utxo.anchor);
         if (utils.conditionnals.arrayIncludeDuplicates(anchors)) { throw new Error('Duplicate UTXO anchors in UTXOs'); }
     }
-    /**
-     * @param {string} nonceHex
-     * @param {string} address
-     * @param {number} amount
-     */
+    static createLighthouse(nodeVersion = 1) {
+        const lighthouseOutput = TxIO_Builder.newOutput(0, 'lighthouse', 'Cv6XXKBTALRPSCzuU6k4');
+        const inputs = ['00000000'];
+        const outputs = [lighthouseOutput];
+
+        const transaction = Transaction(inputs, outputs);
+        transaction.id = Transaction_Builder.hashId(transaction);
+
+        return transaction;
+
+    }
+    /** @param {string} nonceHex @param {string} address @param {number} amount */
     static async createCoinbase(nonceHex, address, amount) {
         if (typeof nonceHex !== 'string') { throw new Error('Invalid nonceHex'); }
         if (typeof address !== 'string') { throw new Error('Invalid address'); }
