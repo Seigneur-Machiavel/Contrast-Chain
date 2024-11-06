@@ -1,7 +1,6 @@
 import { HashFunctions, AsymetricFunctions } from './conCrypto.mjs';
-import { Transaction, TxOutput, TxInput, UTXO, Transaction_Builder } from './transaction.mjs';
+import { Transaction, TxOutput, UTXO, Transaction_Builder } from './transaction.mjs';
 import utils from './utils.mjs';
-import { BlockUtils } from './block-classes.mjs';
 /**
  * @typedef {import("./vss.mjs").Vss} Vss
  * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
