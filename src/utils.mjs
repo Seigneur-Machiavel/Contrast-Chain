@@ -2082,10 +2082,7 @@ const mining = {
         const adjust = difficulty % 16;
         return { zeros, adjust };
     },
-    /**
-     * @param {string} HashBitsAsString
-     * @param {BlockData} blockData
-     */
+    /** @param {string} HashBitsAsString @param {BlockData} blockData */
     verifyBlockHashConformToDifficulty: (HashBitsAsString = '', blockData) => {
         if (typeof HashBitsAsString !== 'string') { throw new Error('Invalid HashBitsAsString'); }
 
