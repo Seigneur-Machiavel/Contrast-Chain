@@ -265,7 +265,7 @@ export class Node {
             throw error;
         }
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
-        if (finalizedBlock.hash !== hex) { throw new Error(`!banBlock! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
+        if (finalizedBlock.hash !== hex) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         try {
             BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight);
@@ -278,17 +278,17 @@ export class Node {
         }
 
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-        if (!hashConfInfo.conform) { throw new Error(`!banBlock! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
+        if (!hashConfInfo.conform) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
 
         const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
-        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!banBlock! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
+        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!banBlock! !applyOffense! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
 
         const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
         try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); }
-        catch (error) { throw new Error('!banBlock! Invalid rewards'); }
+        catch (error) { throw new Error('!banBlock! !applyOffense! Invalid rewards'); }
 
         try { BlockValidation.isFinalizedBlockDoubleSpending(finalizedBlock); }
-        catch (error) { throw new Error('!banBlock! Double spending detected'); }
+        catch (error) { throw new Error('!banBlock! !applyOffense! Double spending detected'); }
 
         const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2);
         this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
