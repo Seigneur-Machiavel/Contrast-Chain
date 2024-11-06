@@ -399,8 +399,8 @@ export class BlockValidation {
 
     /** @param {BlockData} block */
     static checkBlockIndexIsNumber(block) {
-        if (typeof block.index !== 'number') { throw new Error('!banBlock! Invalid block index'); }
-        if (Number.isInteger(block.index) === false) { throw new Error('!banBlock! Invalid block index'); }
+        if (typeof block.index !== 'number') { throw new Error('Invalid block index'); }
+        if (Number.isInteger(block.index) === false) { throw new Error('Invalid block index'); }
     }
     /** @param {BlockData} block @param {number} currentHeight */
     static validateBlockIndex(block, currentHeight = -1) {

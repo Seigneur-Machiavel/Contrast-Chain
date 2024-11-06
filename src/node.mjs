@@ -490,6 +490,8 @@ export class Node {
                     });
                     break;
                 case 'new_block_candidate':
+                    try { BlockValidation.checkBlockIndexIsNumber(data); } catch (error) { throw error; }
+
                     if (this.ignoreIncomingBlocks) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
@@ -517,6 +519,7 @@ export class Node {
                     this.miner.updateBestCandidate(data);
                     break;
                 case 'new_block_finalized':
+                    try { BlockValidation.checkBlockIndexIsNumber(data); } catch (error) { throw error; }
                     if (this.ignoreIncomingBlocks) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
                     //TODO: remove this test code
