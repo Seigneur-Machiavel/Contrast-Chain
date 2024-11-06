@@ -267,7 +267,7 @@ export class Node {
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
         if (finalizedBlock.hash !== hex) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
-        try {
+        try {//toto
             BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight);
             BlockValidation.validateBlockHash(finalizedBlock, this.blockchain.lastBlock);
             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime());
