@@ -2,7 +2,7 @@ import storage from '../storage/local-storage-management.mjs';
 import fs from 'fs';
 import path from 'path';
 const url = await import('url');
-import utils from '../src/utils.mjs';
+import utils from './utils.mjs';
 
 /**
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
@@ -25,7 +25,7 @@ function copyFolderRecursiveSync(src, dest) {
 	}
 }
 
-export default class SnapshotSystemDoc {
+export class SnapshotSystem {
 	__parentFolderPath = path.dirname(url.fileURLToPath(import.meta.url));
 	__parentPath = path.join(this.__parentFolderPath, '..');
 	__nodesDataPath = path.join(this.__parentPath, 'nodes-data');
@@ -33,6 +33,9 @@ export default class SnapshotSystemDoc {
 		this.__nodeDataPath = path.join(this.__nodesDataPath, nodeId);
 		this.__snapshotPath = path.join(this.__nodeDataPath, 'snapshots');
 		this.loadedSnapshotHeight = 0;
+
+		this.snapshotHeightModulo = 5;
+		this.snapshotToConserve = 10;
 	}
 
 	#createMissingDirectories() {
@@ -53,7 +56,7 @@ export default class SnapshotSystemDoc {
 			if (dirs.length === 0) { return []; }
 			const snapshotsHeights = dirs.map(dirName => Number(dirName));
 			snapshotsHeights.sort((a, b) => a - b);
-			return snapshotsHeights;			
+			return snapshotsHeights;
 		} catch (error) {
 			//console.error(error.stack);
 			return [];
@@ -132,9 +135,6 @@ export default class SnapshotSystemDoc {
 		performance.mark('buildAddressesAnchorsFromUnspentMiniUtxos');
 		utxoCache.buildAddressesAnchorsFromUnspentMiniUtxos();
 		performance.mark('endBuildAddressesAnchorsFromUnspentMiniUtxos');
-
-		this.loadedSnapshotHeight = height;
-
 		if (logPerf) {
 			performance.mark('rollBackTo end');
 			performance.measure('loadSpectrum', 'startLoadSpectrum', 'endLoadSpectrum');
@@ -144,6 +144,7 @@ export default class SnapshotSystemDoc {
 			performance.measure('totalRollBack', 'startLoadSpectrum', 'rollBackTo end');
 		}
 
+		this.loadedSnapshotHeight = height;
 		return true;
 	}
 	/** Erase a snapshot @param {number} height */

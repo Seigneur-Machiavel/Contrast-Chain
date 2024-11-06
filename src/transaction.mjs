@@ -1,11 +1,11 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
-import { TxValidation } from './validation.mjs';
-import { BlockUtils } from './block.mjs';
+import { TxValidation } from './validations-classes.mjs';
+import { BlockUtils } from './block-classes.mjs';
 
 /**
- * @typedef {import('./account.mjs').Account} Account
- * @typedef {import('./block.mjs').BlockData} BlockData
+ * @typedef {import('./wallet.mjs').Account} Account
+ * @typedef {import('./block-classes.mjs').BlockData} BlockData
  */
 
 export class TxIO_Builder {
@@ -47,21 +47,21 @@ export class TxIO_Builder {
 
 /**
  * @typedef {Object} TxOutput
- * @property {number} amount - the amount of microConts
  * @property {string} address - output only
+ * @property {number} amount - the amount of microConts
  * @property {string} rule - the unlocking rule
  */
 /** Transaction Input/Output data structure
- * @param {number} amount - the amount of microConts
  * @param {string} address - output only
+ * @param {number} amount - the amount of microConts
  * @param {string} rule - the unlocking rule
  * @returns {TxOutput}
  **/
 export const TxOutput = (amount, rule, address) => {
     return {
+        address,
         amount,
-        rule,
-        address
+        rule
     };
 }
 /** @typedef {string} TxInput - the path to the UTXO blockHeight:txID:vout */
@@ -176,11 +176,18 @@ export class Transaction_Builder {
         const anchors = utxos.map(utxo => utxo.anchor);
         if (utils.conditionnals.arrayIncludeDuplicates(anchors)) { throw new Error('Duplicate UTXO anchors in UTXOs'); }
     }
-    /**
-     * @param {string} nonceHex
-     * @param {string} address
-     * @param {number} amount
-     */
+    static createLighthouse(nodeVersion = 1) {
+        const lighthouseOutput = TxIO_Builder.newOutput(0, 'lighthouse', 'Cv6XXKBTALRPSCzuU6k4');
+        const inputs = ['00000000'];
+        const outputs = [lighthouseOutput];
+
+        const transaction = Transaction(inputs, outputs);
+        transaction.id = Transaction_Builder.hashId(transaction);
+
+        return transaction;
+
+    }
+    /** @param {string} nonceHex @param {string} address @param {number} amount */
     static async createCoinbase(nonceHex, address, amount) {
         if (typeof nonceHex !== 'string') { throw new Error('Invalid nonceHex'); }
         if (typeof address !== 'string') { throw new Error('Invalid address'); }
@@ -274,6 +281,7 @@ export class Transaction_Builder {
         const changeOutput = change > utils.SETTINGS.unspendableUtxoAmount ? TxIO_Builder.newOutput(change, 'sig', senderAddress) : undefined;
         return { utxos, changeOutput };
     }
+    /** @param {UTXO[]} utxos @param {number} amount */
     static extractNecessaryUtxosForAmount(utxos, amount) {
         const necessaryUtxos = [];
         let remainingAmount = amount;
@@ -286,22 +294,16 @@ export class Transaction_Builder {
 
         return necessaryUtxos;
     }
-    /**
-     * @param {UTXO[]} utxos
-     * @param {TxOutput[]} outputs
-     */
+    /** @param {UTXO[]} utxos @param {TxOutput[]} outputs */
     static async #newTransaction(utxos, outputs) {
         const inputs = utxos.map(utxo => utxo.anchor);
 
         const transaction = Transaction(inputs, outputs);
-        transaction.id = await Transaction_Builder.hashId(transaction);
+        transaction.id = Transaction_Builder.hashId(transaction);
 
         return transaction;
     }
-    /**
-     * @param {UTXO[]} utxos
-     * @param {TxOutput[]} outputs
-     */
+    /** @param {UTXO[]} utxos @param {TxOutput[]} outputs */
     static simulateTxToEstimateWeight(utxos, outputs, nbOfSigners = 1) {
         const change = 26_152_659_654_321;
         const changeOutput = TxIO_Builder.newOutput(change, 'sig', 'Cv6XXKBTALRPSCzuU6k4');
@@ -374,8 +376,10 @@ export class Transaction_Builder {
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
+        const idStr = `${inputsStr}${outputsStr}${versionStr}`;
+        //console.log(`idStr: ${idStr}`);
 
-        const hashHex = HashFunctions.xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
+        const hashHex = HashFunctions.xxHash32(idStr);
         return hashHex.slice(0, hashHexLength);
     }
     /** @param {Transaction} transaction */
@@ -413,11 +417,7 @@ export class Transaction_Builder {
         return clone;
     }
     // Multi-functions methods
-    /**
-     * @param {Account} senderAccount
-     * @param {number} amount
-     * @param {string} recipientAddress
-     */
+    /** @param {Account} senderAccount @param {number} amount @param {string} recipientAddress */
     static async createAndSignTransfer(senderAccount, amount, recipientAddress) {
         try {
             const transfer = { recipientAddress, amount };
@@ -426,9 +426,7 @@ export class Transaction_Builder {
 
             return { signedTx, error: false };
         } catch (error) {
-            /** @type {string} */
-            const errorMessage = error.stack;
-            return { signedTx: false, error: errorMessage };
+            return { signedTx: false, error };
         }
     }
 }

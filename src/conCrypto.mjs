@@ -16,7 +16,6 @@ class Argon2Unified {
             salt: utils.isNode ? Buffer.from(salt) : salt,
         };
     }
-
     static standardizeArgon2FromEncoded(encoded = '$argon2id$v=19$m=1048576,t=1,p=1$c2FsdHNhbHRzYWx0c2FsdHNhbHQ$UamPN/XTTX4quPewQNw4/s3y1JJeS22cRroh5l7OTMM') {
         const splited = encoded.split('$');
         const base64 = splited.pop();
@@ -83,7 +82,6 @@ export class HashFunctions {
         return hashHex;
     }
 };
-
 export class AsymetricFunctions {
     /** @param {string} privKeyHex - Hexadecimal representation of the private key */
     static async generateKeyPairFromHash(privKeyHex) {

@@ -38,8 +38,8 @@ async function getArgon2Lib() {
 const argon2Lib = await getArgon2Lib();
 
 /**
-* @typedef {import("./block.mjs").Block} Block
-* @typedef {import("./block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").Block} Block
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("./transaction.mjs").Transaction} Transaction
 * @typedef {import("./transaction.mjs").UTXO} UTXO
 * @typedef {import("./conCrypto.mjs").argon2Hash} HashFunctions
@@ -67,7 +67,7 @@ function newWorker(scriptPath, workerCode) {
 
 const SETTINGS = { // The Fibonacci based distribution
     // BLOCK
-    targetBlockTime: 10_000, // 120_000, // 2 min
+    targetBlockTime: 20_000, // 120_000, // 2 min
     maxBlockSize: 200_000, // ~200KB
     maxTransactionSize: 200_000, // ~200KB
     // DISTRIBUTION
@@ -87,7 +87,9 @@ const UTXO_RULES_GLOSSARY = {
     sigOrSlash: { code: 1, description: "Open right to slash the UTXO if validator's fraud proof is provided", withdrawLockBlocks: 144 },
     lockUntilBlock: { code: 2, description: 'UTXO locked until block height', lockUntilBlock: 0 },
     multiSigCreate: { code: 3, description: 'Multi-signature creation' },
-    p2pExchange: { code: 4, description: 'Peer-to-peer exchange' }
+    p2pExchange: { code: 4, description: 'Peer-to-peer exchange' },
+    lightHousePause: { code: 6, description: 'LightHouse pause' },
+    lightHouseResume: { code: 7, description: 'LightHouse resume' },
 };
 const UTXO_RULESNAME_FROM_CODE = {
     0: 'sig',
@@ -1073,8 +1075,8 @@ const serializer = {
                 };
 
                 for (let j = 0; j < tx.outputs.length; j++) {
-                    const { amount, rule, address } = tx.outputs[j];
-                    if (amount, rule, address) { //  {"amount": 19545485, "rule": "sig", "address": "WKXmNF5xJTd58aWpo7QX"}
+                    const { address, amount, rule } = tx.outputs[j];
+                    if (address, amount, rule) { //  {"amount": 19545485, "rule": "sig", "address": "WKXmNF5xJTd58aWpo7QX"}
                         const ruleCode = UTXO_RULES_GLOSSARY[rule].code;
                         txAsArray[4].push([
                             convert.number.toUint8Array(amount), // safe type: number
@@ -1134,7 +1136,7 @@ const serializer = {
                         const ruleCode = convert.uint8Array.toNumber(output[1]); // safe type: uint8 -> number
                         const rule = UTXO_RULESNAME_FROM_CODE[ruleCode];
                         const address = convert.uint8Array.toBase58(output[2]); // safe type: uint8 -> base58
-                        tx.outputs.push({ amount, rule, address });
+                        tx.outputs.push({ address, amount, rule });
                     } else {
                         tx.outputs.push(convert.uint8Array.toString(output));
                     }
@@ -1509,7 +1511,7 @@ const serializerFast = {
         anchorsObjToArray(anchors) {
             return this.anchorsArray(Object.keys(anchors));
         },
-        /** serialize the UTXO as a miniUTXO: amount, rule, address (23 bytes)
+        /** serialize the UTXO as a miniUTXO: address, amount, rule (23 bytes)
          * @param {UTXO} utxo */
         miniUTXO(utxo) {
             const utxoBuffer = new ArrayBuffer(23);
@@ -1524,7 +1526,7 @@ const serializerFast = {
             const outputsBuffer = new ArrayBuffer(23 * outputs.length);
             const outputsBufferView = new Uint8Array(outputsBuffer);
             for (let i = 0; i < outputs.length; i++) {
-                const { amount, rule, address } = outputs[i];
+                const { address, amount, rule } = outputs[i];
                 const ruleCode = UTXO_RULES_GLOSSARY[rule].code;
                 outputsBufferView.set(fastConverter.numberTo6BytesUint8Array(amount), i * 23);
                 outputsBufferView.set(fastConverter.numberTo1ByteUint8Array(ruleCode), i * 23 + 6);
@@ -1708,7 +1710,7 @@ const serializerFast = {
             }
             return obj;
         },
-        /** Deserialize a miniUTXO: amount, rule, address (23 bytes)
+        /** Deserialize a miniUTXO: address, amount, rule (23 bytes)
          * @param {Uint8Array} serializedUTXO */
         miniUTXO(serializedminiUTXO) {
             const amount = fastConverter.uint86BytesToNumber(serializedminiUTXO.slice(0, 6)); // 6 bytes
@@ -1717,7 +1719,7 @@ const serializerFast = {
             const rule = UTXO_RULESNAME_FROM_CODE[ruleCode];
             const address = fastConverter.addressUint8ArrayToBase58(serializedminiUTXO.slice(7, 23)); // 16 bytes
 
-            return { amount, rule, address };
+            return { address, amount, rule };
         },
         /** @param {Uint8Array} serializedminiUTXOs */
         miniUTXOsArray(serializedminiUTXOs) {
@@ -2036,12 +2038,12 @@ const mining = {
         const periodInterval = lastBlock.timestamp - olderBlock.posTimestamp;
         return periodInterval / MINING_PARAMS.blocksBeforeAdjustment;
     },
+    /** @param {number} length - Nonce length in bytes */
     generateRandomNonce: (length = MINING_PARAMS.nonceLength) => {
         const Uint8 = new Uint8Array(length);
         crypto.getRandomValues(Uint8);
 
         const Hex = Array.from(Uint8).map(b => b.toString(16).padStart(2, '0')).join('');
-
         return { Uint8, Hex };
     },
     /**
@@ -2062,11 +2064,12 @@ const mining = {
     },
     getBlockFinalDifficulty: (blockData) => {
         const { difficulty, legitimacy, posTimestamp, timestamp } = blockData;
+        const powTimestamp = timestamp || posTimestamp + SETTINGS.targetBlockTime;
 
         if (!typeValidation.numberIsPositiveInteger(posTimestamp)) { throw new Error('Invalid posTimestamp'); }
-        if (!typeValidation.numberIsPositiveInteger(timestamp)) { throw new Error('Invalid timestamp'); }
+        if (!typeValidation.numberIsPositiveInteger(powTimestamp)) { throw new Error('Invalid timestamp'); }
 
-        const differenceRatio = (timestamp - posTimestamp) / SETTINGS.targetBlockTime;
+        const differenceRatio = (powTimestamp - posTimestamp) / SETTINGS.targetBlockTime;
         const timeDiffAdjustment = MINING_PARAMS.maxTimeDifferenceAdjustment - Math.round(differenceRatio * MINING_PARAMS.maxTimeDifferenceAdjustment);
         
         const legitimacyAdjustment = legitimacy * MINING_PARAMS.diffAdjustPerLegitimacy;
@@ -2079,10 +2082,7 @@ const mining = {
         const adjust = difficulty % 16;
         return { zeros, adjust };
     },
-    /**
-     * @param {string} HashBitsAsString
-     * @param {BlockData} blockData
-     */
+    /** @param {string} HashBitsAsString @param {BlockData} blockData */
     verifyBlockHashConformToDifficulty: (HashBitsAsString = '', blockData) => {
         if (typeof HashBitsAsString !== 'string') { throw new Error('Invalid HashBitsAsString'); }
 
@@ -2092,11 +2092,11 @@ const mining = {
         const result = { conform: false, message: 'na', difficulty, timeDiffAdjustment, legitimacy, finalDifficulty, zeros, adjust };
 
         const condition1 = conditionnals.binaryStringStartsWithZeros(HashBitsAsString, zeros);
-        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros` };
+        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
         const next5Bits = HashBitsAsString.substring(zeros, zeros + 5);
         const condition2 = conditionnals.binaryStringSupOrEqual(next5Bits, adjust);
-        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust}` };
+        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust} | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
         if (result.message === 'na') { result.conform = true; result.message = 'lucky'; }
         return result;

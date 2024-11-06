@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { Wallet } from '../src/wallet_pariah.mjs';
-import { Account } from '../src/account.mjs';
+import { Wallet } from '../src/wallet.mjs';
+import { Account } from '../src/wallet.mjs';
 import fs from 'fs/promises';
 
 describe('Wallet Integration Tests', function () {
@@ -61,42 +61,4 @@ describe('Wallet Integration Tests', function () {
         });
     });
 
-
-    describe('loadOrCreateAccounts', function () {
-        it('should create new accounts if none exist', async function () {
-            const accounts = await wallet.loadOrCreateAccounts({
-                masterHex: testMasterHex,
-                useDevArgon2: true,
-                nbOfAccounts: 3,
-                addressPrefix: 'W'
-            });
-
-            expect(accounts).to.have.length(3);
-            accounts.forEach(account => {
-                expect(account).to.be.instanceOf(Account);
-                expect(account.address[0]).to.equal('W');
-            });
-        });
-
-        it('should load existing accounts if available', async function () {
-            // First, create and save some accounts
-            await wallet.deriveAccounts(3, 'W');
-            await wallet.saveAccounts();
-
-            // Now, try to load or create accounts
-            const newWallet = new Wallet(testMasterHex, true);
-            const loadedAccounts = await newWallet.loadOrCreateAccounts({
-                masterHex: testMasterHex,
-                useDevArgon2: true,
-                nbOfAccounts: 3,
-                addressPrefix: 'W'
-            });
-
-            expect(loadedAccounts).to.have.length(3);
-            loadedAccounts.forEach(account => {
-                expect(account).to.be.instanceOf(Account);
-                expect(account.address[0]).to.equal('W');
-            });
-        });
-    });
 });

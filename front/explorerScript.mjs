@@ -5,16 +5,16 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)
 
 //import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
-import { BlockData } from '../src/block.mjs';
+import { BlockData } from '../src/block-classes.mjs';
 import { Transaction_Builder } from '../src/transaction.mjs';
-import { TxValidation } from '../src/validation.mjs';
+import { TxValidation } from '../src/validations-classes.mjs';
 /**
-* @typedef {import("../src/block.mjs").BlockHeader} BlockHeader
-* @typedef {import("../src/block.mjs").BlockInfo} BlockInfo
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("../src/block-classes.mjs").BlockHeader} BlockHeader
+* @typedef {import("../src/block-classes.mjs").BlockInfo} BlockInfo
+* @typedef {import("../src/block-classes.mjs").BlockData} BlockData
 * @typedef {import("../src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../src/transaction.mjs").UTXO} UTXO
-* @typedef {import("../src/validation.mjs").TxValidation} TxValidation
+* @typedef {import("../src/validations-classes.mjs").TxValidation} TxValidation
 */
 
 /** @type {BlockExplorerWidget} */
@@ -39,6 +39,7 @@ async function sendWsWhenReady(message) {
     ws.send(JSON.stringify(message));
 }
 const SETTINGS = {
+    HTTP_PROTOCOL: "http", // http or https
     WS_PROTOCOL: window.location.protocol === "https:" ? "wss" : "ws",
     DOMAIN: window.explorerDOMAIN || window.location.hostname,
     PORT: window.explorerPORT || window.location.port,
@@ -55,9 +56,22 @@ const SETTINGS = {
 
     NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 5,
 }
+async function verifyServer() {
+    const wsLocalUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
+    const wsUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    console.log(`Verify server: ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}`);
+
+    // Use fetch to make an HTTP request to the server
+    try {
+        const response = await fetch(SETTINGS.LOCAL ? wsLocalUrl : wsUrl, { method: 'HEAD' }) // use HEAD method to avoid downloading the server's response body
+        if (response.ok) {
+            console.info('Server is available, ready to connect WebSocket...');
+            return true;
+        }
+    } catch (error) {}
+    return false;
+}
 function connectWS() {
-    //ws = new WebSocket(`${SETTINGS.WS_PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
-    //console.log(`Connecting to ${SETTINGS.WS_PROTOCOL}//${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`);
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
     ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
@@ -165,6 +179,21 @@ function connectWS() {
         }
     };
 }
+async function connectWSLoop() {
+    let connecting = false;
+    while (true) {
+        await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
+        if (connecting || ws) { continue; }
+        connecting = true;
+        //console.log('----- Verifying server -----');
+        //const serverAvailable = await verifyServer();
+        //if (!serverAvailable) { connecting = false; continue; }
+
+        console.log('----- Connecting to WS -----');
+        connectWS();
+        connecting = false;
+    }
+}; connectWSLoop();
 async function getHeightsLoop() {
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.GET_CURRENT_HEIGHT_INTERVAL); });
@@ -457,8 +486,6 @@ export class BlockExplorerWidget {
 
         // fill chainWrap with empty blocks
         this.bcElmtsManager.createChainOfEmptyBlocksUntilFillTheDiv(chainWrap);
-
-        connectWS();
     }
     // SETTERS -------------------------------------------------------------
     /** suppose the blockData is already in memory */

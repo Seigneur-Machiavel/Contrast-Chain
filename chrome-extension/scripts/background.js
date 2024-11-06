@@ -3,20 +3,20 @@ import { Sanitizer, Pow } from './backgroundClasses-ES6.js';
 import { cryptoLight } from './cryptoLight.js';
 
 /**
-* @typedef {import("../contrast/src/block.mjs").BlockData} BlockData
+* @typedef {import("../contrast/src/block-classes.mjs").BlockData} BlockData
 * @typedef {import("../contrast/src/transaction.mjs").Transaction} Transaction
 * @typedef {import("../contrast/src/transaction.mjs").TransactionWithDetails} TransactionWithDetails
 */
 
 cryptoLight.argon2 = argon2;
 
-let pow = new Pow(argon2);
+const pow = new Pow(argon2);
 const sanitizer = new Sanitizer();
 const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
     WS_PROTOCOL: "ws", // ws or wss
     DOMAIN: 'pinkparrot.science', // 'pinkparrot.observer',
-    PORT: 27270, // "27270", no port using domain
+    PORT: "27270", // "27270", no port using domain
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
 
@@ -50,34 +50,51 @@ async function getTransactionFromMemoryOrSendRequest(txReference, address = unde
     transactionsByReference[txReference] = 'request sent';
     return 'request sent';
 }
-
+async function load_SETTINGS_fromStorage() {
+    const settings = await chrome.storage.local.get('SETTINGS');
+    if (!settings || !settings.SETTINGS) { return; }
+    Object.assign(SETTINGS, settings.SETTINGS);
+}
 /** @type {WebSocket} */
 let ws;
+async function verifyServer() {
+    const wsLocalUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
+    const wsUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    console.log(`Verify server: ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}`);
+
+    // Use fetch to make an HTTP request to the server
+    try {
+        const response = await fetch(SETTINGS.LOCAL ? wsLocalUrl : wsUrl, { method: 'HEAD' }) // use HEAD method to avoid downloading the server's response body
+        if (response.ok) {
+            console.info('Server is available, ready to connect WebSocket...');
+            return true;
+        }
+    } catch (error) {}
+    return false;
+}
 function connectWS() {
-    //ws = new WebSocket(`ws://${SETTINGS.DOMAIN}`);
+    try { if (ws) { ws.close(); } } catch (error) {}
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+
     console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
+    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    ws.onerror = function(error) { console.info('WebSocket error: ' + error); return false;};
 
     ws.onopen = function() {
-        console.log('Connection opened');
+        console.log('----- Connection opened -----');
         //console.log(ws);
         ws.send(JSON.stringify({ type: 'get_best_block_candidate' }));
         ws.send(JSON.stringify({ type: 'subscribe_best_block_candidate_change' }));
     };
     ws.onclose = function() {
-        console.info('Connection closed');
-        setTimeout( () => {
-            ws = undefined;
-            //connectWS();
-        }, SETTINGS.RECONNECT_INTERVAL);
+        console.info('----- Connection closed -----');
+        ws = undefined;
     };
     ws.onmessage = async function(event) {
         const message = JSON.parse(event.data);
         const trigger = message.trigger;
         const data = message.data;
-        let remainingAttempts = 10;
         switch (message.type) {
             case 'current_time':
                 const timeOffset = data - Date.now();
@@ -152,10 +169,6 @@ function connectWS() {
                 break;
         }
     }
-
-    ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
-
-    return ws;
 }
 async function connectWSLoop() {
     let connecting = false;
@@ -163,9 +176,12 @@ async function connectWSLoop() {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (connecting || ws) { continue; }
         connecting = true;
-        try {
-            connectWS();
-        } catch (error) {}
+        /*console.log('----- Verifying server -----');
+        const serverAvailable = await verifyServer();
+        if (!serverAvailable) { connecting = false; continue; }*/
+
+        console.log('----- Connecting to WS -----');
+        connectWS();
         connecting = false;
     }
 }; connectWSLoop();
@@ -282,8 +298,11 @@ chrome.storage.onChanged.addListener(async function(changes, namespace) {
             //chrome.storage.local.set({blockFinalized: undefined});
 
             alreadyWaitingForWS = true;
+            console.log('----- waiting for ws -----');
             await readyWS();
+            console.log('----- ws ready -----');
             ws.send(JSON.stringify({ type: 'broadcast_finalized_block', data: blockFinalized }));
+            console.log('----- block broadcasted -----');
             alreadyWaitingForWS = false;
         }
     }

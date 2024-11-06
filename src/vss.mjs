@@ -1,7 +1,6 @@
 import { HashFunctions } from "./conCrypto.mjs";
 import { UTXO } from "./transaction.mjs";
 
-
 /**
  * @typedef {Object} StakeReference
  * @property {string} address - Example: "WCHMD65Q7qR2uH9XF5dJ"
@@ -22,27 +21,11 @@ export const StakeReference = (address, anchor, amount) => {
     };
 }
 
-// test
-/*const testStartTime = performance.now();
-const bigBigInt = BigInt('0x' + 'f'.repeat(64));
-const maxVal = BigInt(1000000);
-const modulo = bigBigInt % maxVal;
-
-const testEndTime = performance.now();
-console.log(`m`);
-console.log(`m`);
-console.log(`modulo: ${modulo}, time: ${testEndTime - testStartTime}ms`);
-console.log(`m`);
-console.log(`m`);*/
-
 export class spectrumFunctions {
     /** @param {spectrum} spectrum */
     static getHighestUpperBound(spectrum) {
         const keys = Object.keys(spectrum);
         if (keys.length === 0) { return 0; }
-
-        //keys.sort((a, b) => parseInt(a) - parseInt(b));
-        //return parseInt(keys[keys.length - 1]);
 
         // just return the last key
         return parseInt(keys[keys.length - 1]);
@@ -113,9 +96,7 @@ export class spectrumFunctions {
 }
 
 export class Vss {
-    /**
-     * @param {number} maxSupply - The maximum supply value to be used in the VSS.
-     */
+    /** @param {number} maxSupply - The maximum supply value to be used in the VSS. */
     constructor(maxSupply) {
         /** Validator Selection Spectrum (VSS)
          * - Can search key with number, will be converted to string.
@@ -127,6 +108,7 @@ export class Vss {
         this.currentRoundHash = '';
         /** @type {number} */
         this.maxSupply = maxSupply; // Store the maxSupply passed in the constructor
+        this.maxLegitimacyToBroadcast = 10; // node should not broadcast block if not in the top 10
     }
 
     /** @param {UTXO} utxo @param {number | undefined} upperBound */
@@ -178,12 +160,8 @@ export class Vss {
             // everyone has considered 0 legitimacy when not enough stakes
             if (maxRange < 999_999) { this.legitimacies = roundLegitimacies; return; }
             
-            //const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
             const winningNumber = await spectrumFunctions.hashToIntWithRejection(blockHash, i, maxRange);
-
             const stakeReference = spectrumFunctions.getStakeReferenceFromIndex(this.spectrum, winningNumber);
-            //if (roundLegitimacies.find(stake => stake.anchor === stakeReference.anchor)) { continue; }
-
             roundLegitimacies.push(stakeReference);
             
             if (roundLegitimacies.length >= spectrumLength) { break; } // If all stakes have been selected

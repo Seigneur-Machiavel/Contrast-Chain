@@ -1,5 +1,5 @@
 import { parentPort } from 'worker_threads';
-import { TxValidation } from '../src/validation.mjs';
+import { TxValidation } from '../src/validations-classes.mjs';
 
 // WORKER SIDE
 let workerId = undefined;

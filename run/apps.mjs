@@ -9,11 +9,11 @@ import { exec } from 'child_process';
 import { CallBackManager } from '../src/websocketCallback.mjs';
 import utils from '../src/utils.mjs';
 /**
-* @typedef {import("../src/account.mjs").Account} Account
+* @typedef {import("../src/wallet.mjs").Account} Account
 * @typedef {import("../src/node-factory.mjs").NodeFactory} NodeFactory
 * @typedef {import("../src/node.mjs").Node} Node
-* @typedef {import("../src/block.mjs").BlockData} BlockData
-* @typedef {import("../src/block.mjs").BlockUtils} BlockUtils
+* @typedef {import("../src/block-classes.mjs").BlockData} BlockData
+* @typedef {import("../src/block-classes.mjs").BlockUtils} BlockUtils
 */
 
 const APPS_VARS = {
@@ -79,8 +79,10 @@ class AppStaticFncs {
         result.repScores = node.p2pNetwork?.reputationManager?.getScores() ?? 'No Rep Scores';
         result.nodeState = node.blockchainStats.state ?? 'No State';
         result.peerHeights = node.syncHandler.getAllPeerHeights() ?? 'No Peer Height';
-        result.listenAddress = node.p2pNetwork?.options?.listenAddress ?? 'No Listen Address';
+        result.listenAddress = node.p2pNetwork?.p2pNode?.getMultiaddrs() ?? 'No Listen Address';
         result.lastLegitimacy = node.blockchainStats?.lastLegitimacy ?? 'No Legitimacy';
+        result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
+        result.ignoreIncomingBlocks = node.ignoreIncomingBlocks;
         return result;
     }
     /** @param {Node} node */
@@ -114,6 +116,7 @@ export class DashboardWsApp {
 
         this.readableNow = () => { return `${new Date().toLocaleTimeString()}:${new Date().getMilliseconds()}` };
         if (autoInit) this.init();
+        this.#nodeRestartCheckLoop();
     }
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
@@ -201,12 +204,7 @@ export class DashboardWsApp {
         }
 
         this.#injectNodeSettings(this.node.account.address);
-
-        const callbacksModes = []; // we will add the modes related to the callbacks we want to init
-        if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
-        if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
-        this.callBackManager = new CallBackManager(this.node);
-        this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
+        this.#injectCallbacks();
     }
     async initMultiNode(nodePrivateKey = 'ff', local = false, useDevArgon2 = false) {
         const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
@@ -271,49 +269,35 @@ export class DashboardWsApp {
             node.miner.nbOfWorkers = associatedMinerThreads;
         }
     }
-
-    #hardResetAndClose() {
-        exec('git reset --hard HEAD', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Git reset error: ${error.message}`);
-                console.error(`stderr: ${stderr}`);
-                res.status(500).send('Git reset failed');
-                return;
-            }
-            console.log(`Git reset output: ${stdout}`);
-
-            console.log('Exiting process to allow PM2 to restart the application');
-            process.exit(0);
-        });
+    #injectCallbacks() {
+        const callbacksModes = []; // we will add the modes related to the callbacks we want to init
+        if (this.node.roles.includes('validator')) { callbacksModes.push('validatorDashboard'); }
+        if (this.node.roles.includes('miner')) { callbacksModes.push('minerDashboard'); }
+        this.callBackManager = new CallBackManager(this.node);
+        this.callBackManager.initAllCallbacksOfMode(callbacksModes, this.wss.clients);
     }
+    async #nodeRestartCheckLoop() {
+        let restartCounter = 0;
+        while (true) {
+            if (this.factory.restartCounter > restartCounter) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.callBackManager = new CallBackManager(this.node);
+                this.#injectCallbacks();
 
-    #updateAndClose() {
-        exec('git pull', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Git pull error: ${error.message}`);
-                console.error(`stderr: ${stderr}`);
-                res.status(500).send('Git pull failed');
-                return;
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.info(`[DASHBOARD] Node restarted, counter: ${restartCounter}, closing connections`);
+                this.#closeAllConnections();
+                restartCounter = this.factory.restartCounter;
             }
-            console.log(`Git pull output: ${stdout}`);
-
-            console.log('Exiting process to allow PM2 to restart the application');
-            process.exit(0);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }   
+    #closeAllConnections() {
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+                client.close(1001, 'Server is shutting down');
+            }
         });
-    }
-
-    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
-        console.log('Modifying account and restarting node id:', nodeId);
-        const wallet = new contrast.Wallet(newPrivateKey, false);
-        const restored = await wallet.restore();
-        if (!restored) { console.error('Failed to restore wallet.'); return; }
-        wallet.loadAccounts();
-        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
-        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
-        wallet.saveAccounts();
-
-        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
-
     }
 
     /** @param {Buffer} message @param {WebSocket} ws */
@@ -322,6 +306,7 @@ export class DashboardWsApp {
         const messageAsString = message.toString();
         const parsedMessage = JSON.parse(messageAsString);
         const data = parsedMessage.data;
+        //console.log(`[DASHBOARD] Received message: ${parsedMessage.type}`);
         switch (parsedMessage.type) {
             case 'ping':
                 ws.send(JSON.stringify({ type: 'pong', data: Date.now() }));
@@ -415,11 +400,16 @@ export class DashboardWsApp {
                 break;
             case 'ask_sync_peer':
                 console.log(`Asking peer ${data} to sync`);
-                this.node.syncHandler.syncWithPeer(data);
+                this.node.syncHandler.syncWithPeers(data);
                 break;
             case 'ban_peer':
                 console.log(`Banning peer ${data}`);
                 this.node.p2pNetwork.reputationManager.banIdentifier(data);
+                break;
+
+            case 'ignore_incoming_blocks':
+                console.log(`Ignore incoming blocks: ${data}`);
+                this.node.ignoreIncomingBlocks = data;
                 break;
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));
@@ -440,6 +430,46 @@ export class DashboardWsApp {
         this.#nodesSettings = nodeSettings;
         console.log(`nodeSettings loaded: ${Object.keys(this.#nodesSettings).length}`);
     }
+    #hardResetAndClose() {
+        exec('git reset --hard HEAD', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git reset error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git reset failed');
+                return;
+            }
+            console.log(`Git reset output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+    #updateAndClose() {
+        exec('git pull', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Git pull error: ${error.message}`);
+                console.error(`stderr: ${stderr}`);
+                res.status(500).send('Git pull failed');
+                return;
+            }
+            console.log(`Git pull output: ${stdout}`);
+
+            console.log('Exiting process to allow PM2 to restart the application');
+            process.exit(0);
+        });
+    }
+    async #modifyAccountAndRestartNode(nodeId, newPrivateKey) {
+        console.log('Modifying account and restarting node id:', nodeId);
+        const wallet = new contrast.Wallet(newPrivateKey, false);
+        const restored = await wallet.restore();
+        if (!restored) { console.error('Failed to restore wallet.'); return; }
+        wallet.loadAccounts();
+        const { derivedAccounts, avgIterations } = await wallet.deriveAccounts(2, "C");
+        if (!derivedAccounts) { console.error('Failed to derive addresses.'); return; }
+        wallet.saveAccounts();
+
+        await this.factory.forceRestartNode(nodeId, true, derivedAccounts[0], derivedAccounts[1].address);
+    }
 }
 
 export class ObserverWsApp {
@@ -459,6 +489,7 @@ export class ObserverWsApp {
 
         this.readableNow = () => { return `${new Date().toLocaleTimeString()}:${new Date().getMilliseconds()}` };
         this.init();
+        this.#nodeRestartCheckLoop();
     }
     /** @type {Node} */
     get node() { return this.factory.getFirstNode(); }
@@ -518,6 +549,29 @@ export class ObserverWsApp {
         const time = this.node.timeSynchronizer.getCurrentTime();
         ws.send(JSON.stringify({ type: 'current_time', data: time }));
     }
+    async #nodeRestartCheckLoop() {
+        let restartCounter = 0;
+        while (true) {
+            if (this.factory.restartCounter > restartCounter) {
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                this.callBackManager = new CallBackManager(this.node);
+                this.callBackManager.initAllCallbacksOfMode('observer', this.wss.clients);
+
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                console.info(`[DASHBOARD] Node restarted, counter: ${restartCounter}, closing connections`);
+                this.#closeAllConnections();
+                restartCounter = this.factory.restartCounter;
+            }
+            await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+    }   
+    #closeAllConnections() {
+        this.wss.clients.forEach((client) => {
+            if (client.readyState === 1) {
+                client.close(1001, 'Server is shutting down');
+            }
+        });
+    }
     /** @param {Buffer} message @param {WebSocket} ws */
     async #onMessage(message, ws) {
         try {
@@ -560,7 +614,7 @@ export class ObserverWsApp {
                         to: typeof data === 'string' ? this.node.blockchain.currentHeight : data.to,
                     }
 
-                    const addTxsRefs = await this.node.blockchain.getTxsRefencesOfAddress(this.node.memPool, gatrParams.address, gatrParams.from, gatrParams.to);
+                    const addTxsRefs = await this.node.blockchain.getTxsReferencesOfAddress(this.node.memPool, gatrParams.address, gatrParams.from, gatrParams.to);
                     ws.send(JSON.stringify({ type: 'address_transactionsRefs_requested', data: addTxsRefs }));
                     break;
                 case 'get_address_exhaustive_data':
@@ -611,13 +665,18 @@ export class ObserverWsApp {
                     ws.send(JSON.stringify({ type: 'transaction_broadcast_result', data: { transaction: data.transaction, txId: data.transaction.id, consumedAnchors: data.transaction.inputs, senderAddress: data.senderAddress, error, success: broadcasted } }));
                     break;
                 case 'broadcast_finalized_block':
-                    console.log(`--- Broadcasting finalized block from observer ---`);
-                    //try {
-                    await this.node.p2pNetwork.broadcast('new_block_finalized', data);
-                    if (this.node.roles.includes('validator')) { this.node.opStack.push('digestPowProposal', data); };
-                    //} catch (error) {
-                        //console.error(`Error broadcasting finalized block: ${error.message}`);
-                    //}
+                    console.log(`--- Broadcasting finalized block #${data.index} from observer ---`);
+                    if (this.node.blockCandidate.index !== data.index) {
+                        console.error(`[OBSERVER] Block index mismatch: ${this.node.blockCandidate.index} !== ${data.index}`);
+                        return;
+                    }
+                    if (this.node.blockCandidate.prevHash !== data.prevHash) {
+                        console.error(`[OBSERVER] Block prevHash mismatch: ${this.node.blockCandidate.prevHash} !== ${data.prevHash}`);
+                        return;
+                    }
+
+                    await this.node.p2pBroadcast('new_block_finalized', data);
+                    this.node.opStack.push('digestPowProposal', data);
                     break;
                 default:
                     ws.send(JSON.stringify({ type: 'error', data: `unknown message type: ${parsedMessage.type}` }));

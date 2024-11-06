@@ -67,7 +67,7 @@
                 </div>
                 <div class="spacedText">
                     <h3>Staking:</h3>
-                    <div id="stakeInputWrap" style="transform: translateY(26%);">
+                    <div id="stakeInputWrap">
                         <input type="text" class="amountInput" value="1.000000" min="0">
                         <button>Stake</button>
                     </div>
@@ -111,7 +111,15 @@
             <div class="spacedText">
                 <h1>Node Information</h1>
             </div>
-
+            <div id="ignoreBlocksWrap" class="flex justify-between items-center mb-2">
+                <span class="text-gray-300">Ignore Incoming Blocks:</span>
+                <div class="flex items-center gap-2">
+                    <button id="ignoreBlocksToggle" class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out bg-gray-600" role="switch" aria-checked="false">
+                        <span aria-hidden="true" class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out translate-x-0"></span>
+                    </button>
+                    <span id="ignoreBlocksStatus" class="text-sm">OFF</span>
+                </div>
+            </div>
             <div class="spacedText">
                 <h3>Client Version</h3>
                 <h3 id="clientVersion">v0.1</h3> 

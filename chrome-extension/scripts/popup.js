@@ -3,10 +3,11 @@ if (false) { // THIS IS FOR DEV ONLY ( to get better code completion)-
     const PatternGenerator = require("./pattern-generator.js");
 	const { cryptoLight } = require("./cryptoLight.js");
     const { CenterScreenBtn, Communication, AuthInfo, Sanitizer, Miner } = require("./classes.js");
-    const { htmlAnimations } = require("./htmlAnimations.js");
+    //const { htmlAnimations } = require("./htmlAnimations.mjs");
+    const { WelcomeAnimationBlob, horizontalBtnLoading } = require('./htmlAnimations.mjs');
     const { Wallet } = require("../contrast/src/wallet.mjs");
     const utils = require("../contrast/src/utils.mjs").default;
-    const { Account } = require("../contrast/src/account.mjs");
+    const { Account } = require("../contrast/src/wallet.mjs");
     const { Transaction, Transaction_Builder } = require("../contrast/src/transaction.mjs");
 }
 
@@ -87,7 +88,9 @@ class AddressExhaustiveData {
         return highestHeight;
     }
     highestKnownTxsHeight() {
-        return this.addressTxsReferences.length === 0 ? 0 : this.addressTxsReferences[this.addressTxsReferences.length - 1];
+        if (this.addressTxsReferences.length === 0) { return 0; }
+        const highestTxRef = this.addressTxsReferences[this.addressTxsReferences.length - 1];
+        return highestTxRef.split(':')[0];
     }
 }
 cryptoLight.useArgon2Worker = true; console.log('Argon2 worker enabled!');
@@ -111,10 +114,11 @@ const communication = new Communication(settings.serverUrl);
 const centerScreenBtn = new CenterScreenBtn();
 centerScreenBtn.state = 'welcome';
 centerScreenBtn.init(7);
-const miner = new Miner(centerScreenBtn, communication);
+//const miner = new Miner(centerScreenBtn, communication);
 const selectedWalletIndex = 0;
 
 const animations = {};
+const colors = { background: 'white', text: 'black' };
 const eHTML = {
     documentVisible: true,
     appTitle: document.getElementById('appTitle'),
@@ -185,6 +189,7 @@ const eHTML = {
     txHistoryWrap: document.getElementById('txHistoryWrap'),
     txHistoryTable: document.getElementById('txHistoryWrap').getElementsByTagName('table')[0],
 };
+const welcomeAnimationBlob = new WelcomeAnimationBlob(eHTML.welcomeCanvas, 400, 302, colors.text);
 
 /** @type {Wallet} */
 let activeWallet;
@@ -196,7 +201,6 @@ const busy = [];
 /** @type {Object<string, AddressExhaustiveData>} */
 const addressesExhaustiveData = {};
 //#region - UX FUNCTIONS
-const colors = { background: 'white', text: 'black' };
 function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
     const contentDivHeight = eHTML.popUpContent.offsetHeight;
     const contentWrapHeight = eHTML.popUpContentWrap.offsetHeight;
@@ -226,7 +230,7 @@ function resizePopUp(applyBLur = true, popUpSize = 'small', duration = 200) {
 
 function setVisibleForm(formId, applyBLur = true) {
     //const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
-    miner.paused = true;
+    //miner.paused = true;
     eHTML.bottomBar.classList.remove('hidden');
     eHTML.popUpContent.classList.add('large');
     eHTML.appTitle.classList.add('hidden');
@@ -280,7 +284,7 @@ function setVisibleForm(formId, applyBLur = true) {
     }
 
     if (formId === "miningForm") {
-        miner.paused = false;
+        //miner.paused = false;
         eHTML.centerScreenBtnContrainer.classList.remove('hidden');
         centerScreenBtn.centerScreenBtnWrap.classList.add('active');
         eHTML.miningBtn.classList.remove('active');
@@ -434,7 +438,7 @@ function textInfo(targetForm, text, timeout = 3000, eraseAnyCurrentTextInfo = fa
 function setWaitingForConnectionFormLoading(loading = true) {
     const waitingForConnectionForm = document.getElementById('waitingForConnectionForm');
     const loadingSvg = waitingForConnectionForm.getElementsByClassName('loadingSvgDiv')[0];
-    loadingSvg.innerHTML = loading ? htmlAnimations.horizontalBtnLoading : '';
+    loadingSvg.innerHTML = loading ? horizontalBtnLoading : '';
 }
 async function initUI() {
     document.body.style.width = "0px";
@@ -481,29 +485,15 @@ async function initUI() {
                 opacity: 1,
                 scale: 1,
                 filter: 'blur(0px)',
-                duration: 120,
+                duration: 80,
                 easing: 'easeInOutQuad'
             });
-            await new Promise(resolve => setTimeout(resolve, 120));
+            await new Promise(resolve => setTimeout(resolve, 80));
         }
     }, 100);
     
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
-    welcomeCanvasAnimationDocStart(eHTML.welcomeCanvas);
-    const dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
-    for (let i = 0; i < 50; i++) {
-        if (document.visibilityState === 'hidden') {
-            await new Promise(resolve => setTimeout(resolve, 20));
-            i--;
-            continue;
-        }
-        welcomeCanvasAnimationDocNewBubble(eHTML.welcomeCanvas, 1);
-
-        const rndDelay = Math.random() * 2000;
-        const delay = dotAppearTimings[i] || rndDelay;
-        await new Promise(resolve => setTimeout(resolve, delay));
-    }
+    await new Promise(resolve => setTimeout(resolve, 800));
+    welcomeAnimationBlob.start();
 
     /*const dataURL = eHTML.welcomeCanvas.toDataURL();
     ob = [];
@@ -512,109 +502,6 @@ async function initUI() {
     await new Promise(resolve => setTimeout(resolve, 100));
     // set barre img
     eHTML.welcomeCanvas.style.backgroundImage = 'url("../images/contrast128.png")';*/
-}
-let ob = [];
-function welcomeCanvasAnimationDocNewBubble(canvasElement = eHTML.welcomeCanvas, amount = 1) {
-    let a,b,c,d;
-    let tx = canvasElement.width/2;
-    let ty = canvasElement.height/2;
-
-    for(a=0;a<amount;a++){
-        b={};
-        c=Math.PI*2*Math.random();
-        d=Math.random()*1000;
-        b.x=tx+Math.cos(c)*d;
-        b.y=ty+Math.sin(c)*d;
-        b.rx=b.ry=0;
-        b.typ=(Math.random()*360)|0;
-        ob.push(b);
-    }
-}
-function welcomeCanvasAnimationDocStart(canvasElement = eHTML.welcomeCanvas) {
-    let ctx,count,tx,ty;
-
-    ctx = canvasElement.getContext('2d');
-    canvasElement.width = 302;
-    canvasElement.height = 400;
-    count=0;
-    tx=canvasElement.width/2;
-    ty=canvasElement.height/2;
-
-    async function aaa(){
-        /*console.log(`document.visibilityState: ${document.visibilityState}`);
-        while (document.visibilityState === 'hidden') {
-            await new Promise(resolve => setTimeout(resolve, 20));
-            console.log('hidden');
-        }*/
-
-        let a,b,c,d,e,f,g,h,x,y,abs,pe,tim;
-        ctx.globalCompositeOperation = "source-over";
-
-        ctx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-        tim=count/270;
-        abs=Math.abs;
-        pe=1.2+Math.sin(tim/14.7)*0.87;
-        
-        for(a=0;a<ob.length;a++){
-            b=ob[a];
-            b.rx*=0.2;
-            b.ry*=0.2;
-            b.s=0.72+Math.sin((b.typ/360)*Math.PI*2+tim)/2;
-            b.s*=b.s;
-        }
-        
-        for(a=0;a<ob.length;a++){
-            b=ob[a];
-            for(c=a+1;c<ob.length;c++){
-                d=ob[c];
-                x=b.x-d.x;
-                y=b.y-d.y;
-                e=(b.typ-d.typ)/360;
-                if(e<0)e+=1;
-                if(e>0.52)e=1-e;
-                e*=pe;
-                if(e>1)continue;
-                e=0.2+e*1.2;
-                h=120*e*(b.s+d.s+0.4)/pe;
-                if(abs(x)>h || abs(y)>h)continue;
-                e=Math.pow(x*x+y*y,0.68);
-                if(e<h){
-                    e=(h-e)/h;
-                    e*=e/10;
-                    x*=e;
-                    y*=e;
-                    b.rx+=x;
-                    b.ry+=y;
-                    d.rx-=x;
-                    d.ry-=y;
-                }
-            }
-        }
-        
-        for(a=0;a<ob.length;a++){
-            b=ob[a];
-            x=b.x-tx;
-            y=b.y-ty;
-            e=Math.pow(x*x+y*y,0.5);
-            b.rx-=x*e/2000; // 2750
-            b.ry-=y*e/2000; // 2750
-            b.x+=b.rx;
-            b.y+=b.ry;
-        }
-        for(a=0;a<ob.length;a++){
-            b=ob[a];
-            ctx.strokeStyle=ctx.fillStyle=colors.text;
-            ctx.beginPath();
-            ctx.arc(b.x,b.y,10*(b.s+0.8),0,Math.PI*2,0);
-            ctx.fill();
-            ctx.stroke();
-        }
-        count++;
-        requestAnimationFrame(aaa);
-    }
-
-    requestAnimationFrame(aaa);
 }
 function createAccountLabel(name, address, amount = 0) {
     const accountLabel = document.createElement('div');
@@ -771,7 +658,7 @@ function newAddressBtnLoadingToggle() {
         });
     } else {
         eHTML.newAddressBtn.classList.add('loading');
-        eHTML.newAddressBtn.innerHTML = htmlAnimations.horizontalBtnLoading;
+        eHTML.newAddressBtn.innerHTML = horizontalBtnLoading;
         if (animations.newAddressBtn) { animations.newAddressBtn.pause(); }
         animations.newAddressBtn = anime({
             targets: eHTML.newAddressBtn,
@@ -845,8 +732,11 @@ function createHtmlElement(tag, id, classes = [], divToInject = undefined) {
     if (divToInject) { divToInject.appendChild(element); }
     return element;
 }
-function holdBtnMouseUp(target, duration = 1000) {
-    const initialBackground = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
+function holdBtnMouseUp(target, invertColors = false, duration = 1000) {
+    const leftColor = invertColors ? 'var(--color1)' : 'var(--color2)';
+    const rightColor = invertColors ? 'var(--color2)' : 'var(--color1)';
+    const initialBackground = `linear-gradient(90deg, ${leftColor} 0%, ${rightColor} 0%)`;
+    //    const initialBackground = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
 
     return anime({
         targets: target,
@@ -854,23 +744,33 @@ function holdBtnMouseUp(target, duration = 1000) {
         duration,
         easing: 'easeInOutQuad',
         complete: () => {
-            target.style.background = initialBackground;
+            //target.style.background = initialBackground;
+            target.style.background = `linear-gradient(90deg, ${rightColor} 0%, ${leftColor} 0%)`;	
         }
     });
 }
-function holdBtnMouseDown(target, completeFnc, duration = 2000) {
+function holdBtnMouseDown(target, completeFnc, invertColors = false, duration = 2000) {
     const computedStyle = getComputedStyle(target);
     const bImage = computedStyle.backgroundImage;
     const perc1 = bImage === 'none' ? 0 : bImage.split('%')[0].split(' ')[bImage.split('%')[0].split(' ').length - 1];
     const perc2 = bImage === 'none' ? 0 : bImage.split('%')[1].split(' ')[bImage.split('%')[1].split(' ').length - 1];
-    target.style.background = `linear-gradient(90deg, var(--color2) ${perc1}%, var(--color1) ${perc2}%)`;
+    
+    const leftColor = invertColors ? 'var(--color1)' : 'var(--color2)';
+    const rightColor = invertColors ? 'var(--color2)' : 'var(--color1)';
+    target.style.background = `linear-gradient(90deg, ${leftColor} ${perc1}%, ${rightColor} ${perc2}%)`;
+    //target.style.background = `linear-gradient(90deg, var(--color2) ${perc1}%, var(--color1) ${perc2}%)`;
 
     return anime({
         targets: target,
-        background: 'linear-gradient(90deg, var(--color2) 100%, var(--color1) 102%)',
+        background: `linear-gradient(90deg, ${leftColor} 100%, ${rightColor} 102%)`,
+        //background: 'linear-gradient(90deg, var(--color2) 100%, var(--color1) 102%)',
         duration,
         easing: 'easeInOutQuad',
-        complete: () => { completeFnc(); }
+        complete: () => {
+            completeFnc();
+            // e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
+            target.style.background = `linear-gradient(90deg, ${leftColor} 0%, ${rightColor} 0%)`;
+        }
     });
 }
 //#endregion
@@ -1091,7 +991,7 @@ eHTML.passwordCreationForm.addEventListener('submit', async function(e) {
     }
 
     const button = eHTML.passwordCreationForm.getElementsByTagName('button')[0];
-    button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    button.innerHTML = horizontalBtnLoading;
     const passwordCreatedInfo = await setNewPassword(password, passComplement);
     setTimeout(() => { button.innerHTML = 'Set password'; }, 1000);
     if (!passwordCreatedInfo) { alert('Password setting failed'); busy.splice(busy.indexOf('passwordCreationForm'), 1); return; }
@@ -1133,7 +1033,7 @@ eHTML.loginForm.addEventListener('submit', async function(e) {
     if (passwordReadyUse === '') { busy.splice(busy.indexOf('loginForm'), 1); return; }
 
     const button = targetForm.getElementsByTagName('button')[0];
-    button.innerHTML = htmlAnimations.horizontalBtnLoading;
+    button.innerHTML = horizontalBtnLoading;
     button.classList.add('clicked');
 
     function infoAndWrongAnim(text) {
@@ -1234,7 +1134,7 @@ document.addEventListener('mouseup', function(e) { // release click
                 animations.deleteDataBtn.pause();
                 textInfo(eHTML.settingsForm, 'Hold the button to confirm');
             }
-            animations.deleteDataBtn = holdBtnMouseUp(e.target);
+            animations.deleteDataBtn = holdBtnMouseUp(e.target, false, 1000);
             break;
         default:
             break;
@@ -1264,10 +1164,10 @@ document.addEventListener('mousedown', function(e) { // hold click
         case 'deleteDataBtn':
             if (animations.deleteDataBtn) { animations.deleteDataBtn.pause(); }
 
-            animations.deleteDataBtn = holdBtnMouseDown(e.target, () => {
-                resetApplication();
-                e.target.style.background = 'white';
-            });
+            animations.deleteDataBtn = holdBtnMouseDown(
+                e.target,
+                () => { resetApplication(); animations.deleteDataBtn = null; }
+            );
             break;
         default:
             break;
@@ -1289,16 +1189,15 @@ document.addEventListener('mousedown', function(e) { // hold click
                 const createdSignedTx = await Transaction_Builder.createAndSignTransfer(senderAccount, amount, receiverAddress);
                 if (!createdSignedTx.signedTx) {
                     console.error('Transaction creation failed', createdSignedTx.error);
-                    //Error: Invalid address length !== 20
-                    let infoText = createdSignedTx.error;
-                    if (createdSignedTx.error.includes('Invalid address')) { infoText = 'Invalid address'; }
+                    let infoText = createdSignedTx.error.message;
+                    //if (createdSignedTx.error.message.includes('Invalid address')) { infoText = 'Invalid address'; }
                     textInfo(eHTML.send.miniForm, infoText);
                     return;
                 }
                 
                 console.log('transaction:', createdSignedTx.signedTx);
                 chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: createdSignedTx.signedTx, senderAddress: senderAccount.address });
-                e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
+                //e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
                 animations.sendBtn = null;
             });
             break;
@@ -1328,7 +1227,8 @@ document.addEventListener('mousedown', function(e) { // hold click
         
                     console.log('transaction:', signedTx);
                     chrome.runtime.sendMessage({action: "broadcast_transaction", transaction: signedTx, senderAddress: senderAccount.address });
-                    e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
+                    //e.target.style.background = 'linear-gradient(90deg, var(--color2) 0%, var(--color1) 0%)';
+                    animations.stakeBtn = null;
             });
             break;
         default:
@@ -1533,6 +1433,11 @@ document.addEventListener('input', async (event) => {
 document.addEventListener('focusin', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
     if (amountInput) { event.target.value = ''; }
+
+    /*if (event.target.classList.contains('animationTrigger')) {
+        welcomeAnimationBlob.paused = false;
+        return;
+    }*/
 });
 document.addEventListener('focusout', async (event) => {
     const amountInput = event.target.classList.contains('amountInput');
@@ -1544,6 +1449,11 @@ document.addEventListener('focusout', async (event) => {
         const formatedValue = utils.convert.number.formatNumberAsCurrency(amountMicro);
         event.target.value = formatedValue;
     }
+
+    /*if (event.target.classList.contains('animationTrigger')) {
+        welcomeAnimationBlob.paused = true;
+        return;
+    }*/
 });
 document.addEventListener('mouseover', function(event) {
     if (event.target === eHTML.contrastBlocksWidget || eHTML.contrastBlocksWidget.contains(event.target)) {

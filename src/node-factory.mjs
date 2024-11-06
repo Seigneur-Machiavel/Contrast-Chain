@@ -1,5 +1,5 @@
 import { Node } from './node.mjs';
-import { Account } from './account.mjs';
+import { Account } from './wallet.mjs';
 
 export class NodeFactory {
     constructor(nodePort = 27260) {
@@ -7,6 +7,7 @@ export class NodeFactory {
         /** @type {Map<string, Node>} */
         this.nodes = new Map();
         this.nodesCreationSettings = {};
+        this.restartCounter = 0;
         this.#controlLoop();
     }
     async #restartNodesWhoRequestedIt() {
@@ -45,18 +46,6 @@ export class NodeFactory {
         console.log(`Node ${node.id} created`);
         return node;
     }
-    /** @param {string} nodeId */
-    async startNode(nodeId) {
-        const node = this.getNode(nodeId);
-        if (!node) { console.error(`Node ${nodeId} not found`); return; }
-        await node.start();
-    }
-    /** @param {string} nodeId */
-    async stopNode(nodeId) {
-        const node = this.getNode(nodeId);
-        if (!node) { console.error(`Node ${nodeId} not found`); return; }
-        await node.stop();
-    }
     /**
      * @param {string} nodeId 
      * @param {boolean} skipBlocksValidation - if true, the node will not validate the blocks loaded from the database
@@ -67,6 +56,7 @@ export class NodeFactory {
         console.log(`Forcing restart of node ${nodeId} with account ${newAccount ? newAccount.address : 'unchanged'}`);
         const targetNode = this.getNode(nodeId);
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
+
         targetNode.restarting = true;
         if (!targetNode.restartRequested) {
             targetNode.requestRestart('NodeFactory.forceRestartNode()');
@@ -105,11 +95,14 @@ export class NodeFactory {
             nodeSettings.p2pOptions,
             nodeSettings.minerAddress
         );
+
         await newNode.start(startFromScratch);
         newNode.validatorRewardAddress = nodeSettings.validatorRewardAddress;
-        console.log(`Node ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+        console.log(`\nNode ${nodeId} has been restarted${newAccount ? ' with a new account' : ''}.`);
+        console.info(`Restart counter: ${this.restartCounter}\n`);
         
         this.nodes.set(nodeId, newNode);
+        this.restartCounter++;
     }
     getFirstNode() {
         return this.nodes.values().next().value;
@@ -123,18 +116,6 @@ export class NodeFactory {
         } catch (error) {
             console.error(error.message);
             return undefined;
-        }
-    }
-    getAllNodes() {
-        return Array.from(this.nodes.values());
-    }
-    /** @param {Account[]} accounts */
-    refreshAllBalances(accounts) {
-        for (const node of this.nodes.values()) {
-            for (const account of accounts) {
-                const { spendableBalance, balance, UTXOs } = node.utxoCache.getBalanceSpendableAndUTXOs(account.address);
-                account.setBalanceAndUTXOs(balance, UTXOs);
-            }
         }
     }
 }

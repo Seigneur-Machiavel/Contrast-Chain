@@ -112,7 +112,7 @@ describe('Comprehensive Sync System Test', function () {
             await factory.startNode(newNode.id);
             nodes.push(newNode);
 
-            await newNode.syncWithKnownPeers();
+            await newNode.syncWithPeers();
             await waitForSync([newNode, ...nodes]);
 
             const newNodeHeight = newNode.getStatus().currentBlockHeight;
@@ -171,7 +171,7 @@ describe('Comprehensive Sync System Test', function () {
         while (Date.now() - start < timeout) {
             // start syncing all nodes
             for (const node of nodes) {
-                await node.syncWithKnownPeers();
+                await node.syncWithPeers();
             }
             await new Promise(resolve => setTimeout(resolve, SYNC_CHECK_INTERVAL));
             const heightMap = new Map();

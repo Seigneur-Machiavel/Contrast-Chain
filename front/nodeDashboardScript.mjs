@@ -3,7 +3,7 @@ import { StakeReference } from '../src/vss.mjs';
 import utils from '../src/utils.mjs';
 
 /**
- * @typedef {import("../src/block.mjs").BlockData} BlockData
+ * @typedef {import("../src/block-classes.mjs").BlockData} BlockData
  * @typedef {import("./transaction.mjs").Transaction} Transaction
  */
 
@@ -74,6 +74,7 @@ function connectWS() {
                 nodeId = data.nodeId;
                 validatorUTXOs = data.validatorUTXOs;
                 minerUTXOs = data.minerUTXOs;
+                
                 break;
             case 'node_restarting':
                 console.log('node_restarting', data);
@@ -180,6 +181,11 @@ const eHTML = {
     peersHeightList: document.getElementById('peersHeightList'),
     listenAddress: document.getElementById('listenAddress'),
     lastLegitimacy: document.getElementById('lastLegitimacy'),
+    ignoreBlocksToggle: {
+        wrap: document.getElementById('ignoreBlocksWrap'),
+        button: document.getElementById('ignoreBlocksToggle'),
+        status: document.getElementById('ignoreBlocksStatus')
+    },
 }
 
 // Function to display node information
@@ -214,10 +220,14 @@ function displayNodeInfo(data) {
     eHTML.averageBlockTime.textContent = data.averageBlockTime ? `${data.averageBlockTime} seconds` : '0 seconds';
     eHTML.peerId.textContent = data.peerId ? data.peerId.replace('12D3KooW', '') : 'No Peer ID';
     eHTML.nodeState.textContent = data.nodeState ? data.nodeState : 'No State';
-    eHTML.listenAddress.textContent = data.listenAddress ? data.listenAddress : 'No Listen Address';
+    if (Array.isArray(data.listenAddress) && data.listenAddress.length > 0) {
+        eHTML.listenAddress.innerHTML = data.listenAddress.map(address => `<li>${address}</li>`).join('');
+    } else {
+        eHTML.listenAddress.innerHTML = '<li>No Listen Address</li>';
+    }
     eHTML.lastLegitimacy.textContent = data.lastLegitimacy;
-    if (Array.isArray(data.peerIds)) {
-        renderPeers(data.peerIds);
+    if (data.peers) {
+        renderPeers(data.peers);
     } else {
         console.warn('peerIds is not an array:', data.peerIds);
         eHTML.peersConnectedList.innerHTML = '<li>No peers available.</li>';
@@ -228,19 +238,43 @@ function displayNodeInfo(data) {
     if (data.repScores) {
         renderScores(data.repScores);
     }
+
+    if (data.ignoreIncomingBlocks !== undefined) {
+        updateIgnoreBlocksToggle(data.ignoreIncomingBlocks);
+    }
 }
 
+function updateIgnoreBlocksToggle(isIgnoring) {
+    const button = eHTML.ignoreBlocksToggle.button;
+    const status = eHTML.ignoreBlocksToggle.status;
+    
+    if (isIgnoring) {
+        button.classList.add('active');
+        button.setAttribute('aria-pressed', 'true');
+        status.textContent = 'ON';
+        status.classList.add('bg-purple-600', 'text-white');
+        status.classList.remove('bg-gray-600', 'text-gray-100');
+    } else {
+        button.classList.remove('active');
+        button.setAttribute('aria-pressed', 'false');
+        status.textContent = 'OFF';
+        status.classList.add('bg-gray-600', 'text-gray-100');
+        status.classList.remove('bg-purple-600', 'text-white');
+    }
+}
 function renderPeers(peers) {
     eHTML.peersConnectedList.innerHTML = ''; // Clear existing list
 
-    if (peers.length === 0) {
+    const peerEntries = Object.entries(peers);
+
+    if (peerEntries.length === 0) {
         const li = document.createElement('li');
         li.textContent = 'No peers connected.';
         eHTML.peersConnectedList.appendChild(li);
         return;
     }
 
-    peers.forEach(peerId => {
+    peerEntries.forEach(([peerId, peerInfo]) => {
         const li = document.createElement('li');
         li.classList.add('peer-item'); // Optional: Add a class for styling
 
@@ -248,6 +282,33 @@ function renderPeers(peers) {
         const peerSpan = document.createElement('span');
         peerSpan.textContent = peerId.replace('12D3KooW', '');
         peerSpan.classList.add('peer-id'); // Optional: Add a class for styling
+
+        // Create a div to hold peer information
+        const infoDiv = document.createElement('div');
+        infoDiv.classList.add('peer-info');
+
+        // Add peer status
+        const statusSpan = document.createElement('span');
+        statusSpan.textContent = `Status: ${peerInfo.status || 'Unknown'}`;
+        statusSpan.classList.add('peer-status');
+
+        // Add peer address
+        const addressSpan = document.createElement('span');
+        addressSpan.textContent = `Address: ${peerInfo.address || 'N/A'}`;
+        addressSpan.classList.add('peer-address');
+
+        // Add dialable info
+        const dialableSpan = document.createElement('span');
+        const isDialable = peerInfo.dialable ? 'Yes' : 'No';
+        dialableSpan.textContent = `Dialable: ${isDialable}`;
+        dialableSpan.classList.add('peer-dialable');
+
+        // Append info to infoDiv
+        infoDiv.appendChild(statusSpan);
+        infoDiv.appendChild(document.createElement('br')); // Line break
+        infoDiv.appendChild(addressSpan);
+        infoDiv.appendChild(document.createElement('br')); // Line break
+        infoDiv.appendChild(dialableSpan);
 
         // Create Disconnect Button
         const disconnectBtn = document.createElement('button');
@@ -269,6 +330,7 @@ function renderPeers(peers) {
 
         // Append elements to the list item
         li.appendChild(peerSpan);
+        li.appendChild(infoDiv);
         li.appendChild(disconnectBtn);
         li.appendChild(banBtn);
         li.appendChild(askSyncBtn);
@@ -306,7 +368,6 @@ function renderPeersHeight (peers) {
     }
 
 }
-
 
 function renderScores(scores) {
     eHTML.repScoresList.innerHTML = ''; // Clear existing list
@@ -499,6 +560,22 @@ eHTML.minerAddressEditBtn.addEventListener('click', () => {
     });
 });
 
+if (eHTML.ignoreBlocksToggle.button) {
+    eHTML.ignoreBlocksToggle.button.addEventListener('click', () => {
+        console.log('ignoreBlocksToggle button clicked');
+        const currentState = eHTML.ignoreBlocksToggle.button.classList.contains('active');
+        const newState = !currentState;
+        
+        // Send the new state to the backend
+        ws.send(JSON.stringify({
+            type: 'ignore_incoming_blocks',
+            data: newState
+        }));
+        
+        // Update the toggle state immediately for responsive UI
+        updateIgnoreBlocksToggle(newState);
+    });
+}
 // Prevent form submission
 document.addEventListener('submit', function(event) { event.preventDefault(); });
 

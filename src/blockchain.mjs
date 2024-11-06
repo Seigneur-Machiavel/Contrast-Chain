@@ -1,36 +1,33 @@
-import LevelUp from 'levelup';
-import LevelDown from 'leveldown';
-import pino from 'pino';
-import { BlockUtils } from './block.mjs';
-import { BlockMiningData } from './block.mjs';
-import utils from './utils.mjs';
-import { Transaction_Builder } from './transaction.mjs';
 import fs from 'fs';
 import path from 'path';
 const url = await import('url');
+import LevelUp from 'levelup';
+import LevelDown from 'leveldown';
+import pino from 'pino';
+import { BlockUtils } from './block-classes.mjs';
+import { BlockMiningData } from './block-classes.mjs';
+import utils from './utils.mjs';
+import { Transaction_Builder } from './transaction.mjs';
 
 /**
 * @typedef {import("../src/block-tree.mjs").TreeNode} TreeNode
-* @typedef {import("../src/block.mjs").BlockInfo} BlockInfo
-* @typedef {import("../src/block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockInfo} BlockInfo
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("../src/vss.mjs").Vss} Vss
 * @typedef {import("../src/utxoCache.mjs").UtxoCache} UtxoCache
 * @typedef {import("../src/memPool.mjs").MemPool} MemPool
+* @typedef {import("../src/snapshot-system.mjs").SnapshotSystem} SnapshotSystem
 */
 
-/**
- * Represents the blockchain and manages its operations.
- */
+/** Represents the blockchain and manages its operations. */
 export class Blockchain {
     __parentFolderPath = path.dirname(url.fileURLToPath(import.meta.url));
     __parentPath = path.join(this.__parentFolderPath, '..');
-    /**
-     * Creates a new Blockchain instance.
+    /** Creates a new Blockchain instance.
      * @param {string} dbPath - The path to the LevelDB database.
      * @param {Object} [options] - Configuration options for the blockchain.
      * @param {string} [options.logLevel='info'] - The logging level for Pino.
-     * @param {number} [options.snapshotInterval=100] - Interval at which to take full snapshots.
-     */
+     * @param {number} [options.snapshotInterval=100] - Interval at which to take full snapshots. */
     constructor(nodeId, options = {}) {
         this.nodeId = nodeId;
         const {
@@ -73,7 +70,41 @@ export class Blockchain {
 
         this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, snapshotInterval }, 'Blockchain instance created');
     }
-    async loadBlocksFromStorageToCache(indexStart, indexEnd) {
+    /** @param {SnapshotSystem} snapshotSystem */
+    async load(snapshotSystem) {
+        // OPENNING BLOCKCHAIN DATABASE
+        try {
+            while (this.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
+        } catch (error) {
+            console.error('Error while opening the databases:', error);
+        }
+
+        // ensure consistency between the blockchain and the snapshot system
+        const lastSavedBlockHeight = await this.getLastKnownHeight();
+        snapshotSystem.eraseSnapshotsHigherThan(lastSavedBlockHeight);
+
+        const snapshotsHeights = snapshotSystem.getSnapshotsHeights();
+        const olderSnapshotHeight = snapshotsHeights[0] ? snapshotsHeights[0] : 0;
+        const youngerSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
+        const startHeight = isNaN(youngerSnapshotHeight) ? -1 : youngerSnapshotHeight;
+
+        // Cache the blocks from the last snapshot +1 to the last block
+        // cacheStart : 0, 11, 21, etc...
+        const snapModulo = snapshotSystem.snapshotHeightModulo;
+        const cacheStart = olderSnapshotHeight > snapModulo ? olderSnapshotHeight - (snapModulo-1) : 0;
+        await this.#loadBlocksFromStorageToCache(cacheStart, startHeight);
+        this.currentHeight = startHeight;
+        this.lastBlock = await this.getBlockByHeight(startHeight);
+
+        // cache + db cleanup
+        await this.#eraseBlocksHigherThan(startHeight);
+        if (startHeight === -1) { // no snapshot to load
+            await this.eraseEntireDatabase();
+        }
+
+        return startHeight;
+    }
+    async #loadBlocksFromStorageToCache(indexStart = 0, indexEnd = 9) {
         if (indexStart > indexEnd) { return; }
 
         const blocksPromises = [];
@@ -89,6 +120,7 @@ export class Blockchain {
 
         console.log(`[DB -> CACHE] Blocks loaded from ${indexStart} to ${indexEnd}`);
     }
+    /** @param {BlockData} block */
     #setBlockInCache(block) {
         this.cache.blocksByHash.set(block.hash, block);
         this.cache.blocksHashByHeight.set(block.index, block.hash);
@@ -106,17 +138,13 @@ export class Blockchain {
             this.logger.info({ blockHeight: block.index, blockHash: block.hash }, 'Adding new block');
             try {
                 this.#setBlockInCache(block);
-
                 this.lastBlock = block;
                 this.currentHeight = block.index;
 
                 const promises = [];
-
-                /** @type {BlockInfo} */
                 if (persistToDisk) {
                     promises.push(this.#persistBlockToDisk(block));
                     promises.push(this.db.put('currentHeight', this.currentHeight.toString()));
-                    //if (blockPubKeysAddresses) { promises.push(this.persistAddressesTransactionsToDisk(block, blockPubKeysAddresses)) }
                 }
 
                 const blockInfo = saveBlockInfo ? await BlockUtils.getFinalizedBlockInfo(utxoCache, block, totalFees) : undefined;
@@ -131,7 +159,7 @@ export class Blockchain {
         }
     }
     /** returns the height of erasable blocks without erasing them. @param {number} height */
-    erasableCacheLowerThan(height) {
+    erasableCacheLowerThan(height = 0) {
         let erasableUntil = null;
         const oldestHeight = this.cache.oldestBlockHeight();
         if (oldestHeight >= height) { return null; }
@@ -145,8 +173,8 @@ export class Blockchain {
         console.log(`Cache erasable from ${oldestHeight} to ${erasableUntil}`);
         return { from: oldestHeight, to: erasableUntil };
     }
-    /** Erases the cache from the oldest block to the specified height(included). @param {number} height */
-    eraseCacheFromTo(fromHeight, toHeight) {
+    /** Erases the cache from the oldest block to the specified height(included). */
+    eraseCacheFromTo(fromHeight = 0, toHeight = 100) {
         if (fromHeight > toHeight) { return; }
 
         let erasedUntil = null;
@@ -172,7 +200,7 @@ export class Blockchain {
         await batch.write();
         console.info('[DB] Database erased');
     }
-    async eraseBlocksHigherThan(height) {
+    async #eraseBlocksHigherThan(height = 0) {
         let erasedUntil = null;
         const batch = this.db.batch();
         let i = height + 1;
@@ -289,7 +317,6 @@ export class Blockchain {
             const addressesTransactionsPromises = {};
             for (const address of Object.keys(transactionsReferencesSortedByAddress)) {
                 if (actualizedAddressesTxsRefs[address]) { continue; } // already loaded
-                //addressesTransactionsPromises[address] = this.getTxsRefencesOfAddress(memPool, address, 0, indexStart);
                 addressesTransactionsPromises[address] = this.db.get(`${address}-txs`).catch(() => []);
             }
 
@@ -329,16 +356,19 @@ export class Blockchain {
         console.info(`[DB] Addresses transactions persisted to disk from ${indexStart} to ${indexEnd} (included)`);
     }
     /** @param {MemPool} memPool @param {string} address @param {number} [from=0] @param {number} [to=this.currentHeight] */
-    async getTxsRefencesOfAddress(memPool, address, from = 0, to = this.currentHeight) {
+    async getTxsReferencesOfAddress(memPool, address, from = 0, to = this.currentHeight) {
         const cacheStartIndex = this.cache.oldestBlockHeight();
+
+        // try to get the txs references from the DB first
         let txsRefs = [];
         try {
             if (from >= cacheStartIndex) { throw new Error('Data in cache, no need to get from disk'); }
-            // get from disk (db)
+
             const txsRefsSerialized = await this.db.get(`${address}-txs`);
             txsRefs = utils.serializerFast.deserialize.txsReferencesArray(txsRefsSerialized);
-        } catch (error) {}; //console.error(error);
+        } catch (error) {};
 
+        // remove duplicates
         const txsRefsDupiCounter = {};
         const txsRefsWithoutDuplicates = [];
         let duplicate = 0;
@@ -353,8 +383,7 @@ export class Blockchain {
             txsRefsWithoutDuplicates.push(txRef);
         }
         txsRefs = txsRefsWithoutDuplicates
-        if (duplicate > 0) {
-             console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
+        if (duplicate > 0) { console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
 
         // complete with the cache
         let index = cacheStartIndex;
@@ -373,6 +402,7 @@ export class Blockchain {
 
         if (txsRefs.length === 0) { return txsRefs; }
 
+        // filter to preserve only the txs references in the range
         let finalTxsRefs = [];
         for (let i = 0; i < txsRefs.length; i++) {
             const txRef = txsRefs[i];
@@ -382,7 +412,6 @@ export class Blockchain {
             finalTxsRefs = txsRefs.slice(i);
             break;
         }
-
         for (let i = finalTxsRefs.length - 1; i >= 0; i--) {
             const txRef = finalTxsRefs[i];
             const height = parseInt(txRef.split(':')[0], 10);
@@ -414,14 +443,13 @@ export class Blockchain {
      * @param {string} hash - The hash of the block to retrieve.
      * @returns {Promise<BlockData>} The retrieved block.
      * @throws {Error} If the block is not found. */
-    async getBlockByHash(hash, deserialize = true) {
+    async getBlockByHash(hash) {
         this.logger.debug({ blockHash: hash }, 'Retrieving block');
 
-        if (this.cache.blocksByHash.has(hash)) {
-            return this.cache.blocksByHash.get(hash);
-        }
+        const block = this.cache.blocksByHash.has(hash)
+        ? this.cache.blocksByHash.get(hash)
+        : await this.#getBlockFromDiskByHash(hash, true);
 
-        const block = await this.#getBlockFromDiskByHash(hash, deserialize);
         if (block) { return block; }
 
         this.logger.error({ blockHash: hash }, 'Block not found');
@@ -441,10 +469,6 @@ export class Blockchain {
         this.logger.error({ blockHeight: height }, 'Block not found');
         return null;
     }
-    /** Gets the hash of the latest block. @returns {string} The hash of the latest block. */
-    getLatestBlockHash() {
-        return this.lastBlock ? this.lastBlock.hash : "0000000000000000000000000000000000000000000000000000000000000000";
-    }
     /** Retrieves a block from disk by its hash. @param {string} hash - The hash of the block to retrieve. */
     async #getBlockFromDiskByHash(hash, deserialize = true) {
         try {
@@ -458,7 +482,7 @@ export class Blockchain {
 
             if (!deserialize) { return { header: serializedHeader, txs: await Promise.all(txsPromises) }; }
 
-            return this.blockDataFromSerializedHeaderAndTxs(serializedHeader, await Promise.all(txsPromises));
+            return BlockUtils.blockDataFromSerializedHeaderAndTxs(serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
@@ -479,55 +503,33 @@ export class Blockchain {
 
             if (!deserialize) { return { header: await serializedHeader, txs: await Promise.all(txsPromises) }; }
 
-            return this.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
+            return BlockUtils.blockDataFromSerializedHeaderAndTxs(await serializedHeader, await Promise.all(txsPromises));
         } catch (error) {
             if (error.type === 'NotFoundError') { return null; }
             throw error;
         }
     }
-    /** @param {Uint8Array} serializedHeader @param {Uint8Array[]} serializedTxs */
-    blockDataFromSerializedHeaderAndTxs(serializedHeader, serializedTxs) { // Better in utils serializer ?
-        /** @type {BlockData} */
-        const blockData = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
-        blockData.Txs = [];
-        for (let i = 0; i < serializedTxs.length; i++) {
-            const serializedTx = serializedTxs[i];
-            const specialTx = i < 2 ? true : false;
-            const tx = specialTx ? utils.serializer.transaction.fromBinary_v2(serializedTx) : utils.serializerFast.deserialize.transaction(serializedTx);
-            blockData.Txs.push(tx);
-        }
-
-        return blockData;
-    }
     async getBlockInfoFromDiskByHeight(height = 0) {
         try {
             const serializedHash = await this.db.get(`height-${height}`);
             if (!serializedHash) { return null; }
-            const blockHash = utils.convert.uint8Array.toHex(serializedHash);
 
+            const blockHash = utils.convert.uint8Array.toHex(serializedHash);
             const blockInfoUint8Array = await this.db.get(`info-${blockHash}`);
+            
             /** @type {BlockInfo} */
             const blockInfo = utils.serializer.rawData.fromBinary_v1(blockInfoUint8Array);
-
             return blockInfo;
         } catch (error) {
-            if (error.type === 'NotFoundError') {
-                return null;
-            }
+            if (error.type === 'NotFoundError') { return null; }
             throw error;
         }
     }
-    /** Retrieves a transaction by its reference (height:txId format).
-     * @param {string} txReference - The transaction reference in the format "height:txId".
-     * @returns {Promise<Object|null>} - The deserialized transaction or null if not found. */
+    /** @param {string} txReference - The transaction reference in the format "height:txId" */
     async getTransactionByReference(txReference) {
         const [height, txId] = txReference.split(':');
-
         try {
-            // Try to fetch the serialized transaction from the database.
             const serializedTx = await this.db.get(`${height}:${txId}`);
-
-            // Try deserializing the transaction with different methods.
             return this.deserializeTransaction(serializedTx);
         } catch (error) {
             // If the transaction is not found or deserialization fails, return null.
@@ -535,19 +537,15 @@ export class Blockchain {
             return null;
         }
     }
-    /** Deserializes a transaction using the available strategies.
-     * @param {Uint8Array} serializedTx - The serialized transaction data.
-     * @returns {Object|null} - The deserialized transaction or null if deserialization fails. */
+    /** @param {Uint8Array} serializedTx - The serialized transaction data */
     deserializeTransaction(serializedTx) {
-        // Try fast deserialization first.
-        try {
+        try { // Try fast deserialization first.
             return utils.serializerFast.deserialize.transaction(serializedTx);
         } catch (error) {
             this.logger.debug({ error }, 'Failed to fast deserialize transaction');
         }
 
-        // Try the special transaction deserialization if fast deserialization fails.
-        try {
+        try { // Try the special transaction deserialization if fast deserialization fails.
             return utils.serializer.transaction.fromBinary_v2(serializedTx);
         } catch (error) {
             this.logger.debug({ error }, 'Failed to deserialize special transaction');
@@ -562,5 +560,9 @@ export class Blockchain {
         const storedHeight = await this.db.get('currentHeight').catch(() => '-1');
         const storedHeightInt = parseInt(storedHeight, 10);
         return storedHeightInt;
+    }
+    /** @returns {string} The hash of the latest block */
+    getLatestBlockHash() {
+        return this.lastBlock ? this.lastBlock.hash : "0000000000000000000000000000000000000000000000000000000000000000";
     }
 }

@@ -1,12 +1,11 @@
 import utils from './utils.mjs';
 import { HashFunctions } from './conCrypto.mjs';
 import { Transaction_Builder, Transaction } from './transaction.mjs';
-import { TxValidation } from './validation.mjs';
+import { TxValidation } from './validations-classes.mjs';
 
 /**
 * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
  */
-
 
 /**
  * @typedef {Object} BlockHeader
@@ -156,10 +155,7 @@ export const BlockData = (index, supply, coinBase, difficulty, legitimacy, prevH
     };
 }
 export class BlockUtils {
-    /** 
-     * @param {BlockData} blockData
-     * @param {boolean} excludeCoinbaseAndPos
-     */
+    /** @param {BlockData} blockData @param {boolean} excludeCoinbaseAndPos */
     static async getBlockTxsHash(blockData, excludeCoinbaseAndPos = false) {
         const txsIDStrArray = blockData.Txs.map(tx => tx.id).filter(id => id);
 
@@ -171,14 +167,14 @@ export class BlockUtils {
         const txsIDStr = txsIDStrArray.join('');
         return await HashFunctions.SHA256(txsIDStr);
     };
-    /**
+    /** Get the block signature used for mining
      * @param {BlockData} blockData
      * @param {boolean} isPosHash - if true, exclude coinbase/pos Txs and blockTimestamp
-     * @returns {Promise<string>} signature Hex
-     */
+     * @returns {Promise<string>} signature Hex */
     static async getBlockSignature(blockData, isPosHash = false) {
         const txsHash = await this.getBlockTxsHash(blockData, isPosHash);
         const { index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp } = blockData;
+        
         let signatureStr = `${index}${supply}${coinBase}${difficulty}${legitimacy}${prevHash}${posTimestamp}${txsHash}`;
         if (!isPosHash) { signatureStr += blockData.timestamp; }
 
@@ -199,10 +195,7 @@ export class BlockUtils {
 
         return { hex: blockHash.hex, bitsArrayAsString: blockHash.bitsArray.join('') };
     }
-    /**
-     * @param {BlockData} blockData
-     * @param {Transaction} coinbaseTx
-     */
+    /** @param {BlockData} blockData @param {Transaction} coinbaseTx */
     static setCoinbaseTransaction(blockData, coinbaseTx) {
         if (Transaction_Builder.isMinerOrValidatorTx(coinbaseTx) === false) { console.error('Invalid coinbase transaction'); return false; }
 
@@ -219,10 +212,7 @@ export class BlockUtils {
         const firstTx = blockData.Txs[0];
         if (firstTx && Transaction_Builder.isMinerOrValidatorTx(firstTx)) { blockData.Txs.shift(); }
     }
-    /**
-     * @param {UtxoCache} utxoCache
-     * @param {Transaction[]} Txs 
-     */
+    /** @param {UtxoCache} utxoCache @param {Transaction[]} Txs */
     static async calculateTxsTotalFees(utxoCache, Txs) {
         const involvedUTXOs = await utxoCache.extractInvolvedUTXOsOfTxs(Txs);
         if (!involvedUTXOs) { throw new Error('At least one UTXO not found in utxoCache'); }
@@ -237,10 +227,7 @@ export class BlockUtils {
 
         return totalFees;
     }
-    /** 
-     * @param {UtxoCache} utxoCache
-     * @param {BlockData} blockData
-     */
+    /** @param {UtxoCache} utxoCache @param {BlockData} blockData */
     static async calculateBlockReward(utxoCache, blockData) {
         const totalFees = await this.calculateTxsTotalFees(utxoCache, blockData.Txs);
         const totalReward = totalFees + blockData.coinBase;
@@ -279,10 +266,21 @@ export class BlockUtils {
         const { index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp, timestamp, hash, nonce } = blockData;
         return BlockHeader(index, supply, coinBase, difficulty, legitimacy, prevHash, posTimestamp, timestamp, hash, nonce);
     }
-    /** 
-     * @param {UtxoCache} utxoCache
-     * @param {BlockData} blockData
-     */
+    /** @param {Uint8Array} serializedHeader @param {Uint8Array[]} serializedTxs */
+    static blockDataFromSerializedHeaderAndTxs(serializedHeader, serializedTxs) { // Better in utils serializer ?
+        /** @type {BlockData} */
+        const blockData = utils.serializer.blockHeader_finalized.fromBinary_v3(serializedHeader);
+        blockData.Txs = [];
+        for (let i = 0; i < serializedTxs.length; i++) {
+            const serializedTx = serializedTxs[i];
+            const specialTx = i < 2 ? true : false;
+            const tx = specialTx ? utils.serializer.transaction.fromBinary_v2(serializedTx) : utils.serializerFast.deserialize.transaction(serializedTx);
+            blockData.Txs.push(tx);
+        }
+
+        return blockData;
+    }
+    /** @param {UtxoCache} utxoCache @param {BlockData} blockData */
     static async getFinalizedBlockInfo(utxoCache, blockData, totalFees) {
         /** @type {BlockInfo} */
         const blockInfo = {
@@ -322,17 +320,39 @@ export class BlockUtils {
         /** @type {Object<string, string[]>} */
         const txRefsRelatedToAddress = {};
         for (const Tx of blockData.Txs) {
-            const addressesRelatedToTx = Tx.outputs.map(output => output.address);
-            for (const witness of Tx.witnesses) { // correspond to the inputs's addresses
+            //const addressesRelatedToTx = [];
+            const addressesRelatedToTx = {};
+            for (const witness of Tx.witnesses) {
                 const pubKey = witness.split(':')[1];
                 const address = blockPubKeysAddresses[pubKey];
-                addressesRelatedToTx.push(address);
+                if (addressesRelatedToTx[address]) { continue; } // no duplicates
+                addressesRelatedToTx[address] = true;
+            }
+
+            for (const output of Tx.outputs) {
+                if (addressesRelatedToTx[output.address]) { continue; } // no duplicates
+                addressesRelatedToTx[output.address] = true;
             }
             
-            for (const address of addressesRelatedToTx) {
+            for (const address of Object.keys(addressesRelatedToTx)) {
                 if (!txRefsRelatedToAddress[address]) { txRefsRelatedToAddress[address] = []; }
                 txRefsRelatedToAddress[address].push(`${blockData.index}:${Tx.id}`);
             }
+        }
+
+        // CONTROL
+        for (const address in txRefsRelatedToAddress) {
+            const addressTxsRefs = txRefsRelatedToAddress[address];
+            const txsRefsDupiCounter = {};
+            let duplicate = 0;
+            for (let i = 0; i < addressTxsRefs.length; i++) {
+                const txRef = addressTxsRefs[i];
+                if (txsRefsDupiCounter[txRef]) { duplicate++; }
+                
+                txsRefsDupiCounter[txRef] = true;
+            }
+            if (duplicate > 0) {
+                    console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
         }
 
         return txRefsRelatedToAddress;

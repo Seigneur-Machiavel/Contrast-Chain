@@ -22,14 +22,15 @@ class Sanitizer {
 }
 
 /**
-* @typedef {import("../contrast/src/block.mjs").BlockData} BlockData
+* @typedef {import("../contrast/src/block-classes.mjs").BlockData} BlockData
 */
 
 class Pow {
     constructor(argon2) {
         this.timeOffset = 0;
+        this.anticipationOffset = 2000;
         this.argon2 = argon2;
-        this.rewardAddress = 'CpkQiTemFSZH1zyGUKsM';
+        this.rewardAddress = 'CQW1cPEiCnJ6nj6e7kzA';
         this.argon2Params = { time: 1, mem: 2**20, hashLen: 32, parallelism: 1, type: 2 };
         this.miningIntensity = 0; // 0 = off, 1 = low, 10 = high
         this.state = { miningActive: false, updateHashActive: false };
@@ -103,12 +104,16 @@ class Pow {
             if (!bitsArray) { console.info('[MINER] Error while mining POW'); }
 
             clonedCandidate.hash = hashHex;
+            console.log(`(BLOCK) #${clonedCandidate.index}
+Hash: ${hashHex}
+Bits: ${bitsArray.join('')}`);
             const result = this.verifyPow(bitsArray, clonedCandidate);
             //if (!result.conform) { console.info('[MINER] Invalid POW found'); }
             if (result.conform) {
                 console.log(`[MINER] LUCKY!! VALID POW FOUND!`);
                 console.log(`conform: ${result.conform}`);
                 console.log(clonedCandidate);
+                this.bestCandidate = null;
                 chrome.storage.local.set({blockFinalized: clonedCandidate});
             }
 
@@ -132,7 +137,7 @@ class Pow {
         const headerNonce = this.#generateNonce().Hex;
         const coinbaseNonce = this.#generateNonce().Hex;
         clonedCandidate.nonce = headerNonce;
-        clonedCandidate.timestamp = this.getTime();
+        clonedCandidate.timestamp = this.getTime() + this.anticipationOffset;
 
         const powReward = blockCandidate.powReward;
         delete clonedCandidate.powReward;
@@ -147,9 +152,9 @@ class Pow {
     /** @param {string} nonceHex @param {string} address @param {number} amount */
     static async createCoinbase(nonceHex, address, amount) {
         const coinbaseOutput = {
+            address,
             amount,
-            rule: 'sig',
-            address
+            rule: 'sig'
         };
 
         const inputs = [nonceHex];
@@ -163,10 +168,7 @@ class Pow {
             outputs
         };
         
-        const inputsStr = JSON.stringify(transaction.inputs);
-        const outputsStr = JSON.stringify(transaction.outputs);
-        const versionStr = JSON.stringify(transaction.version);
-        transaction.id = Pow.hashId(`${inputsStr}${outputsStr}${versionStr}`);
+        transaction.id = Pow.hashId(transaction);
 
         return transaction;
     }
@@ -214,27 +216,20 @@ class Pow {
 
         return await Pow.SHA256(signatureStr);
     }
-    static hashId(input = 'toto', hashHexLength = 8) {
-        /* XXHASH32 */
-        /*const hashNumber = xxHash32(input);
-        const hashHex = hashNumber.toString(16);
-        const padding = '0'.repeat(minLength - hashHex.length);
-        return `${padding}${hashHex}`;*/
-
-        /* HASHID
+    /** @param {Transaction} transaction @param {number} minLength */
+    static hashId(transaction, minLength = 8) {
         const inputsStr = JSON.stringify(transaction.inputs);
         const outputsStr = JSON.stringify(transaction.outputs);
         const versionStr = JSON.stringify(transaction.version);
+        const idStr = `${inputsStr}${outputsStr}${versionStr}`;
+        //console.log(`idStr: ${idStr}`);
 
-        const hashHex = HashFunctions.xxHash32(`${inputsStr}${outputsStr}${versionStr}`);
-        return hashHex.slice(0, hashHexLength);*/
-
-        const hashNumber = xxHash32(input);
+        const hashNumber = xxHash32(idStr);
         const hashHex = hashNumber.toString(16);
-        const padding = '0'.repeat(hashHexLength - hashHex.length);
+        const padding = '0'.repeat(minLength - hashHex.length);
         const finalHashHex = `${padding}${hashHex}`;
 
-        return finalHashHex.slice(0, hashHexLength);
+        return finalHashHex.slice(0, minLength);
     }
     static async SHA256(message) {
         const messageUint8 = Pow.stringToUint8Array(message);
@@ -282,12 +277,26 @@ class Pow {
         if (!hash) { return false; }
 
         // uint8Array to bitsArray (0 or 1)
-        const bitsArray = Pow.uint8ArrayToBitsArray(hash);
+        //const bitsArray = Pow.uint8ArrayToBitsArray(hash);
+        const bitsArray = Pow.hexToBitsArray(hashHex);
 
         return { encoded, hash, hashHex, bitsArray };
     }
+    /** @param {string} hex - Hex string to convert to bits */
+    static hexToBitsArray(hex = '') {
+        const expectedLength = hex.length / 2 * 8;
+        if (hex.length % 2 !== 0) { console.info('The length of the input is not a multiple of 2.'); return false }
+
+        let bitsArray = [];
+        for (let i = 0; i < hex.length; i++) {
+            const bits = parseInt(hex[i], 16).toString(2).padStart(4, '0');
+            bitsArray = bitsArray.concat(bits.split(''));
+        }
+
+        return bitsArray;
+    }
     /** @param {Uint8Array} hash */
-    static uint8ArrayToBitsArray(hash) {
+    /*static uint8ArrayToBitsArray(hash) {
         const bitsArray = [];
         hash.forEach(byte => {
             for (let i = 0; i < 8; i++) {
@@ -296,7 +305,7 @@ class Pow {
         });
 
         return bitsArray;
-    }
+    }*/
     /** @param {Uint8Array} bitsArray @param {BlockData} finalizedBlock */
     verifyPow(bitsArray, finalizedBlock) {
         const response = { conform: false };
@@ -332,7 +341,6 @@ class Pow {
         };
         
         const { encoded, hash, hashHex } = await argon2Fnc(argon2Param);
-
         return { encoded, hash, hashHex };
     }
     #generateNonce(length = 4) {
@@ -351,13 +359,17 @@ class Pow {
         const result = { conform: false, message: 'na', difficulty, timeDiffAdjustment, legitimacy, finalDifficulty, zeros, adjust };
 
         const condition1 = this.binaryStringStartsWithZeros(HashBitsAsString, zeros);
-        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros` };
+        if (!condition1) { result.message = `unlucky--(condition 1)=> hash does not start with ${zeros} zeros  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
         const next5Bits = HashBitsAsString.substring(zeros, zeros + 5);
         const condition2 = this.binaryStringSupOrEqual(next5Bits, adjust);
-        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust}` };
+        if (!condition2) { result.message = `unlucky--(condition 2)=> hash does not meet the condition: ${next5Bits} >= ${adjust}  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}` };
 
-        if (result.message === 'na') { result.conform = true; result.message = 'lucky'; }
+        if (result.message === 'na') {
+            console.info(`lucky=> hash starts with ${zeros} zeros and ${next5Bits} >= ${adjust}  | finalDifficulty: ${finalDifficulty} | HashBitsAsString: ${HashBitsAsString}`);
+            result.conform = true;
+            result.message = 'lucky';
+        }
 
         //console.info(`[MINER] POW VERIFICATION - HashBitsAsString: ${HashBitsAsString}`);
         //console.info(`[MINER] POW VERIFICATION - condition1: ${condition1}, condition2: ${condition2}`);

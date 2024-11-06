@@ -3,7 +3,7 @@ import { NodeFactory } from '../src/node-factory.mjs';
 import { DashboardWsApp, ObserverWsApp } from '../run/apps.mjs';
 
 /**
-* @typedef {import("../src/account.mjs").Account} Account
+* @typedef {import("../src/wallet.mjs").Account} Account
 * @typedef {import("../src/node.mjs").Node} Node
 */
 
@@ -11,12 +11,12 @@ let txsTaskDoneThisBlock = {};
 const network = 'mainnet'; // 'local' | 'testnet' | 'mainnet'
 const port = 27260; //? 27260
 const testParams = {
-    privKey: "ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27",
+    privKey: "27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff27ff",
     unsafeSpamMode: false,
     initListenAddress: network === 'local' ? '/ip4/0.0.0.0/tcp/0' : `/ip4/0.0.0.0/tcp/${port}`,
     useDevArgon2: false, // true => 100txs processProposal: ~7sec | false => 100txs processProposal: ~5.8sec
     nbOfAccounts: 25, // minimum 25
-    addressType: 'C',
+    addressType: 'W',
 
     nbOfMiners: 0,
     nbOfValidators: 0,

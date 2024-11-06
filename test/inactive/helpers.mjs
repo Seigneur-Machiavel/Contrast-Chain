@@ -1,6 +1,6 @@
 import { Wallet } from '../../src/wallet.mjs';
 import { Node } from '../../src/node.mjs';
-import { Account } from '../../src/account.mjs';
+import { Account } from '../../src/wallet.mjs';
 import utils from '../../src/utils.mjs';
 
 export class BlockchainHelpers {

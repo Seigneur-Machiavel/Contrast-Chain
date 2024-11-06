@@ -1,5 +1,3 @@
-import fs from 'fs';
-import path from 'path';
 import { EventEmitter } from 'events';
 import localStorage_v1 from '../storage/local-storage-management.mjs';
 /**
@@ -15,7 +13,7 @@ class ReputationManager extends EventEmitter {
         const defaultOptions = {
             banThreshold: -10, // Default ban threshold
             banPermanentScore: -100,
-            scoreFilePath: 'peer-reputation.json',
+            scoreFilePath: 'peer-reputation',
             defaultScore: 0,
             tempBanDuration: 24 * 60 * 60 * 1000, // 24 hours
             cleanupInterval: 60 * 60 * 1000, // 1 hour
@@ -45,7 +43,7 @@ class ReputationManager extends EventEmitter {
         this.offenseScoreMap = {
             // Major Faults
             [ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION]: 15,
-            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 15,
+            [ReputationManager.OFFENSE_TYPES.MESSAGE_SPAMMING]: 30,
             [ReputationManager.OFFENSE_TYPES.LOW_LEGITIMACY_BLOCK_SUBMISSION]: 7,
             [ReputationManager.OFFENSE_TYPES.INVALID_TRANSACTION_PROPAGATION]: 8,
             // Minor Faults
@@ -507,7 +505,7 @@ class ReputationManager extends EventEmitter {
         clearInterval(this.associationCleanupInterval);
         clearInterval(this.spamCleanupInterval);
         clearInterval(this.scoreSaveInterval); // Clear the save interval
-        await this.saveScoresToDisk();
+        //await this.saveScoresToDisk();
         this.emit('shutdown');
     }
 

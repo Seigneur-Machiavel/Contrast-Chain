@@ -1,10 +1,9 @@
-import { Transaction, UTXO, Transaction_Builder, TxIO_Builder } from './transaction.mjs';
+import { Transaction, UTXO, Transaction_Builder } from './transaction.mjs';
 import utils from './utils.mjs';
-import { TxValidation } from './validation.mjs';
 
 /**
 * @typedef {import("./blockchain.mjs").Blockchain} Blockchain
-* @typedef {import("./block.mjs").BlockData} BlockData
+* @typedef {import("./block-classes.mjs").BlockData} BlockData
 * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
 */
 
@@ -196,13 +195,9 @@ export class UtxoCache { // Used to store, addresses's UTXOs and balance.
             if (utxo.amount < utils.SETTINGS.unspendableUtxoAmount) { continue; }
 
             if (rule === "sigOrSlash") {
-                if (i !== 0) { throw new Error('sigOrSlash must be the first output - should be handled by txValidation'); }
-
                 const involvedUTXOs = await this.extractInvolvedUTXOsOfTx(transaction);
                 if (!involvedUTXOs) { throw new Error('At least one UTXO not found in utxoCache'); }
 
-                const remainingAmount = await TxValidation.calculateRemainingAmount(involvedUTXOs, transaction);
-                if (remainingAmount < amount) { throw new Error('SigOrSlash requires fee > amount - should be handled by txValidation'); }
                 newStakesOutputsFromTx.push(utxo); // used to fill VSS stakes (for now we only create new range)
             }
 

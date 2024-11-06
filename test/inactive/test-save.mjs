@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
 import { Blockchain } from '../../src/blockchain.mjs';
-import { BlockData, BlockUtils } from '../../src/block.mjs';
+import { BlockData, BlockUtils } from '../../src/block-classes.mjs';
 import { UtxoCache } from '../../src/utxoCache.mjs';
 import utils from '../../src/utils.mjs';
 import { Vss } from '../../src/vss.mjs';

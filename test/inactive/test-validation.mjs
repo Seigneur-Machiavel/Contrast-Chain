@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import sinon from 'sinon';
-import { TxValidation, BlockValidation } from '../../src/validation.mjs';
+import { TxValidation, BlockValidation } from '../../src/validations-classes.mjs';
 import { Transaction, UTXO, TxOutput, Transaction_Builder } from '../../src/transaction.mjs';
-import { BlockData, BlockUtils } from '../../src/block.mjs';
+import { BlockData, BlockUtils } from '../../src/block-classes.mjs';
 import utils from '../../src/utils.mjs';
 
 describe('Validation Tests', () => {

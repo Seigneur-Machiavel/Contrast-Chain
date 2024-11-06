@@ -11,7 +11,7 @@
     <script src="../scripts/bip39-3.1.0.js"></script>
     <script src="../scripts/anime.min.js"></script>
     <script src="../scripts/classes.js"></script>
-    <script src="../scripts/htmlAnimations.js"></script>
+    <!--<script src="../scripts/htmlAnimations.js"></script>-->
     <script src="../scripts/simplex-noise.min.js"></script>
     <script src="../scripts/welcomeAnimation.js"></script>
     <script src="../scripts/popup.js" defer></script>
@@ -75,13 +75,13 @@
             </form>
     
             <form id="passwordCreationForm" class="hidden">
-                <input type="password" placeholder="Password" autocomplete="off">
+                <input class="animationTrigger" type="password" placeholder="Password" autocomplete="off">
                 <input type="password" placeholder="Confirm password" autocomplete="off">
                 <button type="submit">Set password</button>
             </form>
     
             <form id="loginForm" class="hidden">
-                <input type="password" placeholder="Password" autocomplete="off">
+                <input class="animationTrigger" type="password" placeholder="Password" autocomplete="off">
                 <button type="submit" class="classy">UNLOCK</button>
                 <p class="textInfo"></p>
             </form>
@@ -162,7 +162,7 @@
             <form id="settingsForm" class="hidden">
                 <p class="textInfo"></p>
                 <button id="changePasswordBtn">Change password</button>
-                <button id="deleteDataBtn">Delete data</button>
+                <button id="deleteDataBtn" class="holdBtn"><div>Delete data</div></button>
                 <div class="inlineRange">
                     <label for="intensity">Intensity: <span id="intensityValueStr">OFF</span></label>
                     <input type="range" class="input-range" name="intensity" min="0" max="1" value="0" step="1">
