@@ -194,7 +194,13 @@ export class OpStack {
             console.info(`[OpStack] Finalized block #${block.index} has been banned, reason: ${error.message}`);
             this.node.reorganizator.banFinalizedBlock(block); // avoid using the block in future reorgs
         }
-
+        if (error.message.includes('!applyMinorOffense!')) {
+            if (task.data.from === undefined) { return }
+            this.node.p2pNetwork.reputationManager.applyOffense(
+                {peerId : task.data.from},
+                ReputationManager.OFFENSE_TYPES.MINOR_PROTOCOL_VIOLATIONS
+            );
+        }
         if (error.message.includes('!applyOffense!')) {
             if (task.data.from === undefined) { return }
             this.node.p2pNetwork.reputationManager.applyOffense(
@@ -203,7 +209,9 @@ export class OpStack {
             );
             return;
         }
-        if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
+        if (error.message.includes('!store!') || error.message.includes('!reorg!') 
+            || error.message.includes('!applyOffense!') || error.message.includes('!applyMinorOffense!') 
+            || error.message.includes('!banBlock!')) { return; }
         
         // sync management
         if (error.message.includes('!sync!')) {
