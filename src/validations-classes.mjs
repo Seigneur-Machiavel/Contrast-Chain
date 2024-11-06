@@ -399,8 +399,8 @@ export class BlockValidation {
 
     /** @param {BlockData} block */
     static checkBlockIndexIsNumber(block) {
-        if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
-        if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
+        if (typeof block.index !== 'number') { throw new Error('!banBlock! Invalid block index'); }
+        if (Number.isInteger(block.index) === false) { throw new Error('!banBlock! Invalid block index'); }
     }
     /** @param {BlockData} block @param {number} currentHeight */
     static validateBlockIndex(block, currentHeight = -1) {
@@ -433,8 +433,8 @@ export class BlockValidation {
         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${block.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
-        if (typeof block.timestamp !== 'number') { throw new Error('!ban! Invalid block timestamp'); }
-        if (Number.isInteger(block.timestamp) === false) { throw new Error('!ban! Invalid block timestamp'); }
+        if (typeof block.timestamp !== 'number') { throw new Error('!banBlock! Invalid block timestamp'); }
+        if (Number.isInteger(block.timestamp) === false) { throw new Error('!banBlock! Invalid block timestamp'); }
         const timeDiffFinal = block.timestamp - currentTime;
         if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${block.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
     }
