@@ -47,10 +47,7 @@ const SETTINGS = {
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
     LOCAL: window.explorerLOCAL || false,
-    //LOCAL_DOMAIN: 'localhost:27270',
-    //DOMAIN: 'pinkparrot.observer',
     RECONNECT_INTERVAL: 2000,
-    //GET_NODE_INFO_INTERVAL: 10000,
     GET_CURRENT_HEIGHT_INTERVAL: 5000,
     ROLES: window.explorerROLES || ['chainExplorer', 'blockExplorer'],
 

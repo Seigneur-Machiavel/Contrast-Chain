@@ -1,19 +1,11 @@
-// GLOBAL SETTINGS
-window.LOCAL_CONNECTION = false;
-
 // EXPLORER SETTINGS INJECTIONS
 window.explorerDOMAIN = 'pinkparrot.science'; // 'pinkparrot.observer';
 window.explorerPORT = "27270";
-window.explorerLOCAL = window.LOCAL_CONNECTION;
+window.explorerLOCAL = true;
 window.explorerROLES = ['blockExplorer'];
 window.explorerMagnetImgPath = '../img/C_magnet.png';
 window.explorerNB_OF_CONFIRMED_BLOCKS = 3;
 console.log('EXPLORER SETTINGS INJECTED!');
-
-// BACKGROUND SETTINGS INJECTIONS
-window.backgroundDOMAIN = 'pinkparrot.science'; // 'pinkparrot.observer';
-window.backgroundPORT = "27270";
-window.backgroundLOCAL = window.LOCAL_CONNECTION;
 
 // MODULES LOADER
 import { WelcomeAnimationBlob, horizontalBtnLoading } from './htmlAnimations.mjs';

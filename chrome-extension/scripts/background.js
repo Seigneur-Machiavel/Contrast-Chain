@@ -20,7 +20,7 @@ const SETTINGS = {
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
 
-    LOCAL: false,
+    LOCAL: true,
     RECONNECT_INTERVAL: 5000,
     GET_CURRENT_HEIGHT_INTERVAL: 10000
 }
