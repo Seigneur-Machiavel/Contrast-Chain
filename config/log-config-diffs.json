@@ -3981,5 +3981,21 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2024-11-06T12:04:50.598Z",
+    "diffs": [
+      {
+        "id": "luid-fc711a87",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\node.mjs",
+          "line": 292,
+          "type": "error",
+          "content": "luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+        }
+      }
+    ]
   }
 ]

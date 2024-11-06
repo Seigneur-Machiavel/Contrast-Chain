@@ -6,6 +6,13 @@
     "type": "error",
     "content": "luid-9f54fbca Unable to deserialize transaction using available strategies"
   },
+  "luid-fc711a87": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 292,
+    "type": "error",
+    "content": "luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+  },
   "luid-74fcfb49": {
     "active": true,
     "file": "src\\node.mjs",
