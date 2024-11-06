@@ -302,7 +302,7 @@ export class Node {
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
         if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
 
-
+        
         if (finalizedBlock.index > lastBlockIndex + 9) {
             console.log(`[NODE-${this.id.slice(0, 6)}] Rejected finalized block, higher index: ${finalizedBlock.index} > ${lastBlockIndex + 10} | validator: ${validatorId} | miner: ${minerId}`);
             throw new Error(`!sync! Rejected: #${finalizedBlock.index} > #${lastBlockIndex + 9}(+9)`);

@@ -55,7 +55,9 @@ export class TxValidation {
 
             if (output.rule === "sigOrSlash") {
                 if (i !== 0) { throw new Error('sigOrSlash must be the first output'); }
-                if (await this.calculateRemainingAmount(involvedUTXOs, transaction) < output.amount) { throw new Error('SigOrSlash requires fee > amount'); }
+
+                const remainingAmount = await this.calculateRemainingAmount(involvedUTXOs, transaction);
+                if (remainingAmount < output.amount) { throw new Error('SigOrSlash requires fee > amount'); }
             }
         }
 
@@ -236,6 +238,7 @@ export class TxValidation {
         //console.log(`[VALIDATION] .addressOwnershipConfirmation() took ${Date.now() - startTime} ms`);
         return discoveredPubKeysAddresses;
     }
+    /** This function is used to optimize the verification while using multi threading */
     static async addressOwnershipConfirmationOnlyIfKownPubKey(involvedUTXOs, transaction, impliedKnownPubkeysAddresses = {}, useDevArgon2 = false, specialTx) {
         //const startTime = Date.now();
         const transactionWitnessesPubKey = [];
@@ -522,7 +525,7 @@ export class BlockValidation {
                 allDiscoveredPubKeysAddresses[pubKeyHex] = address;
             }
         }
-        
+
         console.log(`[VALIDATION] Multi thread ${blockData.Txs.length} txs validated in ${Date.now() - multiThreadStart} ms`);
         console.log(`[VALIDATION] Fast treated txs: ${fastTreatedTxs}`);
 
