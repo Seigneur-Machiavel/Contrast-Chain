@@ -5,7 +5,7 @@ import utils from './utils.mjs';
 /**
  * @typedef {import("./wallet.mjs").Account} Account
  * @typedef {import("./node.mjs").Node} Node
- * @typedef {import("./main-stack.mjs").OpStack} OpStack
+ * @typedef {import("./OpStack.mjs").OpStack} OpStack
  * @typedef {import("./websocketCallback.mjs").WebSocketCallBack} WebSocketCallBack
  * @typedef {import("../plugins/time.mjs").TimeSynchronizer} TimeSynchronizer
  */
