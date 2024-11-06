@@ -287,9 +287,15 @@ export class Node {
         
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
+        try  { BlockValidation.validateBlockStructure(finalizedBlock); }
+        catch (error) { 
+            this.logger.error(`luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
+            throw error;
+        }
+        const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
+        if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         try {
-            BlockValidation.validateBlockStructure(finalizedBlock); 
             BlockValidation.validateChainCoherence(finalizedBlock, this.blockchain);
             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain, this.timeSynchronizer);
             await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
@@ -297,10 +303,6 @@ export class Node {
             this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
             throw error;
         }
-
-
-        const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
-        if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
         if (!hashConfInfo.conform) { throw new Error(`!ban! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
