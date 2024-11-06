@@ -26,13 +26,11 @@ export class Blockchain {
     /** Creates a new Blockchain instance.
      * @param {string} dbPath - The path to the LevelDB database.
      * @param {Object} [options] - Configuration options for the blockchain.
-     * @param {string} [options.logLevel='info'] - The logging level for Pino.
-     * @param {number} [options.snapshotInterval=100] - Interval at which to take full snapshots. */
+     * @param {string} [options.logLevel='info'] - The logging level for Pino. */
     constructor(nodeId, options = {}) {
         this.nodeId = nodeId;
         const {
             logLevel = 'silent', // 'silent',
-            snapshotInterval = 100,
         } = options;
         this.dbPath = path.join(this.__parentPath, 'nodes-data', nodeId, 'blockchain');
         // ensure folder exists
@@ -55,8 +53,6 @@ export class Blockchain {
         this.currentHeight = -1;
         /** @type {BlockData|null} */
         this.lastBlock = null;
-        /** @type {number} */
-        this.snapshotInterval = snapshotInterval;
         /** @type {BlockMiningData[]} */
         this.blockMiningData = []; // .csv mining datas research
         /** @type {pino.Logger} */
@@ -68,7 +64,7 @@ export class Blockchain {
             }
         });
 
-        this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, snapshotInterval }, 'Blockchain instance created');
+        this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId }, 'Blockchain instance created');
     }
     /** @param {SnapshotSystem} snapshotSystem */
     async load(snapshotSystem) {

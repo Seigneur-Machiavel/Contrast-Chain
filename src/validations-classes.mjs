@@ -427,7 +427,7 @@ export class BlockValidation {
     /** @param {BlockData} block @param {BlockData} lastBlock @param {number} currentTime */
     static validateTimestamps(block, lastBlock, currentTime) {
         // verify the POS timestamp
-        if (typeof block.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (typeof block.posTimestamp !== 'number') { throw new Error('!banBlock! Invalid block timestamp'); }
         if (Number.isInteger(block.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
         const timeDiffPos = lastBlock === null ? 1 : block.posTimestamp - lastBlock.timestamp;
         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${block.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
