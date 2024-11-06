@@ -296,9 +296,9 @@ export class Node {
         if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         try {
-            BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain);
-            BlockValidation.validateBlockHash(finalizedBlock, this.blockchain);
-            BlockValidation.validateTimestamps(finalizedBlock, this.blockchain, this.timeSynchronizer);
+            BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight);
+            BlockValidation.validateBlockHash(finalizedBlock, this.blockchain.lastBlock);
+            BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime());
             await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
         } catch (error) {
             this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);

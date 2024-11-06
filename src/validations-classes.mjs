@@ -3,6 +3,7 @@ import { Transaction, TxOutput, TxInput, UTXO, Transaction_Builder } from './tra
 import utils from './utils.mjs';
 import { BlockUtils } from './block-classes.mjs';
 /**
+ * @typedef {import("./vss.mjs").Vss} Vss
  * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
  * @typedef {import("./memPool.mjs").MemPool} MemPool
  * @typedef {import("./block-classes.mjs").BlockData} BlockData
@@ -401,8 +402,9 @@ export class BlockValidation {
         if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
         if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
     }
-    static validateBlockIndex (block, blockchain) {
-        const currentHeight = blockchain.currentHeight;
+    /** @param {BlockData} block @param {number} currentHeight */
+    static validateBlockIndex (block, currentHeight = -1) {
+        const currentHeight = currentHeight;
 
         if (block.index > currentHeight + 9) {
             throw new Error(`!sync! Rejected: #${block.index} > #${lastBlockIndex + 9}(+9)`);
@@ -416,27 +418,29 @@ export class BlockValidation {
             throw new Error(`!store! Rejected: #${block.index} <= #${lastBlockIndex}`);
         }
     }
-    static validateBlockHash (block, blockchain) {
-        const lastBlockHash = blockchain.lastBlock ? blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
+    /** @param {BlockData} block @param {BlockData} lastBlock */
+    static validateBlockHash(block, lastBlock) {
+        const lastBlockHash = lastBlock ? lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
         const prevHashEquals = lastBlockHash === block.prevHash;
         if (!prevHashEquals) {
             throw new Error(`!store! !reorg! Rejected: #${block.index} -> invalid prevHash: ${block.prevHash} - expected: ${lastBlockHash}`);
         }
     }
-    static validateTimestamps(block, blockchain, timeSynchronizer) {
+    /** @param {BlockData} block @param {BlockData} lastBlock @param {number} currentTime */
+    static validateTimestamps(block, lastBlock, currentTime) {
         // verify the POS timestamp
         if (typeof block.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
         if (Number.isInteger(block.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
-        const timeDiffPos = blockchain.lastBlock === null ? 1 : block.posTimestamp - blockchain.lastBlock.timestamp;
+        const timeDiffPos = lastBlock === null ? 1 : block.posTimestamp - lastBlock.timestamp;
         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${block.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
         if (typeof block.timestamp !== 'number') { throw new Error('!ban! Invalid block timestamp'); }
         if (Number.isInteger(block.timestamp) === false) { throw new Error('!ban! Invalid block timestamp'); }
-        const timeDiffFinal = block.timestamp - timeSynchronizer.getCurrentTime();
+        const timeDiffFinal = block.timestamp - currentTime;
         if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${block.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
-
     }
+    /** @param {BlockData} block @param {Vss} vss */
     static async validateLegitimacy(block, vss) {
         await vss.calculateRoundLegitimacies(block.prevHash);
         const validatorAddress = block.Txs[1]?.inputs[0]?.split(':')[0];
