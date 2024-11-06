@@ -25,7 +25,7 @@ function copyFolderRecursiveSync(src, dest) {
 	}
 }
 
-export default class SnapshotSystemDoc {
+export class SnapshotSystem {
 	__parentFolderPath = path.dirname(url.fileURLToPath(import.meta.url));
 	__parentPath = path.join(this.__parentFolderPath, '..');
 	__nodesDataPath = path.join(this.__parentPath, 'nodes-data');

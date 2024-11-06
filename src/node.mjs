@@ -11,7 +11,7 @@ import P2PNetwork from './p2p.mjs';
 import utils from './utils.mjs';
 import { Blockchain } from './blockchain.mjs';
 import { SyncHandler } from './nodes-synchronizer.mjs';
-import SnapshotSystemDoc from './snapshot-system.mjs';
+import { SnapshotSystem } from './snapshot-system.mjs';
 import { performance, PerformanceObserver } from 'perf_hooks';
 import { ValidationWorker } from '../workers/workers-classes.mjs';
 import { ConfigManager } from './config-manager.mjs';
@@ -40,8 +40,8 @@ export class Node {
         this.restartRequested = false;
         /** @type {string} */
         this.id = account.address;
-        /** @type {SnapshotSystemDoc} */
-        this.snapshotSystemDoc = new SnapshotSystemDoc(this.id);
+        /** @type {SnapshotSystem} */
+        this.snapshotSystem = new SnapshotSystem(this.id);
         /** @type {string[]} */
         this.roles = roles; // 'miner', 'validator', ...
         /** @type {OpStack} */
@@ -105,7 +105,11 @@ export class Node {
         this.miner = new Miner(this.minerAddress || this.account.address, this);
         this.miner.useDevArgon2 = this.useDevArgon2;
 
-        if (!startFromScratch) { await this.#loadBlockchain(); }
+        if (!startFromScratch) {
+            this.blockchainStats.state = "loading";
+            const startHeight = await this.blockchain.load(this.snapshotSystem);
+            await this.loadSnapshot(startHeight);
+        }
 
         const bootstrapNodes = this.configManager.getBootstrapNodes();
         this.p2pNetwork.options.bootstrapNodes = bootstrapNodes;
@@ -131,6 +135,7 @@ export class Node {
         this.restartRequested = from;
     }
 
+    //#region - CONNEXION INITIALIZATION ----------------------------------------------------------
     getTopicsToSubscribeRelatedToRoles() {
         const rolesTopics = {
             validator: ['new_transaction', 'new_block_finalized'],
@@ -201,63 +206,31 @@ export class Node {
             return false;
         }
     }
+    //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
 
-    async #loadBlockchain() {
-        this.blockchainStats.state = "loading";
-        // OPENNING BLOCKCHAIN DATABASE
-        try {
-            while (this.blockchain.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
-        } catch (error) {
-            console.error('Error while opening the databases:', error);
-        }
-
-        // ensure consistency between the blockchain and the snapshot system
-        const lastSavedBlockHeight = await this.blockchain.getLastKnownHeight();
-        this.snapshotSystemDoc.eraseSnapshotsHigherThan(lastSavedBlockHeight);
-
-        const snapshotsHeights = this.snapshotSystemDoc.getSnapshotsHeights();
-        const olderSnapshotHeight = snapshotsHeights[0] ? snapshotsHeights[0] : 0;
-        const youngerSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
-        const startHeight = isNaN(youngerSnapshotHeight) ? -1 : youngerSnapshotHeight;
-
-        // Cache the blocks from the last snapshot +1 to the last block
-        // cacheStart : 0, 11, 21, etc...
-        const snapModulo = this.snapshotSystemDoc.snapshotHeightModulo;
-        const cacheStart = olderSnapshotHeight > snapModulo ? olderSnapshotHeight - (snapModulo-1) : 0;
-        await this.blockchain.loadBlocksFromStorageToCache(cacheStart, startHeight);
-        this.blockchain.currentHeight = startHeight;
-        this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(startHeight);
-
-        // cache + db cleanup
-        await this.blockchain.eraseBlocksHigherThan(startHeight);
-        if (startHeight === -1) { // no snapshot to load
-            await this.blockchain.eraseEntireDatabase();
-            return true;
-        }
-
-        await this.loadSnapshot(startHeight);
-        return true;
-    }
+    //#region - SNAPSHOT: LOAD/SAVE ---------------------------------------------------------------
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
+        if (snapshotIndex < 0) { return; }
+
         console.warn(`Last known snapshot index: ${snapshotIndex}`);
         this.blockchain.currentHeight = snapshotIndex;
         this.blockCandidate = null;
-        await this.snapshotSystemDoc.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
+        await this.snapshotSystem.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
 
         console.warn(`Snapshot loaded: ${snapshotIndex}`);
-        if (snapshotIndex < 1) {  await this.blockchain.eraseEntireDatabase(); }
+        if (snapshotIndex < 1) { await this.blockchain.eraseEntireDatabase(); }
 
         this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
         if (!eraseHigher) { return; }
 
         // place snapshot to trash folder, we can restaure it if needed
-        this.snapshotSystemDoc.eraseSnapshotsHigherThan(snapshotIndex - 1);
+        this.snapshotSystem.eraseSnapshotsHigherThan(snapshotIndex - 1);
     }
     /** @param {BlockData} finalizedBlock */
     async #saveSnapshot(finalizedBlock) {
         if (finalizedBlock.index === 0) { return; }
-        if (finalizedBlock.index % this.snapshotSystemDoc.snapshotHeightModulo !== 0) { return; }
-        const eraseUnder = this.snapshotSystemDoc.snapshotHeightModulo * this.snapshotSystemDoc.snapshotToConserve;
+        if (finalizedBlock.index % this.snapshotSystem.snapshotHeightModulo !== 0) { return; }
+        const eraseUnder = this.snapshotSystem.snapshotHeightModulo * this.snapshotSystem.snapshotToConserve;
 
         // erase the outdated blocks cache and persist the addresses transactions references to disk
         const cacheErasable = this.blockchain.erasableCacheLowerThan(finalizedBlock.index - (eraseUnder - 1));
@@ -266,16 +239,18 @@ export class Node {
             this.blockchain.eraseCacheFromTo(cacheErasable.from, cacheErasable.to);
         }
 
-        await this.snapshotSystemDoc.newSnapshot(this.utxoCache, this.vss, this.memPool);
-        this.snapshotSystemDoc.eraseSnapshotsLowerThan(finalizedBlock.index - eraseUnder);
+        await this.snapshotSystem.newSnapshot(this.utxoCache, this.vss, this.memPool);
+        this.snapshotSystem.eraseSnapshotsLowerThan(finalizedBlock.index - eraseUnder);
         // avoid gap between the loaded snapshot and the new one
         // at this stage we know that the loaded snapshot is consistent with the blockchain
-        if (this.snapshotSystemDoc.loadedSnapshotHeight < finalizedBlock.index - (eraseUnder*2)) {
-            this.snapshotSystemDoc.loadedSnapshotHeight = 0;
+        if (this.snapshotSystem.loadedSnapshotHeight < finalizedBlock.index - (eraseUnder*2)) {
+            this.snapshotSystem.loadedSnapshotHeight = 0;
         }
-        this.snapshotSystemDoc.restoreLoadedSnapshot();
+        this.snapshotSystem.restoreLoadedSnapshot();
     }
+    //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
 
+    //#region - BLOCK HANDLING --------------------------------------------------------------------
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
         this.blockchainStats.state = "validating block";
@@ -490,6 +465,7 @@ export class Node {
         localStorage_v1.saveBlockDataLocally(this.id, clone, 'json');
         localStorage_v1.saveBlockDataLocally(this.id, clone, 'bin');
     } // Used by developer to check the block data manually
+    //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
 
     //testRejectedIndexes = [];
     /** @param {string} topic @param {object} message */
@@ -588,7 +564,7 @@ export class Node {
         }
     }
 
-    // API -------------------------------------------------------------------------
+    //#region - API -------------------------------------------------------------------------------
     getStatus() {
         return {
             id: this.id,
@@ -753,4 +729,5 @@ export class Node {
         }
         return UTXOs;
     }
+    //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
 }

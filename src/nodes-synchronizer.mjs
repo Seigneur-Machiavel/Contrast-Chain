@@ -207,7 +207,7 @@ export class SyncHandler {
         }
 
         const currentHeight = this.node.blockchain.currentHeight;
-        const snapshotHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
+        const snapshotHeights = this.node.snapshotSystem.getSnapshotsHeights();
 
         if (snapshotHeights.length === 0) {
             this.node.requestRestart('SyncHandler.handleSyncFailure() - no snapshots available');
@@ -218,7 +218,7 @@ export class SyncHandler {
         let eraseUntilHeight = currentHeight - 10;
         if (typeof lastSnapshotHeight === 'number') {
             eraseUntilHeight = Math.min(currentHeight - 10, lastSnapshotHeight - 10);
-            this.node.snapshotSystemDoc.eraseSnapshotsHigherThan(eraseUntilHeight);
+            this.node.snapshotSystem.eraseSnapshotsHigherThan(eraseUntilHeight);
         }
 
         this.node.requestRestart('SyncHandler.handleSyncFailure()');

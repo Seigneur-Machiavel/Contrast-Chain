@@ -61,7 +61,6 @@ export class OpStack {
                 const reorgTasks = await this.node.reorganizator.reorgIfMostLegitimateChain('healthCheck');
                 if (!reorgTasks) { continue; }
 
-                if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
                 this.securelyPushFirst(reorgTasks);
             }
         }

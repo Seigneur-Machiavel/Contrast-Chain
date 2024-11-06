@@ -16,6 +16,7 @@ import { Transaction_Builder } from './transaction.mjs';
 * @typedef {import("../src/vss.mjs").Vss} Vss
 * @typedef {import("../src/utxoCache.mjs").UtxoCache} UtxoCache
 * @typedef {import("../src/memPool.mjs").MemPool} MemPool
+* @typedef {import("../src/snapshot-system.mjs").SnapshotSystem} SnapshotSystem
 */
 
 /** Represents the blockchain and manages its operations. */
@@ -69,7 +70,41 @@ export class Blockchain {
 
         this.logger.info({ dbPath: './databases/blockchainDB-' + nodeId, snapshotInterval }, 'Blockchain instance created');
     }
-    async loadBlocksFromStorageToCache(indexStart = 0, indexEnd = 9) {
+    /** @param {SnapshotSystem} snapshotSystem */
+    async load(snapshotSystem) {
+        // OPENNING BLOCKCHAIN DATABASE
+        try {
+            while (this.db.status === 'opening') { await new Promise(resolve => setTimeout(resolve, 100)); }
+        } catch (error) {
+            console.error('Error while opening the databases:', error);
+        }
+
+        // ensure consistency between the blockchain and the snapshot system
+        const lastSavedBlockHeight = await this.getLastKnownHeight();
+        snapshotSystem.eraseSnapshotsHigherThan(lastSavedBlockHeight);
+
+        const snapshotsHeights = snapshotSystem.getSnapshotsHeights();
+        const olderSnapshotHeight = snapshotsHeights[0] ? snapshotsHeights[0] : 0;
+        const youngerSnapshotHeight = snapshotsHeights[snapshotsHeights.length - 1];
+        const startHeight = isNaN(youngerSnapshotHeight) ? -1 : youngerSnapshotHeight;
+
+        // Cache the blocks from the last snapshot +1 to the last block
+        // cacheStart : 0, 11, 21, etc...
+        const snapModulo = snapshotSystem.snapshotHeightModulo;
+        const cacheStart = olderSnapshotHeight > snapModulo ? olderSnapshotHeight - (snapModulo-1) : 0;
+        await this.#loadBlocksFromStorageToCache(cacheStart, startHeight);
+        this.currentHeight = startHeight;
+        this.lastBlock = await this.getBlockByHeight(startHeight);
+
+        // cache + db cleanup
+        await this.#eraseBlocksHigherThan(startHeight);
+        if (startHeight === -1) { // no snapshot to load
+            await this.eraseEntireDatabase();
+        }
+
+        return startHeight;
+    }
+    async #loadBlocksFromStorageToCache(indexStart = 0, indexEnd = 9) {
         if (indexStart > indexEnd) { return; }
 
         const blocksPromises = [];
@@ -165,7 +200,7 @@ export class Blockchain {
         await batch.write();
         console.info('[DB] Database erased');
     }
-    async eraseBlocksHigherThan(height = 0) {
+    async #eraseBlocksHigherThan(height = 0) {
         let erasedUntil = null;
         const batch = this.db.batch();
         let i = height + 1;
