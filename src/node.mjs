@@ -98,7 +98,7 @@ export class Node {
         this.blockchainStats.state = "starting";
         await this.configManager.init();
         await this.timeSynchronizer.syncTimeWithRetry(5, 500);
-        console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.getCurrentTime()}`);
+        console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
@@ -130,10 +130,6 @@ export class Node {
     }
     requestRestart(from = 'unknown') {
         this.restartRequested = from;
-    }
-
-    getCurrentTime() {
-        return this.timeSynchronizer.getCurrentTime();
     }
 
     getTopicsToSubscribeRelatedToRoles() {
