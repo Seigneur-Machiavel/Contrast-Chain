@@ -427,16 +427,16 @@ export class BlockValidation {
     /** @param {BlockData} block @param {BlockData} lastBlock @param {number} currentTime */
     static validateTimestamps(block, lastBlock, currentTime) {
         // verify the POS timestamp
-        if (typeof block.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
-        if (Number.isInteger(block.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
+        if (typeof block.posTimestamp !== 'number') { throw new Error('!banBlock! !applyOffense! Invalid block timestamp'); }
+        if (Number.isInteger(block.posTimestamp) === false) { throw new Error('!banBlock! !applyOffense! Invalid block timestamp'); }
         const timeDiffPos = lastBlock === null ? 1 : block.posTimestamp - lastBlock.timestamp;
         if (timeDiffPos <= 0) { throw new Error(`Rejected: #${block.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
 
         // verify final timestamp
-        if (typeof block.timestamp !== 'number') { throw new Error('!banBlock! Invalid block timestamp'); }
-        if (Number.isInteger(block.timestamp) === false) { throw new Error('!banBlock! Invalid block timestamp'); }
+        if (typeof block.timestamp !== 'number') { throw new Error('!banBlock! !applyOffense! Invalid block timestamp'); }
+        if (Number.isInteger(block.timestamp) === false) { throw new Error('!banBlock! !applyOffense! Invalid block timestamp'); }
         const timeDiffFinal = block.timestamp - currentTime;
-        if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${block.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
+        if (timeDiffFinal > 1000) { throw new Error(`!applyMinorOffense! Rejected: #${block.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
     }
     /** @param {BlockData} block @param {Vss} vss */
     static async validateLegitimacy(block, vss) {
