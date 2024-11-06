@@ -280,8 +280,10 @@ export class Node {
     async #validateBlockProposal(finalizedBlock, blockBytes) {
         this.blockchainStats.state = "validating block";
         
+        // Those ids are used for logging purpose
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
+        
         try  { BlockValidation.checkBlockIndexIsNumber(finalizedBlock); }
         catch (error) { 
             this.logger.error(`luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
