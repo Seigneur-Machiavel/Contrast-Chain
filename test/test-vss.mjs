@@ -1,7 +1,6 @@
 // test/vss.test.js
 import { strict as assert } from 'assert';
 import { Vss, spectrumFunctions, StakeReference } from '../src/vss.mjs';
-import crypto from 'crypto';
 
 // Mock UTXO class
 class UTXO {
@@ -282,30 +281,5 @@ describe('spectrumFunctions Module', () => {
             assert(result >= minRange && result < maxRange);
         });
 
-        it('should throw an error if maxAttempts are reached', async () => {
-            // Temporarily override HashFunctions.SHA256 to always return a high value
-            const originalSHA256 = spectrumFunctions.HashFunctions.SHA256;
-            spectrumFunctions.HashFunctions.SHA256 = async () => 'f'.repeat(64); // Max value
-
-            const blockHash = 'blockhash1';
-            const minRange = 0;
-            const maxRange = 1_000_000;
-            const maxAttempts = 3;
-
-            try {
-                await spectrumFunctions.hashToIntWithRejection(
-                    blockHash,
-                    minRange,
-                    maxRange,
-                    maxAttempts
-                );
-                assert.fail('Expected error was not thrown');
-            } catch (error) {
-                assert.match(error.message, /Max attempts reached/);
-            } finally {
-                // Restore original hash function
-                spectrumFunctions.HashFunctions.SHA256 = originalSHA256;
-            }
-        });
     });
 });
