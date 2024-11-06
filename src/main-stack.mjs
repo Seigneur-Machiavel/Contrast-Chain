@@ -144,11 +144,11 @@ export class OpStack {
                 case 'syncWithPeers':
                     if (this.node.miner) { this.node.miner.canProceedMining = false; }
 
-                    console.warn(`[NODE-${this.node.id.slice(0, 6)} - OPSTACK] syncWithPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] syncWithPeers started, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     const syncSuccessful = await this.node.syncHandler.syncWithPeers();
                     if (!syncSuccessful) {
                         await new Promise(resolve => setTimeout(resolve, 1000));
-                        console.warn(`[NODE-${this.node.id.slice(0, 6)}] syncWithPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                        console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] syncWithPeers failed, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                         this.terminate();
                         if (!this.node.restartRequested) { this.node.requestRestart('OpStack.syncWithPeers() -> force!'); }
                         console.log(`restartRequested: ${this.node.restartRequested}`);
@@ -156,7 +156,7 @@ export class OpStack {
                     }
 
                     this.healthInfo.lastSyncTime = Date.now();
-                    console.warn(`[NODE-${this.node.id.slice(0, 6)}] syncWithPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    console.warn(`[OPSTACK-${this.node.id.slice(0, 6)}] syncWithPeers finished, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
                     this.syncRequested = false;
                     break;
                 case 'createBlockCandidateAndBroadcast':

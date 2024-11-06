@@ -413,7 +413,7 @@ export class BlockValidation {
         }
 
         if (block.index <= currentHeight) {
-            throw new Error(`!store! Rejected: #${block.index} <= #${currentHeight}`);
+            throw new Error(`!store! Rejected: #${block.index} <= #${currentHeight}(outdated)`);
         }
     }
     /** @param {BlockData} block @param {BlockData} lastBlock */

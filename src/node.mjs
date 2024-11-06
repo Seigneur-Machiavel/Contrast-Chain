@@ -102,7 +102,6 @@ export class Node {
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
-        //this.miner = new Miner(this.minerAddress || this.account.address, this, this.roles, this.opStack, this.timeSynchronizer);
         this.miner = new Miner(this.minerAddress || this.account.address, this);
         this.miner.useDevArgon2 = this.useDevArgon2;
 
@@ -297,7 +296,7 @@ export class Node {
             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime());
             await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
         } catch (error) {
-            this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
+            this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}`);
             throw error;
         }
 
