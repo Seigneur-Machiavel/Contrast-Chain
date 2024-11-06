@@ -205,7 +205,7 @@ export class SyncHandler {
             //this.isSyncing = false;
             return;
         }
-
+        return; //TODO TEST
         const currentHeight = this.node.blockchain.currentHeight;
         const snapshotHeights = this.node.snapshotSystem.getSnapshotsHeights();
 

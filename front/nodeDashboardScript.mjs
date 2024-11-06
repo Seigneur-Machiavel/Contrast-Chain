@@ -729,6 +729,7 @@ eHTML.hardResetBtn.addEventListener('click', () => {
 });
 
 eHTML.updateGitBtn.addEventListener('click', () => {
+    console.log('updateGitBtn clicked');
     currentAction = ACTIONS.UPDATE_GIT;
     openModal(ACTIONS.UPDATE_GIT, {
         message: 'Do you want to update the client using Git?',
