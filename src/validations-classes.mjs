@@ -402,17 +402,17 @@ export class BlockValidation {
         if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
         if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
     }
-    /** @param {BlockData} block @param {number} currentHeight */
-    static validateBlockIndex (block, currentHeight = -1) {
-        if (block.index > currentHeight + 9) {
+    /** @param {BlockData} block @param {number} lastBlockIndex */
+    static validateBlockIndex(block, lastBlockIndex = -1) {
+        if (block.index > lastBlockIndex + 9) {
             throw new Error(`!sync! Rejected: #${block.index} > #${lastBlockIndex + 9}(+9)`);
         }
 
-        if (block.index > currentHeight + 1) {
+        if (block.index > lastBlockIndex + 1) {
             throw new Error(`!store! !reorg! #${block.index} > #${lastBlockIndex + 1}(last+1)`);
         }
 
-        if (block.index <= currentHeight) {
+        if (block.index <= lastBlockIndex) {
             throw new Error(`!store! Rejected: #${block.index} <= #${lastBlockIndex}`);
         }
     }
