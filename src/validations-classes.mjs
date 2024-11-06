@@ -398,6 +398,7 @@ export class BlockValidation {
         if (blockData.Txs[1].outputs[0].amount !== posReward) { throw new Error(`Invalid PoS reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${posReward}`); }
     }
 
+    /** @param {BlockData} block */
     static checkBlockIndexIsNumber(block) {
         if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
         if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
