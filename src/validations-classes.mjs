@@ -1,7 +1,6 @@
 import { HashFunctions, AsymetricFunctions } from './conCrypto.mjs';
-import { Transaction, TxOutput, TxInput, UTXO, Transaction_Builder } from './transaction.mjs';
+import { Transaction, TxOutput, UTXO, Transaction_Builder } from './transaction.mjs';
 import utils from './utils.mjs';
-import { BlockUtils } from './block-classes.mjs';
 /**
  * @typedef {import("./vss.mjs").Vss} Vss
  * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
@@ -398,6 +397,7 @@ export class BlockValidation {
         if (blockData.Txs[1].outputs[0].amount !== posReward) { throw new Error(`Invalid PoS reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${posReward}`); }
     }
 
+    /** @param {BlockData} block */
     static checkBlockIndexIsNumber(block) {
         if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
         if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
