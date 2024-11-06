@@ -287,7 +287,7 @@ export class Node {
         
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
-        try  { BlockValidation.validateBlockStructure(finalizedBlock); }
+        try  { BlockValidation.checkBlockIndexIsNumber(finalizedBlock); }
         catch (error) { 
             this.logger.error(`luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
             throw error;
@@ -296,7 +296,8 @@ export class Node {
         if (finalizedBlock.hash !== hex) { throw new Error(`!ban! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         try {
-            BlockValidation.validateChainCoherence(finalizedBlock, this.blockchain);
+            BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain);
+            BlockValidation.validateBlockHash(finalizedBlock, this.blockchain);
             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain, this.timeSynchronizer);
             await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
         } catch (error) {

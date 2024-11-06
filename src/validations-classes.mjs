@@ -397,11 +397,11 @@ export class BlockValidation {
         if (blockData.Txs[1].outputs[0].amount !== posReward) { throw new Error(`Invalid PoS reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${posReward}`); }
     }
 
-    static validateBlockStructure(block) {
+    static checkBlockIndexIsNumber(block) {
         if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
         if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
     }
-    static validateChainCoherence(block, blockchain) {
+    static validateBlockIndex (block, blockchain) {
         const currentHeight = blockchain.currentHeight;
 
         if (block.index > currentHeight + 9) {
@@ -415,7 +415,8 @@ export class BlockValidation {
         if (block.index <= currentHeight) {
             throw new Error(`!store! Rejected: #${block.index} <= #${lastBlockIndex}`);
         }
-
+    }
+    static validateBlockHash (block, blockchain) {
         const lastBlockHash = blockchain.lastBlock ? blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
         const prevHashEquals = lastBlockHash === block.prevHash;
         if (!prevHashEquals) {
