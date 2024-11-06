@@ -58,8 +58,11 @@ export class OpStack {
             if (timeSinceLastDigestOrSync < this.healthInfo.delayBeforeReorgCheck) { continue; }
             if (timeSinceLastReorgCheck > this.healthInfo.delayBeforeReorgCheck) {
                 this.healthInfo.lastReorgCheckTime = Date.now();
-                const reorgInitiated = await this.node.reorganizator.reorgIfMostLegitimateChain('healthCheck');
+                const reorgTasks = await this.node.reorganizator.reorgIfMostLegitimateChain('healthCheck');
+                if (!reorgTasks) { continue; }
+
                 if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
+                this.securelyPushFirst(reorgTasks);
             }
         }
     }
@@ -121,44 +124,10 @@ export class OpStack {
                     break;
                 case 'digestPowProposal':
                     if (content.Txs[0].inputs[0] === undefined) { console.error('Invalid coinbase nonce'); return; }
-                    try { 
+                    try {
                         await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
-                        if (error.message.includes('Anchor not found')) {
-                            console.error(`\n#${content.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
-                        if (error.message.includes('invalid prevHash')) {
-                            console.error(`\n#${content.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
-
-                        // reorg management
-                        if (error.message.includes('!store!')) {
-                            this.node.reorganizator.storeFinalizedBlockInCache(content);
-                        }
-                        if (error.message.includes('!reorg!')) {
-                            this.healthInfo.lastReorgCheckTime = Date.now();
-                            const reorgInitiated = this.node.reorganizator.reorgIfMostLegitimateChain('digestPowProposal: !reorg!');
-                            if (reorgInitiated) { console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`); }
-                        }
-                        if (error.message.includes('!ban!')) {
-                            console.info(`[OpStack] Finalized block #${content.index} has been banned, reason: ${error.message}`);
-                            this.node.reorganizator.banFinalizedBlock(content); // avoid using the block in future reorgs
-                            if (task.data.from === undefined) { return }
-                            this.node.p2pNetwork.reputationManager.applyOffense(
-                                {peerId : task.data.from},
-                                ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION
-                            );
-                            return;
-                        }
-                        if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
-                        
-                        // sync management
-                        if (error.message.includes('!sync!')) {
-                            console.error(error.stack);
-                            this.pushFirst('syncWithPeers', null);
-                            console.log(`restartRequested: ${this.node.restartRequested}`);
-                            return;
-                        }
-
-                        console.error(error.stack);
+                        await this.#digestPowProposalErrorHandler(error, content);
                     }
                     
                     // prune the reog cache
@@ -201,19 +170,61 @@ export class OpStack {
             }
         } catch (error) { console.error(error.stack); }
     }
-    /** @param {string} type  @param {object} data */
+    // HANDLERS
+    /** @param {Error} error @param {BlockData} block */
+    async #digestPowProposalErrorHandler(error, block) {
+        if (error.message.includes('Anchor not found')) {
+            console.error(`\n#${block.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
+        if (error.message.includes('invalid prevHash')) {
+            console.error(`\n#${block.index} **SOFT FORK** Finalized block prevHash doesn't match the last block hash! `); }
+
+        // reorg management
+        if (error.message.includes('!store!')) {
+            this.node.reorganizator.storeFinalizedBlockInCache(block);
+        }
+        if (error.message.includes('!reorg!')) {
+            this.healthInfo.lastReorgCheckTime = Date.now();
+            const reorgTasks = await this.node.reorganizator.reorgIfMostLegitimateChain('digestPowProposal: !reorg!');
+            if (reorgTasks) {
+                console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                this.securelyPushFirst(reorgTasks);
+            }
+        }
+        if (error.message.includes('!ban!')) {
+            console.info(`[OpStack] Finalized block #${block.index} has been banned, reason: ${error.message}`);
+            this.node.reorganizator.banFinalizedBlock(block); // avoid using the block in future reorgs
+            if (task.data.from === undefined) { return }
+            this.node.p2pNetwork.reputationManager.applyOffense(
+                {peerId : task.data.from},
+                ReputationManager.OFFENSE_TYPES.INVALID_BLOCK_SUBMISSION
+            );
+            return;
+        }
+        if (error.message.includes('!store!') || error.message.includes('!reorg!')) { return; }
+        
+        // sync management
+        if (error.message.includes('!sync!')) {
+            console.error(error.stack);
+            this.pushFirst('syncWithPeers', null);
+            console.log(`restartRequested: ${this.node.restartRequested}`);
+            return;
+        }
+
+        console.error(error.stack);
+    }
+
+    /** @param {string} type @param {object} data */
     push(type, data) {
         if (type === 'syncWithPeers' && this.syncRequested) { return; }
         if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.push({ type, data });
     }
-    /** @param {string} type  @param {object} data */
+    /** @param {string} type @param {object} data */
     pushFirst(type, data) {
         if (type === 'syncWithPeers' && this.syncRequested) { return; }
         if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.unshift({ type, data });
     }
-
     securelyPushFirst(tasks) {
         this.paused = true;
         for (const task of tasks) {

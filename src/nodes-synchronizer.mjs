@@ -115,95 +115,6 @@ export class SyncHandler {
                 throw new Error('Invalid request type');
         }
     }
-
-    async syncWithPeers(peerIds = []) {
-        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
-        // should be done only one time
-        await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
-
-        this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
-        this.node.blockchainStats.state = "syncing";
-        this.isSyncing = true;
-    
-        let peerStatuses = [];
-    
-        if (peerIds.length > 0) {
-            // Sync with specific peers
-            for (const peerId of peerIds) {
-                const peerData = this.node.p2pNetwork.peers.get(peerId);
-                if (!peerData) { continue; }
-
-                const { address } = peerData;
-                const ma = multiaddr(address);
-                const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma, peerId);
-                if (!peerStatus || !peerStatus.currentHeight) { continue; }
-
-                peerStatuses.push({
-                    peerId,
-                    address,
-                    currentHeight: peerStatus.currentHeight,
-                });
-            }
-    
-            if (peerStatuses.length === 0) {
-                this.logger.error(`luid-909bb94c [SYNC] No valid peers to sync with`);
-                await this.handleSyncFailure();
-                return false;
-            }
-        } else {
-            // Sync with all known peers
-            peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
-            if (!peerStatuses || peerStatuses.length === 0) {
-                this.logger.error(`luid-eec3c612 [SYNC] Unable to get peer statuses`);
-                await this.handleSyncFailure();
-                return false;
-            }
-        }
-    
-        // Sort peers by currentHeight in descending order
-        peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
-        const highestPeerHeight = peerStatuses[0].currentHeight;
-    
-        if (highestPeerHeight <= this.node.blockchain.currentHeight) {
-            this.logger.debug(`luid-ff391762 [SYNC] Already at the highest height, no need to sync`);
-            this.isSyncing = false;
-            return true;
-        }
-    
-        this.logger.info(`luid-a050ac5b [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
-    
-        // Attempt to sync with peers in order
-        for (const peerInfo of peerStatuses) {
-            const { peerId, address, currentHeight } = peerInfo;
-            const ma = multiaddr(address);
-            this.logger.info(`luid-89219133 Attempting to sync with peer`, { peerId, currentHeight });
-            try {
-                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight, peerId);
-                this.logger.info(`luid-5eb266ed Successfully synced with peer`, { peerId });
-                if (!synchronized) { continue; }
-
-                break; // Sync successful, break out of loop
-            } catch (error) {
-                await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
-                if (error instanceof SyncRestartError) {
-                    this.logger.error(`luid-75e514b1 Sync restart error occurred`, { error: error.message });
-                    await this.handleSyncFailure();
-                    return false;
-                }
-                break;
-            }
-        }
-    
-        if (highestPeerHeight > this.node.blockchain.currentHeight) {
-            this.logger.debug(`luid-8e1fa028 [SYNC] Need to sync more blocks, restarting sync process`);
-            return false;
-        }
-    
-        this.logger.debug(`luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}`);
-        this.isSyncing = false;
-        return true;
-    }
-    
     /** Gets the status of a peer.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer.
@@ -332,50 +243,6 @@ export class SyncHandler {
     /** Synchronizes missing blocks from a peer efficiently.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
-    async #getMissingBlocks_old(p2pNetwork, peerMultiaddr, peerCurrentHeight, peerId) { // DEPRECATED
-        this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
-        this.logger.info(`luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}`);
-        let peerHeight = peerCurrentHeight ? peerCurrentHeight : await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
-        if (!peerHeight) { this.logger.info(`luid-e9f9d488 [SYNC] (#getMissingBlocks) Failed to get peer height`); }
-
-        let desiredBlock = this.node.blockchain.currentHeight + 1;
-        while (desiredBlock <= peerHeight) {
-            const endIndex = Math.min(desiredBlock + MAX_BLOCKS_PER_REQUEST - 1, peerHeight);
-            const serializedBlocks = await this.#requestBlocksFromPeer(p2pNetwork, peerMultiaddr, desiredBlock, endIndex);
-            if (!serializedBlocks) { this.logger.error(`luid-b93d9bf2 [SYNC] (#getMissingBlocks: while()) Failed to get serialized blocks`); break; }
-            if (serializedBlocks.length === 0) { this.logger.error(`luid-6e5c9454 [SYNC] (#getMissingBlocks: while()) No blocks found`); break; }
-            // Process blocks
-            for (const serializedBlock of serializedBlocks) {
-                try {
-                    const block = BlockUtils.blockDataFromSerializedHeaderAndTxs(
-                        serializedBlock.header,
-                        serializedBlock.txs
-                    );
-                    await this.node.digestFinalizedBlock(block, { skipValidation: false, broadcastNewCandidate: false, isSync: true, persistToDisk: true });
-                    desiredBlock++;
-                } catch (blockError) {
-                    this.logger.error('luid-63446bae Error processing block', { error: blockError.message, blockIndex: desiredBlock });
-                    this.isSyncing = false;
-                    throw new SyncRestartError('Sync failure occurred, restarting sync process');
-                }
-            }
-
-            this.logger.info('luid-09a78e43 Synchronized blocks from peer', { count: serializedBlocks.length, nextBlock: desiredBlock });
-            // Update the peer's height when necessary
-            if (peerHeight === this.node.blockchain.currentHeight) {
-                peerHeight = await this.#updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId);
-                if (!peerHeight) { this.logger.error(`luid-f1def041 [SYNC] (#getMissingBlocks: while()) Failed to get peer height`); }
-            }
-
-        }
-
-        if (peerHeight === this.node.blockchain.currentHeight) { return true; }
-        // No bug, but not fully synchronized
-        return false;
-    }
-    /** Synchronizes missing blocks from a peer efficiently.
-     * @param {P2PNetwork} p2pNetwork - The P2P network instance.
-     * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
     async #getMissingBlocks(p2pNetwork, peerMultiaddr, peerCurrentHeight, peerId) {
         this.node.blockchainStats.state = `syncing with peer ${peerMultiaddr}`;
         this.logger.info(`luid-1b1b1b1b [SYNC] Synchronizing with peer ${peerMultiaddr}`);
@@ -417,7 +284,6 @@ export class SyncHandler {
         // No bug, but not fully synchronized
         return false;
     }
-
     /** Requests blocks from a peer.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer.
@@ -447,9 +313,95 @@ export class SyncHandler {
     getPeerHeight(peerId) {
         return this.peerHeights.get(peerId) ?? 0;
     }
-
     getAllPeerHeights() {
         // return as Object
         return Object.fromEntries(this.peerHeights);
+    }
+    async syncWithPeers(peerIds = []) {
+        const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
+        // should be done only one time
+        await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
+
+        this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
+        this.node.blockchainStats.state = "syncing";
+        this.isSyncing = true;
+    
+        let peerStatuses = [];
+    
+        if (peerIds.length > 0) {
+            // Sync with specific peers
+            for (const peerId of peerIds) {
+                const peerData = this.node.p2pNetwork.peers.get(peerId);
+                if (!peerData) { continue; }
+
+                const { address } = peerData;
+                const ma = multiaddr(address);
+                const peerStatus = await this.#getPeerStatus(this.node.p2pNetwork, ma, peerId);
+                if (!peerStatus || !peerStatus.currentHeight) { continue; }
+
+                peerStatuses.push({
+                    peerId,
+                    address,
+                    currentHeight: peerStatus.currentHeight,
+                });
+            }
+    
+            if (peerStatuses.length === 0) {
+                this.logger.error(`luid-909bb94c [SYNC] No valid peers to sync with`);
+                await this.handleSyncFailure();
+                return false;
+            }
+        } else {
+            // Sync with all known peers
+            peerStatuses = await this.#getAllPeersStatus(this.node.p2pNetwork);
+            if (!peerStatuses || peerStatuses.length === 0) {
+                this.logger.error(`luid-eec3c612 [SYNC] Unable to get peer statuses`);
+                await this.handleSyncFailure();
+                return false;
+            }
+        }
+    
+        // Sort peers by currentHeight in descending order
+        peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
+        const highestPeerHeight = peerStatuses[0].currentHeight;
+    
+        if (highestPeerHeight <= this.node.blockchain.currentHeight) {
+            this.logger.debug(`luid-ff391762 [SYNC] Already at the highest height, no need to sync`);
+            this.isSyncing = false;
+            return true;
+        }
+    
+        this.logger.info(`luid-a050ac5b [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}`);
+    
+        // Attempt to sync with peers in order
+        for (const peerInfo of peerStatuses) {
+            const { peerId, address, currentHeight } = peerInfo;
+            const ma = multiaddr(address);
+            this.logger.info(`luid-89219133 Attempting to sync with peer`, { peerId, currentHeight });
+            try {
+                const synchronized = await this.#getMissingBlocks(this.node.p2pNetwork, ma, currentHeight, peerId);
+                this.logger.info(`luid-5eb266ed Successfully synced with peer`, { peerId });
+                if (!synchronized) { continue; }
+
+                break; // Sync successful, break out of loop
+            } catch (error) {
+                await new Promise((resolve) => setTimeout(resolve, DELAY_BETWEEN_PEERS));
+                if (error instanceof SyncRestartError) {
+                    this.logger.error(`luid-75e514b1 Sync restart error occurred`, { error: error.message });
+                    await this.handleSyncFailure();
+                    return false;
+                }
+                break;
+            }
+        }
+    
+        if (highestPeerHeight > this.node.blockchain.currentHeight) {
+            this.logger.debug(`luid-8e1fa028 [SYNC] Need to sync more blocks, restarting sync process`);
+            return false;
+        }
+    
+        this.logger.debug(`luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}`);
+        this.isSyncing = false;
+        return true;
     }
 }

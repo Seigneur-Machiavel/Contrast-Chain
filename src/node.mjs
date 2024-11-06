@@ -107,8 +107,6 @@ export class Node {
 
         if (!startFromScratch) { await this.#loadBlockchain(); }
 
-        // actually useless in ram, but good for DB usage
-        // await this.memPool.clearTransactionsWhoUTXOsAreSpent(this.utxoCache);
         const bootstrapNodes = this.configManager.getBootstrapNodes();
         this.p2pNetwork.options.bootstrapNodes = bootstrapNodes;
 
@@ -421,7 +419,7 @@ export class Node {
         await this.blockchain.applyBlocks(this.utxoCache, this.vss, [finalizedBlock], this.roles.includes('observer'));
 
         performance.mark('digest-finalized-blocks');
-        this.memPool.digestFinalizedBlocksTransactions([finalizedBlock]);
+        this.memPool.removeFinalizedBlocksTransactions([finalizedBlock]);
 
         performance.mark('store-confirmed-block');
         if (!skipValidation && this.wsCallbacks.onBlockConfirmed) { this.wsCallbacks.onBlockConfirmed.execute(blockInfo); }

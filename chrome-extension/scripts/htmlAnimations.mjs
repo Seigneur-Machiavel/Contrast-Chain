@@ -6,7 +6,7 @@ export class WelcomeAnimationBlob {
         this.ctx = canvasElement.getContext('2d');
         this.ob = [];
 
-        this.dotAppearTimings = [5000, 2000, 1000, 200, 200, 200, 200, 200, 200, 200];
+        this.dotAppearTimings = [3000, 1000, 1000, 200, 200, 200];
         this.rndMaxDelay = 2000;
         this.paused = false;
     }
@@ -21,7 +21,7 @@ export class WelcomeAnimationBlob {
     
         for(a=0;a<amount;a++){
             b={};
-            c=Math.PI*2*Math.random();
+            c=Math.PI*2* Math.random();
             d=Math.random()*1000;
             b.x=tx+Math.cos(c)*d;
             b.y=ty+Math.sin(c)*d;
@@ -61,6 +61,7 @@ export class WelcomeAnimationBlob {
 
         let count=0;
         let a,b,c,d,e,f,g,h,x,y,abs,pe,tim;
+        /** @type {CanvasRenderingContext2D} */
         const ctx = this.ctx;
         ctx.globalCompositeOperation = "source-over";
     
@@ -118,7 +119,11 @@ export class WelcomeAnimationBlob {
             b=ob[a];
             ctx.strokeStyle=ctx.fillStyle=colorText;
             ctx.beginPath();
-            ctx.arc(b.x,b.y,10*(b.s+0.8),0,Math.PI*2,0);
+            if (a === 0) {
+                ctx.arc(b.x,b.y,10,0,Math.PI*2,0);
+            } else {
+                ctx.arc(b.x,b.y,10*(b.s+0.8),0,Math.PI*2,0);
+            }
             ctx.fill();
             ctx.stroke();
         }

@@ -28,10 +28,7 @@ export class MemPool {
         this.transactionQueue = new TransactionPriorityQueue();
     }
 
-    /**
-     * @param {Transaction} transaction
-     * @param {Transaction} collidingTx
-     */
+    /** @param {Transaction} transaction @param {Transaction} collidingTx */
     #addMempoolTransaction(transaction, collidingTx = false) {
          // IMPORTANT : AT THIS STAGE WE HAVE ENSURED THAT THE TRANSACTION IS CONFORM
         if (collidingTx) { this.#removeMempoolTransaction(collidingTx); }
@@ -49,7 +46,6 @@ export class MemPool {
 
         //console.log(`[MEMPOOL] transaction: ${transaction.id} added`);
     }
-
     /** @param {Transaction} transaction */
     #removeMempoolTransaction(transaction) {
         // Remove from the priority queue
@@ -67,38 +63,24 @@ export class MemPool {
 
         //console.log(`[MEMPOOL] transaction: ${transaction.id} removed`);
     }
-
-    /** -> Use when a new block is accepted
-     * - Remove transactions that are using UTXOs that are already spent
-     * @param {UtxoCache} utxoCache - from utxoCache
-     */
-    async clearTransactionsWhoUTXOsAreSpent(utxoCache) {
-        const anchors = [];
-        for (const anchor of Object.keys(this.transactionByAnchor)) {
-            if (!this.transactionByAnchor[anchor]) { continue; } // already removed
-            anchors.push(anchor);
+    /** @param {Transaction} transaction */
+    #caughtTransactionsAnchorsCollision(transaction) {
+        for (const input of transaction.inputs) {
+            if (!this.transactionByAnchor[input]) { continue; } // no collision
+            return { tx: this.transactionByAnchor[input], anchor: input };
         }
 
-        const utxos = await utxoCache.getUTXOs(anchors);
-        for (const anchor of Object.keys(utxos)) {
-            if (!utxos[anchor].spent) { continue; } // not spent
-
-            const transaction = this.transactionByAnchor[anchor];
-            this.#removeMempoolTransaction(transaction);
-        }
+        return false;
     }
 
+    /** @param {Object<string, string>} discoveredPubKeysAddresses */
     addNewKnownPubKeysAddresses(discoveredPubKeysAddresses) {
         for (let [pubKeyHex, address] of Object.entries(discoveredPubKeysAddresses)) {
             this.knownPubKeysAddresses[pubKeyHex] = address;
         }
     }
-
-    /**
-     * - Remove the transactions included in the block from the mempool
-     * @param {BlockData[]} blocksData
-     */
-    digestFinalizedBlocksTransactions(blocksData) {
+    /** @param {BlockData[]} blocksData */
+    removeFinalizedBlocksTransactions(blocksData) {
         for (const blockData of blocksData) {
             const Txs = blockData.Txs;
             if (!Array.isArray(Txs)) { throw new Error('Txs is not an array'); }
@@ -114,21 +96,7 @@ export class MemPool {
             }
         }
     }
-
-    /** @param {Transaction} transaction */
-    #caughtTransactionsAnchorsCollision(transaction) {
-        for (const input of transaction.inputs) {
-            if (!this.transactionByAnchor[input]) { continue; } // no collision
-            return { tx: this.transactionByAnchor[input], anchor: input };
-        }
-
-        return false;
-    }
-
-    /**
-     * @param {UtxoCache} utxoCache
-     * @param {Transaction} transaction
-     */
+    /** @param {UtxoCache} utxoCache @param {Transaction} transaction */
     async pushTransaction(utxoCache, transaction) { 
         const involvedUTXOs = await utxoCache.extractInvolvedUTXOsOfTx(transaction);
         if (!involvedUTXOs) { throw new Error('At least one UTXO not found in utxoCache'); }
@@ -174,7 +142,6 @@ export class MemPool {
 
         this.#addMempoolTransaction(transaction, collidingTx);
     }
-
     /** @param {UtxoCache} utxoCache */
     async getMostLucrativeTransactionsBatch(utxoCache) {
         const totalBytesTrigger = utils.SETTINGS.maxBlockSize * 0.98;
@@ -183,13 +150,13 @@ export class MemPool {
 
         // Use the priority queue to get transactions sorted by feePerByte
         const candidateTransactions = this.transactionQueue.getTransactions();
-
         for (let tx of candidateTransactions) {
             let txCanBeAdded = true;
             for (const anchor of tx.inputs) {
                 const utxo = await utxoCache.getUTXO(anchor);
-                if (!utxo || utxo.spent) { 
+                if (!utxo || utxo.spent) {
                     txCanBeAdded = false; 
+                    this.transactionQueue.remove(tx.id);
                     break; 
                 }
             }
@@ -198,6 +165,7 @@ export class MemPool {
             const txWeight = tx.byteWeight;
             if (totalBytes + txWeight > utils.SETTINGS.maxBlockSize) { continue; }
 
+            // clean up the transaction's details before returning it
             const clone = Transaction_Builder.clone(tx);
             delete clone.feePerByte;
             delete clone.byteWeight;
@@ -210,7 +178,6 @@ export class MemPool {
 
         return transactions;
     }
-
     getTxNumberInMempool() {
         return this.transactionQueue.size();
     }

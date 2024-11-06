@@ -16,7 +16,7 @@ const SETTINGS = {
     HTTP_PROTOCOL: "http", // http or https
     WS_PROTOCOL: "ws", // ws or wss
     DOMAIN: 'pinkparrot.science', // 'pinkparrot.observer',
-    PORT: 27270, // "27270", no port using domain
+    PORT: "27270", // "27270", no port using domain
     LOCAL_DOMAIN: "localhost",
     LOCAL_PORT: "27270",
 
@@ -50,7 +50,11 @@ async function getTransactionFromMemoryOrSendRequest(txReference, address = unde
     transactionsByReference[txReference] = 'request sent';
     return 'request sent';
 }
-
+async function load_SETTINGS_fromStorage() {
+    const settings = await chrome.storage.local.get('SETTINGS');
+    if (!settings || !settings.SETTINGS) { return; }
+    Object.assign(SETTINGS, settings.SETTINGS);
+}
 /** @type {WebSocket} */
 let ws;
 async function verifyServer() {

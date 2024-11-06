@@ -47,13 +47,13 @@ export class TxIO_Builder {
 
 /**
  * @typedef {Object} TxOutput
- * @property {number} amount - the amount of microConts
  * @property {string} address - output only
+ * @property {number} amount - the amount of microConts
  * @property {string} rule - the unlocking rule
  */
 /** Transaction Input/Output data structure
- * @param {number} amount - the amount of microConts
  * @param {string} address - output only
+ * @param {number} amount - the amount of microConts
  * @param {string} rule - the unlocking rule
  * @returns {TxOutput}
  **/
@@ -274,6 +274,7 @@ export class Transaction_Builder {
         const changeOutput = change > utils.SETTINGS.unspendableUtxoAmount ? TxIO_Builder.newOutput(change, 'sig', senderAddress) : undefined;
         return { utxos, changeOutput };
     }
+    /** @param {UTXO[]} utxos @param {number} amount */
     static extractNecessaryUtxosForAmount(utxos, amount) {
         const necessaryUtxos = [];
         let remainingAmount = amount;
@@ -286,10 +287,7 @@ export class Transaction_Builder {
 
         return necessaryUtxos;
     }
-    /**
-     * @param {UTXO[]} utxos
-     * @param {TxOutput[]} outputs
-     */
+    /** @param {UTXO[]} utxos @param {TxOutput[]} outputs */
     static async #newTransaction(utxos, outputs) {
         const inputs = utxos.map(utxo => utxo.anchor);
 
@@ -298,10 +296,7 @@ export class Transaction_Builder {
 
         return transaction;
     }
-    /**
-     * @param {UTXO[]} utxos
-     * @param {TxOutput[]} outputs
-     */
+    /** @param {UTXO[]} utxos @param {TxOutput[]} outputs */
     static simulateTxToEstimateWeight(utxos, outputs, nbOfSigners = 1) {
         const change = 26_152_659_654_321;
         const changeOutput = TxIO_Builder.newOutput(change, 'sig', 'Cv6XXKBTALRPSCzuU6k4');
@@ -415,11 +410,7 @@ export class Transaction_Builder {
         return clone;
     }
     // Multi-functions methods
-    /**
-     * @param {Account} senderAccount
-     * @param {number} amount
-     * @param {string} recipientAddress
-     */
+    /** @param {Account} senderAccount @param {number} amount @param {string} recipientAddress */
     static async createAndSignTransfer(senderAccount, amount, recipientAddress) {
         try {
             const transfer = { recipientAddress, amount };
@@ -428,9 +419,7 @@ export class Transaction_Builder {
 
             return { signedTx, error: false };
         } catch (error) {
-            /** @type {string} */
-            const errorMessage = error.stack;
-            return { signedTx: false, error: errorMessage };
+            return { signedTx: false, error };
         }
     }
 }

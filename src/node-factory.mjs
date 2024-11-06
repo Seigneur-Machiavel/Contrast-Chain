@@ -7,8 +7,8 @@ export class NodeFactory {
         /** @type {Map<string, Node>} */
         this.nodes = new Map();
         this.nodesCreationSettings = {};
-        this.#controlLoop();
         this.restartCounter = 0;
+        this.#controlLoop();
     }
     async #restartNodesWhoRequestedIt() {
         for (const node of this.nodes.values()) {
@@ -45,18 +45,6 @@ export class NodeFactory {
         this.nodes.set(node.id, node);
         console.log(`Node ${node.id} created`);
         return node;
-    }
-    /** @param {string} nodeId */
-    async startNode(nodeId) {
-        const node = this.getNode(nodeId);
-        if (!node) { console.error(`Node ${nodeId} not found`); return; }
-        await node.start();
-    }
-    /** @param {string} nodeId */
-    async stopNode(nodeId) {
-        const node = this.getNode(nodeId);
-        if (!node) { console.error(`Node ${nodeId} not found`); return; }
-        await node.stop();
     }
     /**
      * @param {string} nodeId 
@@ -128,18 +116,6 @@ export class NodeFactory {
         } catch (error) {
             console.error(error.message);
             return undefined;
-        }
-    }
-    getAllNodes() {
-        return Array.from(this.nodes.values());
-    }
-    /** @param {Account[]} accounts */
-    refreshAllBalances(accounts) {
-        for (const node of this.nodes.values()) {
-            for (const account of accounts) {
-                const { spendableBalance, balance, UTXOs } = node.utxoCache.getBalanceSpendableAndUTXOs(account.address);
-                account.setBalanceAndUTXOs(balance, UTXOs);
-            }
         }
     }
 }

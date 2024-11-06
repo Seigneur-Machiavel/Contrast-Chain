@@ -14,61 +14,14 @@ export class Reorganizator {
         
         /** @type {Object<string, Object<string, BlockData>>} */
         this.finalizedBlocksCache = {};
-        //this.reorging = false; //probably not needed
-        //this.reorgPath = []; //probably not needed
         /** @type {Object<string, Object<string, boolean>>} */
         this.bannedBlockHashesByHeight = {};
-    }
-    /** @param {BlockData} finalizedBlock */
-    storeFinalizedBlockInCache(finalizedBlock) {
-        const index = finalizedBlock.index;
-        const hash = finalizedBlock.hash;
-        if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
-        if (this.finalizedBlocksCache[index][hash]) { return; }
-
-        this.finalizedBlocksCache[index][hash] = finalizedBlock;
-        console.info(`[REORGANIZATOR] Stored finalized block #${index} | hash: ${hash.slice(0, 10)}...`);
-    }
-    /** @param {BlockData} finalizedBlock */
-    isFinalizedBlockInCache(finalizedBlock) {
-        const index = finalizedBlock.index;
-        const hash = finalizedBlock.hash;
-        return this.finalizedBlocksCache[index] && this.finalizedBlocksCache[index][hash];
     }
     /** @param {BlockData} finalizedBlock */
     #isFinalizedBlockBanned(finalizedBlock) {
         const index = finalizedBlock.index;
         const hash = finalizedBlock.hash;
         return this.bannedBlockHashesByHeight[index] && this.bannedBlockHashesByHeight[index][hash];
-    }
-    /** @param {BlockData} finalizedBlock */
-    banFinalizedBlock(finalizedBlock) {
-        const index = finalizedBlock.index;
-        const hash = finalizedBlock.hash;
-        if (!this.bannedBlockHashesByHeight[index]) { this.bannedBlockHashesByHeight[index] = {}; }
-        this.bannedBlockHashesByHeight[index][hash] = true;
-
-        console.info(`[REORGANIZATOR] Banned block #${index} | hash:${hash.slice(0, 10)}...`);
-    }
-    pruneCache() {
-        const snapshotsHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
-        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
-        if (preLastSnapshot === undefined) { return; }
-
-        const eraseUntil = preLastSnapshot -1;
-        if (eraseUntil < 0) { return; }
-
-        const blocksHeight = Object.keys(this.finalizedBlocksCache);
-        for (const height of blocksHeight) {
-            if (height > eraseUntil) { continue; }
-            delete this.finalizedBlocksCache[height];
-        }
-
-        const bannedHeights = Object.keys(this.bannedBlockHashesByHeight);
-        for (const height of bannedHeights) {
-            if (height > eraseUntil) { continue; }
-            delete this.bannedBlockHashesByHeight[height];
-        }
     }
     /** @param {BlockData[]} finalizedBlocks */
     #pruneBranch(finalizedBlocks) {
@@ -182,6 +135,7 @@ export class Reorganizator {
         tasks.push({ type: 'rollBackTo', data: block.index - 1 });
         return tasks;
     }
+    /** @returns {Promise<boolean | Object[]>} - false if no reorg needed, otherwise return reorg tasks */
     async reorgIfMostLegitimateChain(reason = false) {
         if (!this.node.blockchain.lastBlock) { return false; }
         const legitimateReorg = await this.#getLegitimateReorg();
@@ -189,8 +143,53 @@ export class Reorganizator {
             console.warn(`[REORGANIZATOR] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
             return false;
         }
-        console.warn(`[REORGANIZATOR] --- Reorg --- (from #${this.node.blockchain.lastBlock.index} ${reason ? `| ${reason}` : ''})`);
-        this.node.opStack.securelyPushFirst(legitimateReorg.tasks);
-        return true;
+
+        console.warn(`[REORGANIZATOR] ---( Possible Reorg )--- (from #${this.node.blockchain.lastBlock.index} ${reason ? `| ${reason}` : ''})`);
+        return legitimateReorg.tasks;
+    }
+    /** @param {BlockData} finalizedBlock */
+    storeFinalizedBlockInCache(finalizedBlock) {
+        const index = finalizedBlock.index;
+        const hash = finalizedBlock.hash;
+        if (!this.finalizedBlocksCache[index]) { this.finalizedBlocksCache[index] = {}; }
+        if (this.finalizedBlocksCache[index][hash]) { return; }
+
+        this.finalizedBlocksCache[index][hash] = finalizedBlock;
+        console.info(`[REORGANIZATOR] Stored finalized block #${index} | hash: ${hash.slice(0, 10)}...`);
+    }
+    /** @param {BlockData} finalizedBlock */
+    isFinalizedBlockInCache(finalizedBlock) {
+        const index = finalizedBlock.index;
+        const hash = finalizedBlock.hash;
+        return this.finalizedBlocksCache[index] && this.finalizedBlocksCache[index][hash];
+    }
+    /** @param {BlockData} finalizedBlock */
+    banFinalizedBlock(finalizedBlock) {
+        const index = finalizedBlock.index;
+        const hash = finalizedBlock.hash;
+        if (!this.bannedBlockHashesByHeight[index]) { this.bannedBlockHashesByHeight[index] = {}; }
+        this.bannedBlockHashesByHeight[index][hash] = true;
+
+        console.info(`[REORGANIZATOR] Banned block #${index} | hash:${hash.slice(0, 10)}...`);
+    }
+    pruneCache() {
+        const snapshotsHeights = this.node.snapshotSystemDoc.getSnapshotsHeights();
+        const preLastSnapshot = snapshotsHeights[snapshotsHeights.length - 2];
+        if (preLastSnapshot === undefined) { return; }
+
+        const eraseUntil = preLastSnapshot -1;
+        if (eraseUntil < 0) { return; }
+
+        const blocksHeight = Object.keys(this.finalizedBlocksCache);
+        for (const height of blocksHeight) {
+            if (height > eraseUntil) { continue; }
+            delete this.finalizedBlocksCache[height];
+        }
+
+        const bannedHeights = Object.keys(this.bannedBlockHashesByHeight);
+        for (const height of bannedHeights) {
+            if (height > eraseUntil) { continue; }
+            delete this.bannedBlockHashesByHeight[height];
+        }
     }
 }
