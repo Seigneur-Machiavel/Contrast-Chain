@@ -1,6 +1,6 @@
 import localStorage_v1 from '../storage/local-storage-management.mjs';
 import { BlockValidation } from './validations-classes.mjs';
-import { OpStack } from './main-stack.mjs';
+import { OpStack } from './OpStack.mjs';
 import { Vss } from './vss.mjs';
 import { MemPool } from './memPool.mjs';
 import { UtxoCache } from './utxoCache.mjs';

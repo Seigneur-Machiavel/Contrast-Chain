@@ -126,7 +126,7 @@ export class OpStack {
                     try {
                         await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
-                        await this.#digestPowProposalErrorHandler(error, content);
+                        await this.#digestPowProposalErrorHandler(error, content, task);
                     }
                     
                     // prune the reog cache
@@ -170,8 +170,8 @@ export class OpStack {
         } catch (error) { console.error(error.stack); }
     }
     // HANDLERS
-    /** @param {Error} error @param {BlockData} block */
-    async #digestPowProposalErrorHandler(error, block) {
+    /** @param {Error} error @param {BlockData} block @param {object} task */
+    async #digestPowProposalErrorHandler(error, block, task) {
         if (error.message.includes('Anchor not found')) {
             console.error(`\n#${block.index} **CRITICAL ERROR** Validation of the finalized doesn't spot missing anchor! `); }
         if (error.message.includes('invalid prevHash')) {
@@ -189,9 +189,13 @@ export class OpStack {
                 this.securelyPushFirst(reorgTasks);
             }
         }
-        if (error.message.includes('!ban!')) {
+
+        if (error.message.includes('!banBlock!')) {
             console.info(`[OpStack] Finalized block #${block.index} has been banned, reason: ${error.message}`);
             this.node.reorganizator.banFinalizedBlock(block); // avoid using the block in future reorgs
+        }
+
+        if (error.message.includes('!applyOffense!')) {
             if (task.data.from === undefined) { return }
             this.node.p2pNetwork.reputationManager.applyOffense(
                 {peerId : task.data.from},
