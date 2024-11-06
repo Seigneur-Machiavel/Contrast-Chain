@@ -205,7 +205,7 @@ export class SyncHandler {
             //this.isSyncing = false;
             return;
         }
-        return; //TODO TEST
+     
         const currentHeight = this.node.blockchain.currentHeight;
         const snapshotHeights = this.node.snapshotSystem.getSnapshotsHeights();
 
@@ -321,7 +321,7 @@ export class SyncHandler {
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
         // should be done only one time
         await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
-
+        return; //TODO TEST
         this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
