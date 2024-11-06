@@ -136,19 +136,19 @@ export class TransactionPriorityQueue {
         while (tempHeap.length > 0) {
             const tx = tempHeap[0];
             result.push(tx);
-            //this.#removeFromTempHeap(tempHeap, 0);
+            this.removeFromTempHeap(tempHeap, 0);
         }
     
         return result;
     }
     
-    /*#removeFromTempHeap(heap, index) {
+    removeFromTempHeap(heap, index) {
         const last = heap.pop();
         if (heap.length > 0) {
             heap[index] = last;
             this.bubbleDownTempHeap(heap, index);
         }
-    }*/
+    }
 
     bubbleDownTempHeap(heap, index) {
         while (true) {
