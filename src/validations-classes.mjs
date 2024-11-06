@@ -1,7 +1,7 @@
 import { HashFunctions, AsymetricFunctions } from './conCrypto.mjs';
 import { Transaction, TxOutput, TxInput, UTXO, Transaction_Builder } from './transaction.mjs';
 import utils from './utils.mjs';
-
+import { BlockUtils } from './block-classes.mjs';
 /**
  * @typedef {import("./utxoCache.mjs").UtxoCache} UtxoCache
  * @typedef {import("./memPool.mjs").MemPool} MemPool
@@ -385,6 +385,81 @@ export class TxValidation {
 }
 
 export class BlockValidation {
+
+    /** @param {BlockData} blockData @param {BlockData} prevBlockData */
+    static isTimestampsValid(blockData, prevBlockData) {
+        if (blockData.posTimestamp <= prevBlockData.timestamp) { throw new Error(`Invalid PoS timestamp: ${blockData.posTimestamp} <= ${prevBlockData.timestamp}`); }
+        if (blockData.timestamp > Date.now()) { throw new Error('Invalid timestamp'); }
+    }
+    /** @param {number} powReward @param {number} posReward @param {BlockData} blockData */
+    static async areExpectedRewards(powReward, posReward, blockData) {
+        if (blockData.Txs[0].outputs[0].amount !== powReward) { throw new Error(`Invalid PoW reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${powReward}`); }
+        if (blockData.Txs[1].outputs[0].amount !== posReward) { throw new Error(`Invalid PoS reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${posReward}`); }
+    }
+
+    static validateBlockStructure(block) {
+        if (typeof block.index !== 'number') { throw new Error('!ban! Invalid block index'); }
+        if (Number.isInteger(block.index) === false) { throw new Error('!ban! Invalid block index'); }
+    }
+    static validateChainCoherence(block, blockchain) {
+        const currentHeight = blockchain.currentHeight;
+
+        if (block.index > currentHeight + 9) {
+            throw new Error(`!sync! Rejected: #${block.index} > #${lastBlockIndex + 9}(+9)`);
+        }
+
+        if (block.index > currentHeight + 1) {
+            throw new Error(`!store! !reorg! #${block.index} > #${lastBlockIndex + 1}(last+1)`);
+        }
+
+        if (block.index <= currentHeight) {
+            throw new Error(`!store! Rejected: #${block.index} <= #${lastBlockIndex}`);
+        }
+
+        const lastBlockHash = blockchain.lastBlock ? blockchain.lastBlock.hash : '0000000000000000000000000000000000000000000000000000000000000000';
+        const prevHashEquals = lastBlockHash === block.prevHash;
+        if (!prevHashEquals) {
+            throw new Error(`!store! !reorg! Rejected: #${block.index} -> invalid prevHash: ${block.prevHash} - expected: ${lastBlockHash}`);
+        }
+    }
+    static validateTimestamps(block, blockchain, timeSynchronizer) {
+        // verify the POS timestamp
+        if (typeof block.posTimestamp !== 'number') { throw new Error('Invalid block timestamp'); }
+        if (Number.isInteger(block.posTimestamp) === false) { throw new Error('Invalid block timestamp'); }
+        const timeDiffPos = blockchain.lastBlock === null ? 1 : block.posTimestamp - blockchain.lastBlock.timestamp;
+        if (timeDiffPos <= 0) { throw new Error(`Rejected: #${block.index} -> time difference (${timeDiffPos}) must be greater than 0`); }
+
+        // verify final timestamp
+        if (typeof block.timestamp !== 'number') { throw new Error('!ban! Invalid block timestamp'); }
+        if (Number.isInteger(block.timestamp) === false) { throw new Error('!ban! Invalid block timestamp'); }
+        const timeDiffFinal = block.timestamp - timeSynchronizer.getCurrentTime();
+        if (timeDiffFinal > 1000) { throw new Error(`Rejected: #${block.index} -> ${timeDiffFinal} > timestamp_diff_tolerance: 1000`); }
+
+    }
+    static async validateLegitimacy(block, vss) {
+        await vss.calculateRoundLegitimacies(block.prevHash);
+        const validatorAddress = block.Txs[1]?.inputs[0]?.split(':')[0];
+        const validatorLegitimacy = vss.getAddressLegitimacy(validatorAddress);
+
+        if (validatorLegitimacy !== block.legitimacy) {
+            throw new Error(`Invalid #${block.index} legitimacy: ${block.legitimacy} - expected: ${validatorLegitimacy}`);
+        }
+    }
+    /** @param {BlockData} blockData */
+    static isFinalizedBlockDoubleSpending(blockData) {
+        const utxoSpent = {};
+        for (let i = 0; i < blockData.Txs.length; i++) {
+            const tx = blockData.Txs[i];
+            const specialTx = i < 2 ? Transaction_Builder.isMinerOrValidatorTx(tx) : false;
+            if (specialTx) { continue; } // coinbase Tx / validator Tx
+
+            for (const input of tx.inputs) {
+                const anchor = input;
+                if (utxoSpent[anchor]) { throw new Error('Double spending!'); }
+                utxoSpent[anchor] = true;
+            }
+        }
+    }
     /** Apply fullTransactionValidation() to all transactions in a block
      * @param {BlockData} blockData
      * @param {UtxoCache} utxoCache
@@ -402,7 +477,7 @@ export class BlockValidation {
 
         const singleThreadStart = Date.now();
         if (nbOfWorkers === 0 || blockData.Txs.length <= minTxsToUseWorkers) { // TODO: ACTIVE AGAIN
-        //if (true) { // Test // TODO: DISABLE TEST
+            //if (true) { // Test // TODO: DISABLE TEST
             for (let i = 0; i < blockData.Txs.length; i++) {
                 const tx = blockData.Txs[i];
                 let specialTx = false;
@@ -430,8 +505,9 @@ export class BlockValidation {
             if (i < 2) { specialTx = Transaction_Builder.isMinerOrValidatorTx(tx) } // coinbase Tx / validator Tx
 
             const { fee, success, impliedKnownPubkeysAddresses } = await TxValidation.partialTransactionValidation(involvedUTXOs, memPool, tx, specialTx, utxoCache.nodeVersion);
-            if (!success) { 
-                throw new Error(`Invalid transaction: ${tx.id}`); }
+            if (!success) {
+                throw new Error(`Invalid transaction: ${tx.id}`);
+            }
 
             for (let [pubKeyHex, address] of Object.entries(impliedKnownPubkeysAddresses)) {
                 allImpliedKnownPubkeysAddresses[pubKeyHex] = address;
@@ -469,7 +545,7 @@ export class BlockValidation {
                 false
             );
             if (isValid === false) { continue; } // can't proceed fast confirmation
-            
+
             remainingTxs--;
             fastTreatedTxs++;
             treatedTxs[i] = true;
@@ -493,7 +569,7 @@ export class BlockValidation {
 
             const tx = blockData.Txs[i];
             txsByWorkers[workers[currentWorkerIndex].id].push(tx);
-            
+
             const isLastWorker = currentWorkerIndex === nbOfWorkers - 1;
             if (isLastWorker) { continue; } // avoid giving tx to undefined worker
 
@@ -518,8 +594,9 @@ export class BlockValidation {
             if (workersPromises[worker.id] === null) { continue; } // no task sent
 
             const resolved = await workersPromises[worker.id];
-            if (!resolved.isValid) { 
-                throw new Error(resolved.error); }
+            if (!resolved.isValid) {
+                throw new Error(resolved.error);
+            }
 
             for (let [pubKeyHex, address] of Object.entries(resolved.discoveredPubKeysAddresses)) {
                 allDiscoveredPubKeysAddresses[pubKeyHex] = address;
@@ -531,29 +608,5 @@ export class BlockValidation {
 
         return allDiscoveredPubKeysAddresses;
     }
-    /** @param {BlockData} blockData @param {BlockData} prevBlockData */
-    static isTimestampsValid(blockData, prevBlockData) {
-        if (blockData.posTimestamp <= prevBlockData.timestamp) { throw new Error(`Invalid PoS timestamp: ${blockData.posTimestamp} <= ${prevBlockData.timestamp}`); }
-        if (blockData.timestamp > Date.now()) { throw new Error('Invalid timestamp'); }
-    }
-    /** @param {number} powReward @param {number} posReward @param {BlockData} blockData */
-    static async areExpectedRewards(powReward, posReward, blockData) {
-        if (blockData.Txs[0].outputs[0].amount !== powReward) { throw new Error(`Invalid PoW reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${powReward}`); }
-        if (blockData.Txs[1].outputs[0].amount !== posReward) { throw new Error(`Invalid PoS reward: ${blockData.Txs[0].outputs[0].amount} - expected: ${posReward}`); }
-    }
-    /** @param {BlockData} blockData */
-    static isFinalizedBlockDoubleSpending(blockData) {
-        const utxoSpent = {};
-        for (let i = 0; i < blockData.Txs.length; i++) {
-            const tx = blockData.Txs[i];
-            const specialTx = i < 2 ? Transaction_Builder.isMinerOrValidatorTx(tx) : false;
-            if (specialTx) { continue; } // coinbase Tx / validator Tx
-            
-            for (const input of tx.inputs) {
-                const anchor = input;
-                if (utxoSpent[anchor]) { throw new Error('Double spending!'); }
-                utxoSpent[anchor] = true;
-            }
-        }
-    }
 }
+

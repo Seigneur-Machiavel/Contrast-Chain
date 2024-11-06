@@ -3742,5 +3742,244 @@
         }
       }
     ]
+  },
+  {
+    "timestamp": "2024-11-04T12:54:05.379Z",
+    "diffs": []
+  },
+  {
+    "timestamp": "2024-11-04T13:26:57.986Z",
+    "diffs": [
+      {
+        "id": "luid-12345678",
+        "action": "updated",
+        "changes": {
+          "file": {
+            "oldValue": "test\\test-logger.mjs",
+            "newValue": "test\\inactive\\test-logger-sync.mjs"
+          },
+          "line": {
+            "oldValue": 396,
+            "newValue": 63
+          },
+          "type": {
+            "oldValue": "info",
+            "newValue": "error"
+          },
+          "content": {
+            "oldValue": "luid-12345678 Starting application v2",
+            "newValue": "luid-12345678 This is a test error message with ID"
+          }
+        }
+      },
+      {
+        "id": "luid-87654321",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 397,
+          "type": "error",
+          "content": "luid-87654321 An error occurred"
+        }
+      },
+      {
+        "id": "luid-ae497133",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 262,
+          "type": "info",
+          "content": "luid-ae497133 Starting application"
+        }
+      },
+      {
+        "id": "luid-c5e53bd9",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 263,
+          "type": "error",
+          "content": "luid-c5e53bd9 An error occurred"
+        }
+      },
+      {
+        "id": "luid-aaaaaaaa",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 275,
+          "type": "info",
+          "content": "luid-aaaaaaaa Starting application"
+        }
+      },
+      {
+        "id": "luid-bbbbbbbb",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 276,
+          "type": "error",
+          "content": "luid-bbbbbbbb An error occurred"
+        }
+      },
+      {
+        "id": "luid-abcdef12",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 326,
+          "type": "warn",
+          "content": "luid-abcdef12 A warning message"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-11-06T11:35:27.369Z",
+    "diffs": [
+      {
+        "id": "luid-005f4f35",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\node.mjs",
+          "line": 290,
+          "type": "error",
+          "content": "luid-005f4f35 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+        }
+      },
+      {
+        "id": "luid-74fcfb49",
+        "action": "added",
+        "newValue": {
+          "active": true,
+          "file": "src\\node.mjs",
+          "line": 308,
+          "type": "error",
+          "content": "luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+        }
+      },
+      {
+        "id": "luid-12345678",
+        "action": "updated",
+        "changes": {
+          "file": {
+            "oldValue": "test\\test-logger.mjs",
+            "newValue": "test\\inactive\\test-logger-sync.mjs"
+          },
+          "line": {
+            "oldValue": 396,
+            "newValue": 63
+          },
+          "type": {
+            "oldValue": "info",
+            "newValue": "error"
+          },
+          "content": {
+            "oldValue": "luid-12345678 Starting application v2",
+            "newValue": "luid-12345678 This is a test error message with ID"
+          }
+        }
+      },
+      {
+        "id": "luid-0dc61aa6",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\nodes-synchronizer.mjs",
+          "line": 124,
+          "type": "debug",
+          "content": "luid-0dc61aa6 [SYNC] Unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics"
+        }
+      },
+      {
+        "id": "luid-87654321",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 397,
+          "type": "error",
+          "content": "luid-87654321 An error occurred"
+        }
+      },
+      {
+        "id": "luid-ae497133",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 262,
+          "type": "info",
+          "content": "luid-ae497133 Starting application"
+        }
+      },
+      {
+        "id": "luid-c5e53bd9",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 263,
+          "type": "error",
+          "content": "luid-c5e53bd9 An error occurred"
+        }
+      },
+      {
+        "id": "luid-aaaaaaaa",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 275,
+          "type": "info",
+          "content": "luid-aaaaaaaa Starting application"
+        }
+      },
+      {
+        "id": "luid-bbbbbbbb",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 276,
+          "type": "error",
+          "content": "luid-bbbbbbbb An error occurred"
+        }
+      },
+      {
+        "id": "luid-abcdef12",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "test\\test-logger.mjs",
+          "line": 326,
+          "type": "warn",
+          "content": "luid-abcdef12 A warning message"
+        }
+      }
+    ]
+  },
+  {
+    "timestamp": "2024-11-06T11:37:31.184Z",
+    "diffs": [
+      {
+        "id": "luid-005f4f35",
+        "action": "removed",
+        "oldValue": {
+          "active": true,
+          "file": "src\\node.mjs",
+          "line": 290,
+          "type": "error",
+          "content": "luid-005f4f35 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+        }
+      }
+    ]
   }
 ]

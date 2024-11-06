@@ -6,6 +6,13 @@
     "type": "error",
     "content": "luid-9f54fbca Unable to deserialize transaction using available strategies"
   },
+  "luid-74fcfb49": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 308,
+    "type": "error",
+    "content": "luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+  },
   "luid-feea692e": {
     "active": true,
     "file": "src\\sync.mjs",
@@ -68,83 +75,6 @@
     "line": 112,
     "type": "warn",
     "content": "luid-f04b2516 Invalid request type"
-  },
-  "luid-4dce8bb0": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 118,
-    "type": "info",
-    "content": "luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}"
-  },
-  "luid-0dc61aa6": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 124,
-    "type": "debug",
-    "content": "luid-0dc61aa6 [SYNC] Unsubscribing ${this.node.p2pNetwork.subscriptions.size} topics"
-  },
-  "luid-909bb94c": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 153,
-    "type": "error",
-    "content": "luid-909bb94c [SYNC] No valid peers to sync with"
-  },
-  "luid-eec3c612": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 161,
-    "type": "error",
-    "content": "luid-eec3c612 [SYNC] Unable to get peer statuses"
-  },
-  "luid-ff391762": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 172,
-    "type": "debug",
-    "content": "luid-ff391762 [SYNC] Already at the highest height, no need to sync"
-  },
-  "luid-a050ac5b": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 178,
-    "type": "info",
-    "content": "luid-a050ac5b [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}"
-  },
-  "luid-89219133": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 184,
-    "type": "info",
-    "content": "luid-89219133 Attempting to sync with peer"
-  },
-  "luid-5eb266ed": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 187,
-    "type": "info",
-    "content": "luid-5eb266ed Successfully synced with peer"
-  },
-  "luid-75e514b1": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 195,
-    "type": "error",
-    "content": "luid-75e514b1 Sync restart error occurred"
-  },
-  "luid-8e1fa028": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 204,
-    "type": "debug",
-    "content": "luid-8e1fa028 [SYNC] Need to sync more blocks, restarting sync process"
-  },
-  "luid-29036e62": {
-    "active": true,
-    "file": "src\\nodes-synchronizer.mjs",
-    "line": 208,
-    "type": "debug",
-    "content": "luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}"
   },
   "luid-0269246d": {
     "active": false,
@@ -278,6 +208,76 @@
     "line": 440,
     "type": "warn",
     "content": "luid-fd24299d Failed to get blocks from peer"
+  },
+  "luid-4dce8bb0": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 118,
+    "type": "info",
+    "content": "luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}"
+  },
+  "luid-909bb94c": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 153,
+    "type": "error",
+    "content": "luid-909bb94c [SYNC] No valid peers to sync with"
+  },
+  "luid-eec3c612": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 161,
+    "type": "error",
+    "content": "luid-eec3c612 [SYNC] Unable to get peer statuses"
+  },
+  "luid-ff391762": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 172,
+    "type": "debug",
+    "content": "luid-ff391762 [SYNC] Already at the highest height, no need to sync"
+  },
+  "luid-a050ac5b": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 178,
+    "type": "info",
+    "content": "luid-a050ac5b [SYNC] Highest peer height: ${highestPeerHeight}, current height: ${this.node.blockchain.currentHeight}"
+  },
+  "luid-89219133": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 184,
+    "type": "info",
+    "content": "luid-89219133 Attempting to sync with peer"
+  },
+  "luid-5eb266ed": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 187,
+    "type": "info",
+    "content": "luid-5eb266ed Successfully synced with peer"
+  },
+  "luid-75e514b1": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 195,
+    "type": "error",
+    "content": "luid-75e514b1 Sync restart error occurred"
+  },
+  "luid-8e1fa028": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 204,
+    "type": "debug",
+    "content": "luid-8e1fa028 [SYNC] Need to sync more blocks, restarting sync process"
+  },
+  "luid-29036e62": {
+    "active": true,
+    "file": "src\\nodes-synchronizer.mjs",
+    "line": 208,
+    "type": "debug",
+    "content": "luid-29036e62 [SYNC] Sync process finished, current height: ${this.node.blockchain.currentHeight}"
   },
   "luid-f7a23b4c": {
     "active": true,
@@ -645,51 +645,9 @@
   },
   "luid-12345678": {
     "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 396,
-    "type": "info",
-    "content": "luid-12345678 Starting application v2"
-  },
-  "luid-87654321": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 397,
+    "file": "test\\inactive\\test-logger-sync.mjs",
+    "line": 63,
     "type": "error",
-    "content": "luid-87654321 An error occurred"
-  },
-  "luid-ae497133": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 262,
-    "type": "info",
-    "content": "luid-ae497133 Starting application"
-  },
-  "luid-c5e53bd9": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 263,
-    "type": "error",
-    "content": "luid-c5e53bd9 An error occurred"
-  },
-  "luid-aaaaaaaa": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 275,
-    "type": "info",
-    "content": "luid-aaaaaaaa Starting application"
-  },
-  "luid-bbbbbbbb": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 276,
-    "type": "error",
-    "content": "luid-bbbbbbbb An error occurred"
-  },
-  "luid-abcdef12": {
-    "active": true,
-    "file": "test\\test-logger.mjs",
-    "line": 326,
-    "type": "warn",
-    "content": "luid-abcdef12 A warning message"
+    "content": "luid-12345678 This is a test error message with ID"
   }
 }
