@@ -551,7 +551,7 @@ export class Node {
         if (topic === 'new_block_finalized') {
             // re send for late nodes, blocks: -1, -2, -3, -5, -8
             const finalizedBlockHeight = message.index;
-            const sequence = [-2, -4, -6, -8, -10];
+            const sequence = [-10, -8, -6, -4, -2];
             const sentSequence = [];
             const blocksToReSendPromises = [];
             for (const index of sequence) {
