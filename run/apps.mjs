@@ -83,6 +83,7 @@ class AppStaticFncs {
         result.lastLegitimacy = node.blockchainStats?.lastLegitimacy ?? 'No Legitimacy';
         result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
         result.ignoreIncomingBlocks = node.ignoreIncomingBlocks;
+        result.disabledSync = node.syncHandler.syncDisabled;
         return result;
     }
     /** @param {Node} node */
@@ -406,10 +407,13 @@ export class DashboardWsApp {
                 console.log(`Banning peer ${data}`);
                 this.node.p2pNetwork.reputationManager.banIdentifier(data);
                 break;
-
             case 'ignore_incoming_blocks':
                 console.log(`Ignore incoming blocks: ${data}`);
                 this.node.ignoreIncomingBlocks = data;
+                break;
+            case 'disable_sync':
+                console.log(`Disable sync: ${data}`);
+                this.node.syncHandler.syncDisabled = data;
                 break;
             default:
                 ws.send(JSON.stringify({ type: 'error', data: 'unknown message type' }));

@@ -186,6 +186,11 @@ const eHTML = {
         button: document.getElementById('ignoreBlocksToggle'),
         status: document.getElementById('ignoreBlocksStatus')
     },
+    disabledSyncToggle: {
+        wrap: document.getElementById('disabledSyncWrap'),
+        button: document.getElementById('disabledSyncToggle'),
+        status: document.getElementById('disabledSyncStatus')
+    }
 }
 
 // Function to display node information
@@ -240,13 +245,17 @@ function displayNodeInfo(data) {
     }
 
     if (data.ignoreIncomingBlocks !== undefined) {
-        updateIgnoreBlocksToggle(data.ignoreIncomingBlocks);
+        updateToggle(data.ignoreIncomingBlocks, eHTML.ignoreBlocksToggle);
+    }
+
+    if (data.disabledSync !== undefined) {
+        updateToggle(data.disabledSync, eHTML.disabledSyncToggle);
     }
 }
 
-function updateIgnoreBlocksToggle(isIgnoring) {
-    const button = eHTML.ignoreBlocksToggle.button;
-    const status = eHTML.ignoreBlocksToggle.status;
+function updateToggle(isIgnoring, eHTML_object) {
+    const button = eHTML_object.button;
+    const status = eHTML_object.status;
     
     if (isIgnoring) {
         button.classList.add('active');
@@ -573,7 +582,24 @@ if (eHTML.ignoreBlocksToggle.button) {
         }));
         
         // Update the toggle state immediately for responsive UI
-        updateIgnoreBlocksToggle(newState);
+        updateToggle(newState, eHTML.ignoreBlocksToggle);
+    });
+}
+
+if (eHTML.disabledSyncToggle.button) {
+    eHTML.disabledSyncToggle.button.addEventListener('click', () => {
+        console.log('disabledSyncToggle button clicked');
+        const currentState = eHTML.disabledSyncToggle.button.classList.contains('active');
+        const newState = !currentState;
+
+        // Send the new state to the backend
+        ws.send(JSON.stringify({
+            type: 'disable_sync',
+            data: newState
+        }));
+
+        // Update the toggle state immediately for responsive UI
+        updateToggle(newState, eHTML.disabledSyncToggle);
     });
 }
 // Prevent form submission

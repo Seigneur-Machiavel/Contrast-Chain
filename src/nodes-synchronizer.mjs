@@ -34,6 +34,7 @@ export class SyncHandler {
         this.logger = logger;
         this.isSyncing = false;
         this.peerHeights = new Map();
+        this.syncDisabled = false;
     }
     /** @type {Node} */
     get node() {
@@ -227,7 +228,7 @@ export class SyncHandler {
         this.logger.info(`luid-3ef67123 [SYNC] Blockchain restored and reloaded. Current height: ${this.node.blockchain.currentHeight}`);
         //this.isSyncing = false;
     }
-    /**
+    /** Get the current height of a peer.
      * @param {P2PNetwork} p2pNetwork - The P2P network instance.
      * @param {string} peerMultiaddr - The multiaddress of the peer to sync with. */
     async #updatedPeerHeight(p2pNetwork, peerMultiaddr, peerId) {
@@ -321,7 +322,8 @@ export class SyncHandler {
         const uniqueTopics = this.node.getTopicsToSubscribeRelatedToRoles();
         // should be done only one time
         await this.node.p2pNetwork.subscribeMultipleTopics(uniqueTopics, this.node.p2pHandler.bind(this.node));
-        return true; //TODO TEST
+        if (this.syncDisabled) { return true; }
+        
         this.logger.info(`luid-4dce8bb0 [SYNC] Starting syncWithPeers at #${this.node.blockchain.currentHeight}`);
         this.node.blockchainStats.state = "syncing";
         this.isSyncing = true;
