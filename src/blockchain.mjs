@@ -333,6 +333,7 @@ export class Blockchain {
         }
 
         const batch = this.db.batch();
+        let totalDuplicates = 0;
         for (const address of Object.keys(actualizedAddressesTxsRefs)) {
             const actualizedAddressTxsRefs = actualizedAddressesTxsRefs[address];
 
@@ -344,13 +345,14 @@ export class Blockchain {
                 
                 txsRefsDupiCounter[txRef] = true;
             }
-            if (duplicate > 0) {
-                 console.warn(`[DB] ${duplicate} duplicate txs references found for address ${address}`); }
+            if (duplicate > 0) { totalDuplicates += duplicate; };
 
             const serialized = utils.serializerFast.serialize.txsReferencesArray(actualizedAddressTxsRefs);
             batch.put(`${address}-txs`, Buffer.from(serialized));
             batch.put('addressesTxsRefsSnapHeight', Buffer.from(utils.fastConverter.numberTo6BytesUint8Array(indexEnd)));
         }
+        if (totalDuplicates > 0) { console.warn(`[DB] ${totalDuplicates} duplicate txs references found and removed`); }
+
         await batch.write();
             
         console.info(`[DB] Addresses transactions persisted to disk from ${indexStart} to ${indexEnd} (included)`);
