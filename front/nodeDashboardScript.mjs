@@ -488,9 +488,11 @@ eHTML.modals.unifiedModal.confirmBtn.addEventListener('click', () => {
             ws.send(JSON.stringify({ type: 'set_miner_address', data: newMinerAddress }));
             break;
         case ACTIONS.HARD_RESET:
+            console.log('Hard Reset:', nodeId);
             ws.send(JSON.stringify({ type: 'hard_reset', data: nodeId }));
             break;
         case ACTIONS.UPDATE_GIT:
+            console.log('Update Git:', nodeId);
             ws.send(JSON.stringify({ type: 'update_git', data: nodeId }));
             break;
         case ACTIONS.FORCE_RESTART:
@@ -728,6 +730,7 @@ eHTML.RevalidateBtn.addEventListener('click', () => {
 });
 
 eHTML.resetInfoBtn.addEventListener('click', () => {
+    console.log('resetInfoBtn clicked');
     currentAction = ACTIONS.RESET_WALLET;
     openModal(ACTIONS.RESET_WALLET, {
         message: 'Are you sure you want to reset the wallet? Please enter your private key below.',
@@ -738,15 +741,8 @@ eHTML.resetInfoBtn.addEventListener('click', () => {
     });
 });
 
-eHTML.eraseChainDataBtn.addEventListener('click', () => {
-    currentAction = ACTIONS.ERASE_CHAIN_DATA;
-    openModal(ACTIONS.ERASE_CHAIN_DATA, {
-        message: 'Are you sure you want to erase the chain data? This action cannot be undone.',
-        showInput: false
-    });
-});
-
 eHTML.hardResetBtn.addEventListener('click', () => {
+    console.log('hardResetBtn clicked');
     currentAction = ACTIONS.HARD_RESET;
     openModal(ACTIONS.HARD_RESET, {
         message: 'Are you sure you want to perform a hard reset? This will reset all data and resync the chain.',
