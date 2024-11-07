@@ -44,7 +44,9 @@ export class OpStack {
             const now = Date.now();
             
             if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
-            const lastDigestOrSyncTime = Math.max(this.healthInfo.lastDigestTime, this.healthInfo.lastSyncTime);
+            const lastDigestTime = this.healthInfo.lastDigestTime || 0;
+            const lastSyncTime = this.healthInfo.lastSyncTime || 0;
+            const lastDigestOrSyncTime = Math.max(lastDigestTime, lastSyncTime);
             const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
             if (!this.syncRequested && timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
