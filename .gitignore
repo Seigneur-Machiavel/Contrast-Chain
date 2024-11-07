@@ -10,3 +10,4 @@ nodes-data
 config/config.json
 peer-reputation.json
 logs
+chrome-extension.zip

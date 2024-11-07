@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Contrast Wallet",
   "version": "1.0.0",
-  "description": "Native wallet for the Contrast blockchain Network",
+  "description": "Native wallet of the Contrast blockchain",
   "action": {
     "default_popup": "views/popup.html",
     "default_icon": {
