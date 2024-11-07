@@ -382,10 +382,8 @@ input[type="text"] {
 .dashboard,
 .dashboard-inner {
     display: flex;
-    justify-content: space-between;
+    justify-content: space-around;
     margin: 40px;
-    border: 1px solid var(--border);
-    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
     background-color: var(--background);
 }
 
@@ -415,6 +413,8 @@ input[type="text"] {
     background-color: var(--input-bg);
     padding: 0 20px;
     border: 1px solid var(--border);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+
 }
 
 
