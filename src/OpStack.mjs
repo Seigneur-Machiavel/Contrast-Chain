@@ -127,6 +127,7 @@ export class OpStack {
                         await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
                         await this.#digestPowProposalErrorHandler(error, content, task);
+                        return;
                     }
                     
                     // prune the reog cache
@@ -209,8 +210,11 @@ export class OpStack {
             );
             return;
         }
-        if (error.message.includes('!store!') || error.message.includes('!reorg!') 
-            || error.message.includes('!applyOffense!') || error.message.includes('!applyMinorOffense!') 
+
+        if (   error.message.includes('!store!')
+            || error.message.includes('!reorg!') 
+            || error.message.includes('!applyOffense!')
+            || error.message.includes('!applyMinorOffense!') 
             || error.message.includes('!banBlock!')) { return; }
         
         // sync management

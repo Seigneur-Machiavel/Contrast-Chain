@@ -153,13 +153,10 @@ to #${blockCandidate.index} | leg: ${blockCandidate.legitimacy}`);
 (Height: ${finalizedBlock.index}) | Diff = ${finalizedBlock.difficulty} | coinBase = ${utils.convert.number.formatNumberAsCurrency(finalizedBlock.coinBase)}`);
         
         this.addressOfCandidatesBroadcasted.push(validatorAddress);
-        //await this.p2pNetwork.broadcast('new_block_finalized', finalizedBlock);
-        await this.node.p2pBroadcast('new_block_finalized', finalizedBlock);
 
-        if (this.roles.includes('validator')) { 
-            //console.info(`[MINER-${this.address.slice(0, 6)}] Pushing task to opStack: digestPowProposal`);
-            this.opStack.pushFirst('digestPowProposal', finalizedBlock);
-        };
+        await this.node.p2pBroadcast('new_block_finalized', finalizedBlock);
+        if (this.roles.includes('validator')) { this.opStack.pushFirst('digestPowProposal', finalizedBlock); };
+        
         if (this.wsCallbacks.onBroadcastFinalizedBlock) { this.wsCallbacks.onBroadcastFinalizedBlock.execute(BlockUtils.getBlockHeader(finalizedBlock)); }
     }
     async createMissingWorkers() {

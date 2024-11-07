@@ -57,20 +57,97 @@ async function load_SETTINGS_fromStorage() {
 }
 /** @type {WebSocket} */
 let ws;
-async function verifyServer() {
-    const wsLocalUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
-    const wsUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    console.log(`Verify server: ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}`);
-
-    // Use fetch to make an HTTP request to the server
-    try {
-        const response = await fetch(SETTINGS.LOCAL ? wsLocalUrl : wsUrl, { method: 'HEAD' }) // use HEAD method to avoid downloading the server's response body
-        if (response.ok) {
-            console.info('Server is available, ready to connect WebSocket...');
-            return true;
-        }
-    } catch (error) {}
+function onOpen() {
+    console.log('----- Connection opened -----');
+    ws.send(JSON.stringify({ type: 'get_best_block_candidate' }));
+    ws.send(JSON.stringify({ type: 'subscribe_best_block_candidate_change' }));
+}
+function onClose() {
+    console.info('----- Connection closed -----');
+    ws = undefined;
+}
+function onError(error) {
+    console.info('WebSocket error: ' + error);
+    ws = undefined;
     return false;
+}
+function onMessage(event) {
+    const message = JSON.parse(event.data);
+    const trigger = message.trigger;
+    const data = message.data;
+    switch (message.type) {
+        case 'current_time':
+            const timeOffset = data - Date.now();
+            pow.timeOffset = timeOffset;
+            console.log(`[BACKGROUND] set timeOffset: ${timeOffset}`);
+            break;
+        case 'address_exhaustive_data_requested':
+            //console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
+            //console.log('data:', data);
+            chrome.runtime.sendMessage({
+                action: 'address_exhaustive_data_requested',
+                address: data.address,
+                UTXOs: data.addressUTXOs.UTXOs,
+                balance: data.addressUTXOs.balance,
+                spendableBalance: data.addressUTXOs.spendableBalance,
+                addressTxsReferences: data.addressTxsReferences,
+            });
+            break;
+        case 'address_utxos_requested':
+            //console.log('[BACKGROUND] sending address_utxos_requested to popup...');
+            chrome.runtime.sendMessage({
+                action: 'address_utxos_requested',
+                address: data.address,
+                UTXOs: data.UTXOs,
+            });
+            break;
+        case 'transaction_requested':
+            // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
+            /** @type {TransactionWithDetails} */
+            const transactionWithDetails = data.transaction;
+            transactionWithDetails.balanceChange = data.balanceChange;
+            transactionWithDetails.inAmount = data.inAmount;
+            transactionWithDetails.outAmount = data.outAmount;
+            transactionWithDetails.fee = data.fee;
+            transactionWithDetails.txReference = data.txReference;
+            transactionsByReference[data.txReference] = transactionWithDetails;
+
+            chrome.runtime.sendMessage({ action: 'transaction_requested', transactionWithDetails });
+            break;
+        case 'best_block_candidate_requested':
+            if (!data) { console.info('[BACKGROUND] Received best_block_candidate_requested with no data!'); return; }
+            console.log(`[BACKGROUND] best_block_candidate_requested: ${data.index} - ${data.legitimacy}`);
+            pow.bestCandidate = data;
+            break;
+        case 'transaction_broadcast_result':
+            console.log('[BACKGROUND] transaction_broadcast_result:', data);
+            chrome.runtime.sendMessage({action: 'transaction_broadcast_result', transaction: data.transaction, txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
+            break;
+        case 'subscribed_balance_update':
+            subscriptions.balanceUpdates[data] = true;
+            console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
+            break;
+        case 'subscribed_best_block_candidate_change':
+            console.log(`[BACKGROUND] subscribed_best_block_candidate_change`);
+            break;
+        case 'balance_updated':
+            if (!subscriptions.balanceUpdates[trigger]) { return; }
+            //console.log(`[BACKGROUND] balance_updated: ${trigger}`);
+            ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
+            break;
+        case 'new_block_confirmed':
+            break;
+        case 'best_block_candidate_changed':
+            if (!data) { console.info('[BACKGROUND] Received best_block_candidate_changed with no data!'); return; }
+            console.log(`[BACKGROUND] best_block_candidate_changed: #${data.index} - ${data.legitimacy}`);
+            pow.bestCandidate = data;
+            break;
+        case 'current_height':
+            break;
+        default:
+            console.log(`[BACKGROUND] Unknown message type: ${message.type}`);
+            break;
+    }
 }
 function connectWS() {
     try { if (ws) { ws.close(); } } catch (error) {}
@@ -79,110 +156,20 @@ function connectWS() {
 
     console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
     ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
-    ws.onerror = function(error) { console.info('WebSocket error: ' + error); return false;};
-
-    ws.onopen = function() {
-        console.log('----- Connection opened -----');
-        //console.log(ws);
-        ws.send(JSON.stringify({ type: 'get_best_block_candidate' }));
-        ws.send(JSON.stringify({ type: 'subscribe_best_block_candidate_change' }));
-    };
-    ws.onclose = function() {
-        console.info('----- Connection closed -----');
-        ws = undefined;
-    };
-    ws.onmessage = async function(event) {
-        const message = JSON.parse(event.data);
-        const trigger = message.trigger;
-        const data = message.data;
-        switch (message.type) {
-            case 'current_time':
-                const timeOffset = data - Date.now();
-                pow.timeOffset = timeOffset;
-                console.log(`[BACKGROUND] set timeOffset: ${timeOffset}`);
-                break;
-            case 'address_exhaustive_data_requested':
-                //console.log('[BACKGROUND] sending address_exhaustive_data_requested to popup...');
-                //console.log('data:', data);
-                chrome.runtime.sendMessage({
-                    action: 'address_exhaustive_data_requested',
-                    address: data.address,
-                    UTXOs: data.addressUTXOs.UTXOs,
-                    balance: data.addressUTXOs.balance,
-                    spendableBalance: data.addressUTXOs.spendableBalance,
-                    addressTxsReferences: data.addressTxsReferences,
-                });
-                break;
-            case 'address_utxos_requested':
-                //console.log('[BACKGROUND] sending address_utxos_requested to popup...');
-                chrome.runtime.sendMessage({
-                    action: 'address_utxos_requested',
-                    address: data.address,
-                    UTXOs: data.UTXOs,
-                });
-                break;
-            case 'transaction_requested':
-                // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
-                /** @type {TransactionWithDetails} */
-                const transactionWithDetails = data.transaction;
-                transactionWithDetails.balanceChange = data.balanceChange;
-                transactionWithDetails.inAmount = data.inAmount;
-                transactionWithDetails.outAmount = data.outAmount;
-                transactionWithDetails.fee = data.fee;
-                transactionWithDetails.txReference = data.txReference;
-                transactionsByReference[data.txReference] = transactionWithDetails;
-
-                chrome.runtime.sendMessage({ action: 'transaction_requested', transactionWithDetails });
-                break;
-            case 'best_block_candidate_requested':
-                if (!data) { console.info('[BACKGROUND] Received best_block_candidate_requested with no data!'); return; }
-                console.log(`[BACKGROUND] best_block_candidate_requested: ${data.index} - ${data.legitimacy}`);
-                pow.bestCandidate = data;
-                break;
-            case 'transaction_broadcast_result':
-                console.log('[BACKGROUND] transaction_broadcast_result:', data);
-                chrome.runtime.sendMessage({action: 'transaction_broadcast_result', transaction: data.transaction, txId: data.txId, consumedAnchors: data.consumedAnchors, senderAddress: data.senderAddress, error: data.error, success: data.success});
-                break;
-            case 'subscribed_balance_update':
-                subscriptions.balanceUpdates[data] = true;
-                console.log(`[BACKGROUND] subscribed_balance_update: ${data}`);
-                break;
-            case 'subscribed_best_block_candidate_change':
-                console.log(`[BACKGROUND] subscribed_best_block_candidate_change`);
-                break;
-            case 'balance_updated':
-                if (!subscriptions.balanceUpdates[trigger]) { return; }
-                //console.log(`[BACKGROUND] balance_updated: ${trigger}`);
-                ws.send(JSON.stringify({ type: 'get_address_exhaustive_data', data: trigger }));
-                break;
-            case 'new_block_confirmed':
-                break;
-            case 'best_block_candidate_changed':
-                if (!data) { console.info('[BACKGROUND] Received best_block_candidate_changed with no data!'); return; }
-                console.log(`[BACKGROUND] best_block_candidate_changed: #${data.index} - ${data.legitimacy}`);
-                pow.bestCandidate = data;
-                break;
-            case 'current_height':
-                break;
-            default:
-                console.log(`[BACKGROUND] Unknown message type: ${message.type}`);
-                break;
-        }
-    }
+    ws.onopen = onOpen;
+    ws.onclose = onClose;
+    ws.onerror = onError;
+    ws.onmessage = onMessage;
 }
 async function connectWSLoop() {
-    let connecting = false;
+    //let connecting = false;
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
-        if (connecting || ws) { continue; }
-        connecting = true;
-        /*console.log('----- Verifying server -----');
-        const serverAvailable = await verifyServer();
-        if (!serverAvailable) { connecting = false; continue; }*/
-
-        console.log('----- Connecting to WS -----');
+        if (ws && ws.readyState === 1) { continue; }
+        //if (connecting || ws) { continue; }
+        //connecting = true;
         connectWS();
-        connecting = false;
+        //connecting = false;
     }
 }; connectWSLoop();
 async function getHeightsLoop() {

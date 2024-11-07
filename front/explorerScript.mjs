@@ -53,142 +53,130 @@ const SETTINGS = {
 
     NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 5,
 }
-async function verifyServer() {
-    const wsLocalUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
-    const wsUrl = `${SETTINGS.HTTP_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    console.log(`Verify server: ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}`);
+//#region WEB SOCKET
+function onOpen() {
+    console.log('Connection opened');
+}
+function onClose() {
+    console.info('Connection closed');
+    ws = undefined;
+    setTimeout( () => {
+        console.info('--- reseting blockExplorerWidget >>>');
 
-    // Use fetch to make an HTTP request to the server
-    try {
-        const response = await fetch(SETTINGS.LOCAL ? wsLocalUrl : wsUrl, { method: 'HEAD' }) // use HEAD method to avoid downloading the server's response body
-        if (response.ok) {
-            console.info('Server is available, ready to connect WebSocket...');
-            return true;
-        }
-    } catch (error) {}
-    return false;
+        const clonedData = blockExplorerWidget.getCloneBeforeReset();
+        blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
+
+        if (!clonedData.modalContainer) { return; }
+
+        blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);
+    }, SETTINGS.RECONNECT_INTERVAL);
+}
+function onError(error) {
+    console.info('WebSocket error: ' + error);
+}
+async function onMessage(event) {
+    if (!pageFocused) { return; }
+    const message = JSON.parse(event.data);
+    const trigger = message.trigger;
+    const data = message.data;
+    let remainingAttempts = 10;
+    switch (message.type) {
+        case 'current_height':
+            const currentHeight = data;
+            const lastBlockIndex = blockExplorerWidget.getLastBlockInfoIndex();
+            if (lastBlockIndex === 0) { return; }
+            //console.log(`current_height: ${currentHeight}, lastBlockIndex: ${lastBlockIndex}`);
+            if (currentHeight - lastBlockIndex > 10) {
+                console.info('current_height n+10 -> ws.close()');
+                try { ws.close() } catch (error) {};
+                return;
+            }
+            break;
+        case 'last_confirmed_blocks':
+            if (!data || !data[data.length - 1]) { return; }
+            //console.log(`last_confirmed_block from ${data[0].header.index} to ${data[data.length - 1].header.index}`);
+            //console.log('last_confirmed_block', data[data.length - 1]);
+            displayLastConfirmedBlock(data[data.length - 1].header);
+            for (const blockInfo of data) { blockExplorerWidget.fillBlockInfo(blockInfo); }
+            break;
+        case 'broadcast_new_candidate':
+            //console.log('broadcast_new_candidate', data);
+            break;
+        case 'new_block_confirmed':
+            //console.log('new_block_confirmed', data);
+            displayLastConfirmedBlock(data.header);
+            
+            /*while (blockExplorerWidget.bcElmtsManager.isSucking) {
+                if (remainingAttempts === 0) { return; }
+                await new Promise((resolve) => { setTimeout(() => { resolve(); }, 100); });
+                remainingAttempts--;
+            }*/
+
+            /*const isGapBetweenBlocks = data.header.index - blockExplorerWidget.getLastBlockInfoIndex() > 1;
+            if (isGapBetweenBlocks) { 
+                console.info('new_block_confirmed -> isGapBetweenBlocks -> ws.close()');
+                try { ws.close() } catch (error) {};
+                return;
+            }*/
+
+            blockExplorerWidget.fillBlockInfo(data);
+            break;
+        case 'blocks_data_requested':
+            for (const blockData of data) { blockExplorerWidget.saveBlockData(blockData); }
+            // if request was for only one block, fill the modal content
+            if (data.length === 1) { blockExplorerWidget.navigateUntilTarget(false); }
+            break;
+        case 'block_data_requested':
+            blockExplorerWidget.saveBlockData(data);
+            blockExplorerWidget.navigateUntilTarget(false);
+            break;
+        case 'address_utxos_requested': // DEPRECATED
+            // { address, UTXOs }
+            blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressInfo(data.UTXOs);
+
+            blockExplorerWidget.navigateUntilTarget(true);
+            break;
+        case 'address_exhaustive_data_requested':
+            // { address, addressUTXOs, addressTxsReferences }
+            blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressExhaustiveData(data.addressUTXOs.UTXOs, data.addressTxsReferences);
+            blockExplorerWidget.navigateUntilTarget(true);
+            break;
+        case 'transaction_requested':
+            // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
+            const transactionWithDetails = data.transaction;
+            transactionWithDetails.balanceChange = data.balanceChange;
+            transactionWithDetails.inAmount = data.inAmount;
+            transactionWithDetails.outAmount = data.outAmount;
+            transactionWithDetails.fee = data.fee;
+            blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithDetails;
+            // set html
+            blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange, data.fee);
+            break;
+        default:
+            break;
+    }
 }
 function connectWS() {
+    try { if (ws) { ws.close(); } } catch (error) {}
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
     ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
-    console.log(`Connecting to ${SETTINGS.LOCAL ? wsLocalUrl : wsUrl}...`);
 
-    ws.onopen = function() {
-        console.log('Connection opened');
-    };
-    ws.onclose = function() {
-        console.info('Connection closed');
-        setTimeout( () => {
-            console.info('--- reseting blockExplorerWidget >>>');
-
-            const clonedData = blockExplorerWidget.getCloneBeforeReset();
-            blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
-
-            if (!clonedData.modalContainer) { return; }
-
-            blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);
-            //blockExplorerWidget.setupModalContainerEvents(clonedData.modalContainer);
-        }, SETTINGS.RECONNECT_INTERVAL);
-    };
-    ws.onerror = function(error) { console.info('WebSocket error: ' + error); };
-  
-    ws.onmessage = async function(event) {
-        if (!pageFocused) { return; }
-        const message = JSON.parse(event.data);
-        const trigger = message.trigger;
-        const data = message.data;
-        let remainingAttempts = 10;
-        switch (message.type) {
-            case 'current_height':
-                const currentHeight = data;
-                const lastBlockIndex = blockExplorerWidget.getLastBlockInfoIndex();
-                if (lastBlockIndex === 0) { return; }
-                //console.log(`current_height: ${currentHeight}, lastBlockIndex: ${lastBlockIndex}`);
-                if (currentHeight - lastBlockIndex > 10) {
-                    console.info('current_height n+10 -> ws.close()');
-                    try { ws.close() } catch (error) {};
-                    return;
-                }
-                break;
-            case 'last_confirmed_blocks':
-                if (!data || !data[data.length - 1]) { return; }
-                //console.log(`last_confirmed_block from ${data[0].header.index} to ${data[data.length - 1].header.index}`);
-                //console.log('last_confirmed_block', data[data.length - 1]);
-                displayLastConfirmedBlock(data[data.length - 1].header);
-                for (const blockInfo of data) { blockExplorerWidget.fillBlockInfo(blockInfo); }
-                break;
-            case 'broadcast_new_candidate':
-                //console.log('broadcast_new_candidate', data);
-                break;
-            case 'new_block_confirmed':
-                //console.log('new_block_confirmed', data);
-                displayLastConfirmedBlock(data.header);
-                
-                /*while (blockExplorerWidget.bcElmtsManager.isSucking) {
-                    if (remainingAttempts === 0) { return; }
-                    await new Promise((resolve) => { setTimeout(() => { resolve(); }, 100); });
-                    remainingAttempts--;
-                }*/
-
-                /*const isGapBetweenBlocks = data.header.index - blockExplorerWidget.getLastBlockInfoIndex() > 1;
-                if (isGapBetweenBlocks) { 
-                    console.info('new_block_confirmed -> isGapBetweenBlocks -> ws.close()');
-                    try { ws.close() } catch (error) {};
-                    return;
-                }*/
-
-                blockExplorerWidget.fillBlockInfo(data);
-                break;
-            case 'blocks_data_requested':
-                for (const blockData of data) { blockExplorerWidget.saveBlockData(blockData); }
-                // if request was for only one block, fill the modal content
-                if (data.length === 1) { blockExplorerWidget.navigateUntilTarget(false); }
-                break;
-            case 'block_data_requested':
-                blockExplorerWidget.saveBlockData(data);
-                blockExplorerWidget.navigateUntilTarget(false);
-                break;
-            case 'address_utxos_requested': // DEPRECATED
-                // { address, UTXOs }
-                blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressInfo(data.UTXOs);
-
-                blockExplorerWidget.navigateUntilTarget(true);
-                break;
-            case 'address_exhaustive_data_requested':
-                // { address, addressUTXOs, addressTxsReferences }
-                blockExplorerWidget.addressesExhaustiveData[data.address] = new AddressExhaustiveData(data.addressUTXOs.UTXOs, data.addressTxsReferences);
-                blockExplorerWidget.navigateUntilTarget(true);
-                break;
-            case 'transaction_requested':
-                // { transaction, balanceChange, inAmount, outAmount, fee, txReference }
-                const transactionWithDetails = data.transaction;
-                transactionWithDetails.balanceChange = data.balanceChange;
-                transactionWithDetails.inAmount = data.inAmount;
-                transactionWithDetails.outAmount = data.outAmount;
-                transactionWithDetails.fee = data.fee;
-                blockExplorerWidget.transactionsByReference[data.txReference] = transactionWithDetails;
-                // set html
-                blockExplorerWidget.fillAddressTxRow(data.txReference, data.balanceChange, data.fee);
-                break;
-            default:
-                break;
-        }
-    };
+    ws.onopen = onOpen;
+    ws.onclose = onClose;
+    ws.onerror = onError;
+    ws.onmessage = onMessage;
 }
 async function connectWSLoop() {
-    let connecting = false;
+    //let connecting = false;
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
-        if (connecting || ws) { continue; }
-        connecting = true;
-        //console.log('----- Verifying server -----');
-        //const serverAvailable = await verifyServer();
-        //if (!serverAvailable) { connecting = false; continue; }
-
-        console.log('----- Connecting to WS -----');
+        if (ws && ws.readyState === 1) { continue; }
+        //if (connecting || ws) { continue; }
+        //connecting = true;
         connectWS();
-        connecting = false;
+
+        //connecting = false;
     }
 }; connectWSLoop();
 async function getHeightsLoop() {
@@ -198,6 +186,7 @@ async function getHeightsLoop() {
         try { ws.send(JSON.stringify({ type: 'get_height', data: Date.now() })) } catch (error) {};
     }
 }; getHeightsLoop();
+//#endregion
 
 const eHTML = {
     contrastBlocksWidget: document.getElementById('cbe-contrastBlocksWidget'),

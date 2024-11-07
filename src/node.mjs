@@ -548,26 +548,26 @@ export class Node {
     /** @param {string} topic @param {any} message */
     async p2pBroadcast(topic, message) {
         await this.p2pNetwork.broadcast(topic, message);
-        if (topic === 'new_block_finalized') {
-            // re send for late nodes, blocks: -1, -2, -3, -5, -8
-            const finalizedBlockHeight = message.index;
-            const sequence = [-10, -8, -6, -4, -2];
-            const sentSequence = [];
-            const blocksToReSendPromises = [];
-            for (const index of sequence) {
-                blocksToReSendPromises.push(this.blockchain.getBlockByHeight(finalizedBlockHeight + index));
-            }
-            for (const blockPromise of blocksToReSendPromises) {
-                const block = await blockPromise;
-                if (!block) { continue; }
-                await new Promise(resolve => setTimeout(resolve, 400));
-                await this.p2pNetwork.broadcast(topic, block);
-                sentSequence.push(block.index);
-            }
-            console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
-        }
-    }
+        if (topic !== 'new_block_finalized') { return; }
 
+        setTimeout(() => this.#reSendBlocks(message.index), 1000);
+    }
+    async #reSendBlocks(finalizedBlockHeight = 10) {
+        const sequence = [-10, -8, -6, -4, -2];
+        const sentSequence = [];
+        const blocksToReSendPromises = [];
+        for (const index of sequence) {
+            blocksToReSendPromises.push(this.blockchain.getBlockByHeight(finalizedBlockHeight + index));
+        }
+        for (const blockPromise of blocksToReSendPromises) {
+            const block = await blockPromise;
+            if (!block) { continue; }
+            await new Promise(resolve => setTimeout(resolve, 400));
+            await this.p2pNetwork.broadcast('new_block_finalized', block);
+            sentSequence.push(block.index);
+        }
+        console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
+    }
     //#region - API -------------------------------------------------------------------------------
     getStatus() {
         return {
