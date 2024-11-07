@@ -160,6 +160,7 @@ function connectWS() {
     try { if (ws) { ws.close(); } } catch (error) {}
     const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
     const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    console.info('Connecting to:', SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
     ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
 
     ws.onopen = onOpen;
@@ -168,15 +169,11 @@ function connectWS() {
     ws.onmessage = onMessage;
 }
 async function connectWSLoop() {
-    //let connecting = false;
+    connectWS();
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (ws && ws.readyState === 1) { continue; }
-        //if (connecting || ws) { continue; }
-        //connecting = true;
         connectWS();
-
-        //connecting = false;
     }
 }; connectWSLoop();
 async function getHeightsLoop() {
