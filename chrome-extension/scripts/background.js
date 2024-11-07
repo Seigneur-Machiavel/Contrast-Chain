@@ -23,10 +23,10 @@ const SETTINGS = {
     AUTO_CHOSE_BEST_NODES: true,
     CURRENT_NODE_INDEX: 0,
     NODES_LIST: [ // used for redondant connections
-        'pinkparrot.observer:80',
-        'pariah.monster:27270',
-        'pinkparrot.science:27270',
-        'contrast.observer:80'
+        'wss://contrast.observer',
+        'ws://pariah.monster:27270',
+        'ws://pinkparrot.science:27270',
+        'ws://pinkparrot.observer'
     ],
 
     LOCAL: true,
@@ -166,9 +166,8 @@ function connectWS() {
     let url = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
     if (SETTINGS.LOCAL) { url = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`; }
 
-
     if (SETTINGS.AUTO_CHOSE_BEST_NODES) {
-        url = `ws://${SETTINGS.NODES_LIST[SETTINGS.CURRENT_NODE_INDEX]}`;
+        url = `${SETTINGS.NODES_LIST[SETTINGS.CURRENT_NODE_INDEX]}`;
         SETTINGS.CURRENT_NODE_INDEX++;
         if (SETTINGS.CURRENT_NODE_INDEX >= SETTINGS.NODES_LIST.length) { SETTINGS.CURRENT_NODE_INDEX = 0; }
     }

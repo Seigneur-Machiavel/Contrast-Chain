@@ -51,6 +51,15 @@ const SETTINGS = {
     GET_CURRENT_HEIGHT_INTERVAL: 5000,
     ROLES: window.explorerROLES || ['chainExplorer', 'blockExplorer'],
 
+    AUTO_CHOSE_BEST_NODES: true,
+    CURRENT_NODE_INDEX: 0,
+    NODES_LIST: [ // used for redondant connections
+        'wss://contrast.observer',
+        'ws://pariah.monster:27270',
+        'ws://pinkparrot.science:27270',
+        'ws://pinkparrot.observer'
+    ],
+
     NB_OF_CONFIRMED_BLOCKS: window.explorerNB_OF_CONFIRMED_BLOCKS || 5,
 }
 //#region WEB SOCKET
@@ -157,12 +166,18 @@ async function onMessage(event) {
     }
 }
 function connectWS() {
-    try { if (ws) { ws.close(); } } catch (error) {}
-    const wsLocalUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`;
-    const wsUrl = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
-    console.info('Connecting to:', SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
-    ws = new WebSocket(SETTINGS.LOCAL ? wsLocalUrl : wsUrl);
+    try { if (ws) { ws.close(); } } catch (error) {};
+    let url = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.DOMAIN}${SETTINGS.PORT ? ':' + SETTINGS.PORT : ''}`;
+    if (SETTINGS.LOCAL) { url = `${SETTINGS.WS_PROTOCOL}://${SETTINGS.LOCAL_DOMAIN}:${SETTINGS.LOCAL_PORT}`; }
 
+    if (SETTINGS.AUTO_CHOSE_BEST_NODES) {
+        url = `${SETTINGS.NODES_LIST[SETTINGS.CURRENT_NODE_INDEX]}`;
+        SETTINGS.CURRENT_NODE_INDEX++;
+        if (SETTINGS.CURRENT_NODE_INDEX >= SETTINGS.NODES_LIST.length) { SETTINGS.CURRENT_NODE_INDEX = 0; }
+    }
+
+    console.log(`Connecting to ${url}`);
+    ws = new WebSocket(url);
     ws.onopen = onOpen;
     ws.onclose = onClose;
     ws.onerror = onError;
