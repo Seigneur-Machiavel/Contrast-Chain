@@ -190,7 +190,8 @@ const eHTML = {
         wrap: document.getElementById('disabledSyncWrap'),
         button: document.getElementById('disabledSyncToggle'),
         status: document.getElementById('disabledSyncStatus')
-    }
+    },
+    lightHouseLogs: document.getElementById('lightHouseLogs'),
 }
 
 // Function to display node information
@@ -251,8 +252,26 @@ function displayNodeInfo(data) {
     if (data.disabledSync !== undefined) {
         updateToggle(data.disabledSync, eHTML.disabledSyncToggle);
     }
+
+    renderLightHouseLogs(data.lightHouseClientLogs);
 }
 
+
+function renderLightHouseLogs(logs) {
+    eHTML.lightHouseLogs.innerHTML = ''; // Clear existing logs
+    if (Array.isArray(logs) && logs.length > 0) {
+        logs.forEach(log => {
+            const logItem = document.createElement('li');
+            logItem.textContent = log;
+            eHTML.lightHouseLogs.appendChild(logItem);
+        });
+    } else {
+        const noLogsItem = document.createElement('li');
+        noLogsItem.textContent = 'No logs available.';
+        eHTML.lightHouseLogs.appendChild(noLogsItem);
+    }
+
+}
 function updateToggle(isIgnoring, eHTML_object) {
     const button = eHTML_object.button;
     const status = eHTML_object.status;

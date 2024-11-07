@@ -5,6 +5,7 @@ export class LightHouseClient {
         this.nodeId = nodeId;
         this.currentVersion = '1.1.0'; // The current version of the node
         this.lighthouseUrl = 'http://localhost:3001/latest-version';
+        this.logs = [];
     }
 
     async checkVersion() {
@@ -14,12 +15,15 @@ export class LightHouseClient {
 
             if (data.latestVersion && data.latestVersion !== this.currentVersion) {
                 console.warn(`Node version outdated. Latest version: ${data.latestVersion}, Current version: ${this.currentVersion}`);
+                this.logs.push(`Node version outdated. Latest version: ${data.latestVersion}, Current version: ${this.currentVersion}`);
                 // Take action if necessary (e.g., log, notify user, etc.)
             } else {
                 console.info('Node version is up-to-date.');
+                this.logs.push('Node version is up-to-date.');
             }
         } catch (error) {
             console.error('Failed to check version with lighthouse node.', error);
+            this.logs.push('Failed to check version with lighthouse node.');
         }
     }
 

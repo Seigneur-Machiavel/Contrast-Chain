@@ -84,6 +84,7 @@ class AppStaticFncs {
         result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
         result.ignoreIncomingBlocks = node.ignoreIncomingBlocks;
         result.disabledSync = node.syncHandler.syncDisabled;
+        result.lightHouseClientLogs = node.lightHouseClient?.logs;
         return result;
     }
     /** @param {Node} node */

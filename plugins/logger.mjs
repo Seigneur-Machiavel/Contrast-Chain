@@ -87,7 +87,8 @@ class Logger {
             warn: colors.yellow,
             error: colors.red,
             trace: colors.magenta,
-            log: colors.blue
+            log: colors.blue,
+            important: colors.brightMagenta,
         };
         return colorMap[type] || '';
     }
@@ -284,12 +285,8 @@ class Logger {
                 callerLine = ` (${this.logConfig[id].file}:${this.logConfig[id].line})`;
             }
             // Log to console with colors
-            if (typeof console[type] === 'function') {
-                const formattedMessage = this.formatConsoleLog(type, consoleMessage);
-                console[type](formattedMessage + callerLine);
-            } else {
-                console.log(consoleMessage + callerLine);
-            }
+            const formattedMessage = this.formatConsoleLog(type, consoleMessage);
+            console.log(formattedMessage + callerLine);
 
             // Write to file without colors
             this.writeToFile(type, fileMessage);
@@ -376,7 +373,7 @@ class Logger {
                     let modified = false;
 
                     // Regex to match logger method calls
-                    const logPattern = /this\.logger\.(log|info|warn|error|debug|trace)\(\s*(['"`])([\s\S]*?)\2\s*(,\s*[\s\S]*?)?\)/g;
+                    const logPattern = /this\.logger\.(log|info|warn|error|debug|trace|important)\(\s*(['"`])([\s\S]*?)\2\s*(,\s*[\s\S]*?)?\)/g;
                     let match;
                     while ((match = logPattern.exec(content)) !== null) {
                         const fullMatch = match[0];
@@ -461,7 +458,7 @@ class Logger {
         const lines = content.split('\n');
         // Updated regex to match logger method calls with optional additional arguments
         const logPattern = new RegExp(
-            `this\\.logger\\.(log|info|warn|error|debug|trace)\\(\\s*(['"\`])(luid-[0-9a-fA-F]{${this.idLength}})\\s([\\s\\S]*?)\\2\\s*(,\\s*[^)]+)?\\)`,
+            `this\\.logger\\.(log|info|warn|error|debug|trace|important)\\(\\s*(['"\`])(luid-[0-9a-fA-F]{${this.idLength}})\\s([\\s\\S]*?)\\2\\s*(,\\s*[^)]+)?\\)`,
             'g'
         );
         lines.forEach((line, index) => {
@@ -475,7 +472,7 @@ class Logger {
                 const fullMessage = id + ' ' + messageContent; // Combine ID and message
 
                 // Validate 'type' before adding to logCalls
-                if (['log', 'info', 'warn', 'error', 'debug', 'trace'].includes(type)) {
+                if (['log', 'info', 'warn', 'error', 'debug', 'trace', 'important'].includes(type)) {
                     this.logCalls.push({
                         id,
                         file: fileName,
@@ -820,6 +817,7 @@ class Logger {
     }
 
     // Convenience methods for different log types
+    important(message, ...args) { this.dolog('important', message, ...args); }
     debug(message, ...args) { this.dolog('debug', message, ...args); }
     info(message, ...args) { this.dolog('info', message, ...args); }
     warn(message, ...args) { this.dolog('warn', message, ...args); }

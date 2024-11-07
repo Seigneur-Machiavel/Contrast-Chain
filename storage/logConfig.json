@@ -6,6 +6,20 @@
     "type": "error",
     "content": "luid-9f54fbca Unable to deserialize transaction using available strategies"
   },
+  "luid-a362440e": {
+    "active": true,
+    "file": "src\\lighthouse\\lighthouse.mjs",
+    "line": 30,
+    "type": "important",
+    "content": "luid-a362440e Lighthouse server running on port ${this.port}"
+  },
+  "luid-f9996990": {
+    "active": true,
+    "file": "src\\lighthouse\\lighthouse.mjs",
+    "line": 31,
+    "type": "important",
+    "content": "luid-f9996990 Latest version available: ${this.latestVersion}"
+  },
   "luid-fc711a87": {
     "active": true,
     "file": "src\\node.mjs",
@@ -16,9 +30,9 @@
   "luid-74fcfb49": {
     "active": true,
     "file": "src\\node.mjs",
-    "line": 308,
+    "line": 287,
     "type": "error",
-    "content": "luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}"
+    "content": "luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}"
   },
   "luid-feea692e": {
     "active": true,

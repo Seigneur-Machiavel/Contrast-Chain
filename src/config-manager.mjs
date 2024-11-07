@@ -9,6 +9,7 @@ export class ConfigManager {
         this.config = {
             bootstrapNodes: ['/dns4/pinkparrot.science/tcp/27260', '/dns4/pinkparrot.observer/tcp/27261', '/dns4/pariah.monster/tcp/27260'],
             isInitNode: false,
+            isLightHouseNode: false
         };
     }
 
@@ -53,6 +54,8 @@ export class ConfigManager {
 
     /** @returns {boolean} The isInitNode value.*/
     getIsInitNode = () => this.config.isInitNode;
+
+    getIsLightHouseNode = () => this.config.isLightHouseNode;
 }
 
 export default ConfigManager;

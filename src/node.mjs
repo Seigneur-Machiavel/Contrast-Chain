@@ -18,6 +18,8 @@ import { ConfigManager } from './config-manager.mjs';
 import { TimeSynchronizer } from '../plugins/time.mjs';
 import { Logger } from '../plugins/logger.mjs';
 import { Reorganizator } from './blockchain-reorganizator.mjs';
+import { LighthouseServer } from './lighthouse/lighthouse.mjs';
+import { LightHouseClient }  from './lighthouse/lighthouse-client.mjs';
 
 /**
 * @typedef {import("./wallet.mjs").Account} Account
@@ -91,6 +93,8 @@ export class Node {
         this.blockchainStats = {};
         this.delayBeforeSendingCandidate = 10000;
         this.ignoreIncomingBlocks = false;
+        this.lightHouseClient = new LightHouseClient(this.id);
+        this.lighthouseServer = new LighthouseServer(3001, this.logger);
     }
 
     async start(startFromScratch = false) {
@@ -98,6 +102,13 @@ export class Node {
         this.blockchainStats.state = "starting";
         await this.configManager.init();
         await this.timeSynchronizer.syncTimeWithRetry(5, 500);
+
+        if(this.configManager.getIsLightHouseNode()) {
+            await this.lighthouseServer.start();
+        }
+
+        await this.lightHouseClient.start();
+
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
@@ -255,6 +266,7 @@ export class Node {
     async #validateBlockProposal(finalizedBlock, blockBytes) {
         this.blockchainStats.state = "validating block";
         
+        performance.mark('validation start');
         // Those ids are used for logging purpose
         const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
         const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
@@ -268,9 +280,12 @@ export class Node {
         if (finalizedBlock.hash !== hex) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
 
         try {//toto
+        
+            performance.mark('validation height-timestamp-hash');
             BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight);
             BlockValidation.validateBlockHash(finalizedBlock, this.blockchain.lastBlock);
             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime());
+            performance.mark('validation legitimacy');
             await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
         } catch (error) {
             this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}`);
@@ -279,7 +294,7 @@ export class Node {
 
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
         if (!hashConfInfo.conform) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
-
+        performance.mark('validation coinbase-rewards');
         const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
         if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!banBlock! !applyOffense! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
 
@@ -287,13 +302,16 @@ export class Node {
         try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); }
         catch (error) { throw new Error('!banBlock! !applyOffense! Invalid rewards'); }
 
+        performance.mark('validation double-spending');
         try { BlockValidation.isFinalizedBlockDoubleSpending(finalizedBlock); }
         catch (error) { throw new Error('!banBlock! !applyOffense! Double spending detected'); }
 
+        performance.mark('validation fullTxsValidation');
         const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2);
         this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
         this.blockchainStats.state = "idle";
-
+        performance.mark('validation fullTxsValidation end');
+        
         return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
     }
     /**
