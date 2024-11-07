@@ -1,29 +1,59 @@
 import express from 'express';
 
-const app = express();
-const PORT = 3001;
+export class LighthouseServer {
+    constructor(port = 3001, logger) {
+        this.app = express();
+        this.port = port;
+        this.latestVersion = '1.2.0';
+        this.server = null;
+        this.logger = logger;
+        
+        // Setup routes
+        this.setupRoutes();
+    }
 
-// Hardcoded version - update this manually for each run
-const latestVersion = '1.2.0'; // Example hardcoded version
+    setupRoutes() {
+        this.app.get('/latest-version', (req, res) => {
+            res.json({ latestVersion: this.latestVersion });
+        });
+        
+        // Add basic health check endpoint
+        this.app.get('/health', (req, res) => {
+            res.json({ status: 'healthy', uptime: process.uptime() });
+        });
+    }
 
-// Endpoint to get the latest version
-app.get('/latest-version', (req, res) => {
-    res.json({ latestVersion });
-});
+    start() {
+        return new Promise((resolve, reject) => {
+            try {
+                this.server = this.app.listen(this.port, () => {
+                    this.logger.important(`luid-a362440e Lighthouse server running on port ${this.port}`);
+                    this.logger.important(`luid-f9996990 Latest version available: ${this.latestVersion}`);
+                    resolve(this.server);
+                });
 
-// Function to start the lighthouse server
-export function startLighthouseNode() {
-    const server = app.listen(PORT, () => {
-        console.log(`Lighthouse node is running on port ${PORT}`);
-        console.log(`Latest version available: ${latestVersion}`);
-    });
+                this.server.on('error', (error) => {
+                    if (error.code === 'EADDRINUSE') {
+                        reject(new Error(`Port ${this.port} is already in use`));
+                    } else {
+                        reject(error);
+                    }
+                });
 
-    // Handle 'error' event on the server
-    server.on('error', (error) => {
-        if (error.code === 'EADDRINUSE') {
-            console.error(`Port ${PORT} is already in use. Please use a different port.`);
-        } else {
-            console.error('An unexpected error occurred:', error);
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    async stop() {
+        if (this.server) {
+            return new Promise((resolve) => {
+                this.server.close(() => {
+                    console.log('Lighthouse server stopped');
+                    resolve();
+                });
+            });
         }
-    });
+    }
 }

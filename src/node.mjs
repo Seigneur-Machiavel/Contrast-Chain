@@ -18,6 +18,8 @@ import { ConfigManager } from './config-manager.mjs';
 import { TimeSynchronizer } from '../plugins/time.mjs';
 import { Logger } from '../plugins/logger.mjs';
 import { Reorganizator } from './blockchain-reorganizator.mjs';
+import { LighthouseServer } from './lighthouse/lighthouse.mjs';
+import { LightHouseClient }  from './lighthouse/lighthouse-client.mjs';
 
 /**
 * @typedef {import("./wallet.mjs").Account} Account
@@ -91,6 +93,8 @@ export class Node {
         this.blockchainStats = {};
         this.delayBeforeSendingCandidate = 10000;
         this.ignoreIncomingBlocks = false;
+        this.lightHouseClient = new LightHouseClient(this.id);
+        this.lighthouseServer = new LighthouseServer(3001, this.logger);
     }
 
     async start(startFromScratch = false) {
@@ -98,6 +102,13 @@ export class Node {
         this.blockchainStats.state = "starting";
         await this.configManager.init();
         await this.timeSynchronizer.syncTimeWithRetry(5, 500);
+
+        if(this.configManager.getIsLightHouseNode()) {
+            await this.lighthouseServer.start();
+        }
+
+        await this.lightHouseClient.start();
+
         console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
