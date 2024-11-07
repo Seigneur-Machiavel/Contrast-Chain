@@ -232,7 +232,8 @@ export class OpStack {
             || error.message.includes('!reorg!') 
             || error.message.includes('!applyOffense!')
             || error.message.includes('!applyMinorOffense!') 
-            || error.message.includes('!banBlock!')) { return; }
+            || error.message.includes('!banBlock!')
+            || error.message.includes('!ignore!')) { return; }
         
         // sync management
         if (error.message.includes('!sync!')) {
@@ -247,12 +248,14 @@ export class OpStack {
 
     /** @param {string} type @param {object} data */
     push(type, data) {
+        if (type === 'syncWithPeers' && this.node.syncHandler.isSyncing) { return; }
         if (type === 'syncWithPeers' && this.syncRequested) { return; }
         if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.push({ type, data });
     }
     /** @param {string} type @param {object} data */
     pushFirst(type, data) {
+        if (type === 'syncWithPeers' && this.node.syncHandler.isSyncing) { return; }
         if (type === 'syncWithPeers' && this.syncRequested) { return; }
         if (type === 'syncWithPeers') { this.syncRequested = true; }
         this.tasks.unshift({ type, data });

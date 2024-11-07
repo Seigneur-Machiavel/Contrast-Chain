@@ -405,7 +405,7 @@ export class BlockValidation {
     /** @param {BlockData} block @param {number} currentHeight */
     static validateBlockIndex(block, currentHeight = -1) {
         if (block.index > currentHeight + 9) {
-            throw new Error(`!sync! Rejected: #${block.index} > #${currentHeight + 9}(+9)`);
+            throw new Error(`!ignore! Rejected: #${block.index} > #${currentHeight + 9}(+9)`);
         }
 
         if (block.index > currentHeight + 1) {

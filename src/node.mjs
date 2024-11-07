@@ -495,16 +495,18 @@ export class Node {
                     if (this.ignoreIncomingBlocks) { return; }
                     if (!this.roles.includes('miner')) { break; }
                     if (!this.roles.includes('validator')) { break; }
+
+                    const lastBlockIndex = this.blockchain.lastBlock ? this.blockchain.lastBlock.index : -1;
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
                         console.info(`[P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
                         return;
                     }
-                    if (this.blockCandidate && this.blockCandidate.index > data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> skip`);
+                    if (lastBlockIndex +1 > data.index) {
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
-                    if (this.blockCandidate && this.blockCandidate.index < data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | current #${this.blockCandidate.index} -> skip`);
+                    if (lastBlockIndex +1 < data.index) {
+                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
 
