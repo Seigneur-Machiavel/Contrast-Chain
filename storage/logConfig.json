@@ -20,6 +20,69 @@
     "type": "important",
     "content": "luid-f9996990 Latest version available: ${this.latestVersion}"
   },
+  "luid-cdb9b88e": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 112,
+    "type": "info",
+    "content": "luid-cdb9b88e Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}"
+  },
+  "luid-74daf64d": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 134,
+    "type": "error",
+    "content": "luid-74daf64d Failed to connect to peers, stopping the node"
+  },
+  "luid-6681548e": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 135,
+    "type": "info",
+    "content": "luid-6681548e P2P network is ready - we are connected baby!"
+  },
+  "luid-ffbfdf64": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 143,
+    "type": "info",
+    "content": "luid-ffbfdf64 Node ${this.id} (${this.roles.join('_')}) => stopped"
+  },
+  "luid-60b1e366": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 173,
+    "type": "info",
+    "content": "luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}"
+  },
+  "luid-ec98dc8a": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 181,
+    "type": "info",
+    "content": "luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes"
+  },
+  "luid-f97443bb": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 186,
+    "type": "info",
+    "content": "luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}"
+  },
+  "luid-ae479c11": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 226,
+    "type": "warn",
+    "content": "luid-ae479c11 Last known snapshot index: ${snapshotIndex}"
+  },
+  "luid-0d64a766": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 231,
+    "type": "warn",
+    "content": "luid-0d64a766 Snapshot loaded: ${snapshotIndex}"
+  },
   "luid-fc711a87": {
     "active": true,
     "file": "src\\node.mjs",
@@ -33,6 +96,174 @@
     "line": 287,
     "type": "error",
     "content": "luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}"
+  },
+  "luid-f1779d54": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 380,
+    "type": "info",
+    "content": "luid-f1779d54 #${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${(Date.now() - startTime)}ms"
+  },
+  "luid-18aad738": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 407,
+    "type": "info",
+    "content": "luid-18aad738 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms"
+  },
+  "luid-73794583": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 408,
+    "type": "info",
+    "content": "luid-73794583 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms"
+  },
+  "luid-74541797": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 421,
+    "type": "error",
+    "content": "luid-74541797 Failed to connect to peers, stopping the node"
+  },
+  "luid-2fb4ecd4": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 438,
+    "type": "error",
+    "content": "luid-2fb4ecd4 Failed to broadcast new block candidate: ${error.message}"
+  },
+  "luid-8705e45a": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 474,
+    "type": "info",
+    "content": "luid-8705e45a (Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms"
+  },
+  "luid-b1e558fc": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 519,
+    "type": "info",
+    "content": "luid-b1e558fc [P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip"
+  },
+  "luid-ef83b893": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 523,
+    "type": "info",
+    "content": "luid-ef83b893 [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip"
+  },
+  "luid-59df1dde": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 527,
+    "type": "info",
+    "content": "luid-59df1dde [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip"
+  },
+  "luid-bc5b2c47": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 535,
+    "type": "info",
+    "content": "luid-bc5b2c47 [P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!"
+  },
+  "luid-b58f689b": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 553,
+    "type": "warn",
+    "content": "luid-b58f689b [P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip"
+  },
+  "luid-5ccb3f76": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 559,
+    "type": "warn",
+    "content": "luid-5ccb3f76 [TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}"
+  },
+  "luid-de0a77c8": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 562,
+    "type": "error",
+    "content": "luid-de0a77c8 [P2P-HANDLER] ${topic} -> Unknown topic"
+  },
+  "luid-ce83715d": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 565,
+    "type": "error",
+    "content": "luid-ce83715d [P2P-HANDLER] ${topic} -> Failed! "
+  },
+  "luid-32f01c6b": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 589,
+    "type": "info",
+    "content": "luid-32f01c6b [NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]"
+  },
+  "luid-71bc9641": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 610,
+    "type": "error",
+    "content": "luid-71bc9641 Tx ${transaction.id} rejected: ${error.message}"
+  },
+  "luid-4548e3d2": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 628,
+    "type": "error",
+    "content": "luid-4548e3d2 "
+  },
+  "luid-52b90003": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 649,
+    "type": "error",
+    "content": "luid-52b90003 "
+  },
+  "luid-f94f2924": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 660,
+    "type": "error",
+    "content": "luid-f94f2924 "
+  },
+  "luid-380ae263": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 715,
+    "type": "error",
+    "content": "luid-380ae263 "
+  },
+  "luid-ba6f45e3": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 729,
+    "type": "error",
+    "content": "luid-ba6f45e3 UTXO not removed from AddressAnchors: ${anchor}"
+  },
+  "luid-94f2bd71": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 730,
+    "type": "error",
+    "content": "luid-94f2bd71 UTXO spent but not removed from AddressAnchors: ${anchor}"
+  },
+  "luid-a92cbd34": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 749,
+    "type": "error",
+    "content": "luid-a92cbd34 UTXO not removed from AddressAnchors: ${anchor}"
+  },
+  "luid-d5256233": {
+    "active": true,
+    "file": "src\\node.mjs",
+    "line": 750,
+    "type": "error",
+    "content": "luid-d5256233 UTXO spent but not removed from AddressAnchors: ${anchor}"
   },
   "luid-feea692e": {
     "active": true,

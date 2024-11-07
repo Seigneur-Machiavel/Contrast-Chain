@@ -25,7 +25,7 @@ const colors = {
     brightGreen: '\x1b[38;2;184;187;38m',  // Lime green
     brightYellow: '\x1b[38;2;250;189;47m', // Bright yellow
     brightBlue: '\x1b[38;2;131;165;152m',  // Sky blue
-    brightMagenta: '\x1b[38;2;211;134;155m', // Bright purple
+    brightMagenta: '\x1b[38;2;88;24;69m', // Bright purple
     brightCyan: '\x1b[38;2;142;192;124m',    // Bright cyan
 };
 
@@ -215,6 +215,10 @@ class Logger {
       */
     formatConsoleLog(type, message) {
         const color = this.getColorForType(type);
+
+        if( type=== 'important') {
+            return `${color}["!"]${colors.reset} ${message}`;
+        }
         return `${color}[${type.toUpperCase()}]${colors.reset} ${message}`;
     }
 

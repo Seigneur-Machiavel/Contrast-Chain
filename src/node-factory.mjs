@@ -87,6 +87,10 @@ export class NodeFactory {
         // stop level db
         await targetNode.blockchain.db.close();
         await targetNode.p2pNetwork.stop();
+        
+        try { await targetNode.lighthouseServer.stop(); }
+        catch (error) { console.error('Failed to stop lighthouse server', error); }
+
         await new Promise(resolve => setTimeout(resolve, 2000));
         
         const newNode = await this.createNode(

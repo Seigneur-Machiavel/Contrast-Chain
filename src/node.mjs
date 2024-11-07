@@ -29,10 +29,6 @@ import { LightHouseClient }  from './lighthouse/lighthouse-client.mjs';
 * @typedef {import("./block-classes.mjs").BlockInfo} BlockInfo
 */
 
-const obs = new PerformanceObserver((items) => { // TODO: disable in production
-    items.getEntries().forEach((entry) => { console.log(`${entry.name}: ${entry.duration.toFixed(3)}ms`); });
-});
-obs.observe({ entryTypes: ['measure'] });
 
 export class Node {
     /** @param {Account} account */
@@ -109,7 +105,7 @@ export class Node {
 
         await this.lightHouseClient.start();
 
-        console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
+        this.logger.info(`luid-cdb9b88e Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
@@ -131,8 +127,8 @@ export class Node {
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
 
         const nbOfPeers = await this.#waitSomePeers();
-        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
-        console.log('P2P network is ready - we are connected baby!');
+        if (!nbOfPeers || nbOfPeers < 1) { this.logger.error('luid-74daf64d Failed to connect to peers, stopping the node'); return; }
+        this.logger.info('luid-6681548e P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
 
@@ -140,7 +136,7 @@ export class Node {
         this.opStack.pushFirst('syncWithPeers', null);
     }
     async stop() {
-        console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
+        this.logger.info(`luid-ffbfdf64 Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
     requestRestart(from = 'unknown') {
         this.restartRequested = from;
@@ -170,7 +166,7 @@ export class Node {
                 
                 let peerCount = checkPeerCount();
                 if (peerCount >= nbOfPeers) {
-                    console.info(`luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
+                    this.logger.info(`luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
                     return peerCount;
                 }
     
@@ -178,12 +174,12 @@ export class Node {
                 peerCount = checkPeerCount();
                 
                 if (peerCount >= nbOfPeers) {
-                    console.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
+                    this.logger.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
                     this.opStack.pushFirst('syncWithPeers', null);
                     return peerCount;
                 }
     
-                console.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
+                this.logger.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
             }
             //throw new Error(`Failed to connect to ${nbOfPeers} peers within ${maxAttempts} attempts`);
             return false;
@@ -197,7 +193,7 @@ export class Node {
                 )
             ]);
         } catch (error) {
-            console.warn(error.message);
+            this.logger.error(error.message);
             return false;
         }
     }
@@ -213,7 +209,7 @@ export class Node {
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
             return true;
         } catch (error) {
-            console.error(error);
+            this.logger.error(error);
             return false;
         }
     }
@@ -223,12 +219,12 @@ export class Node {
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
         if (snapshotIndex < 0) { return; }
 
-        console.warn(`Last known snapshot index: ${snapshotIndex}`);
+        this.logger.warn(`luid-ae479c11 Last known snapshot index: ${snapshotIndex}`);
         this.blockchain.currentHeight = snapshotIndex;
         this.blockCandidate = null;
         await this.snapshotSystem.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
 
-        console.warn(`Snapshot loaded: ${snapshotIndex}`);
+        this.logger.warn(`luid-0d64a766 Snapshot loaded: ${snapshotIndex}`);
         if (snapshotIndex < 1) { await this.blockchain.eraseEntireDatabase(); }
 
         this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
@@ -264,54 +260,55 @@ export class Node {
     //#region - BLOCK HANDLING --------------------------------------------------------------------
     /** @param {BlockData} finalizedBlock */
     async #validateBlockProposal(finalizedBlock, blockBytes) {
+        const timer = new BlockValidationTimer(), validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6), minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
         this.blockchainStats.state = "validating block";
+        timer.startPhase('total-validation');
         
-        performance.mark('validation start');
-        // Those ids are used for logging purpose
-        const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
-        const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
-        
-        try  { BlockValidation.checkBlockIndexIsNumber(finalizedBlock); }
-        catch (error) { 
-            this.logger.error(`luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`);
-            throw error;
-        }
+        try { timer.startPhase('block-index-check'); BlockValidation.checkBlockIndexIsNumber(finalizedBlock); timer.endPhase('block-index-check'); }
+        catch (error) { this.logger.error(`luid-fc711a87 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} Miner: ${minerId} | Validator: ${validatorId}`); throw error; }
+    
+        timer.startPhase('miner-hash');
         const { hex, bitsArrayAsString } = await BlockUtils.getMinerHash(finalizedBlock, this.useDevArgon2);
-        if (finalizedBlock.hash !== hex) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`); }
-
-        try {//toto
-        
-            performance.mark('validation height-timestamp-hash');
-            BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight);
-            BlockValidation.validateBlockHash(finalizedBlock, this.blockchain.lastBlock);
-            BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime());
-            performance.mark('validation legitimacy');
-            await BlockValidation.validateLegitimacy(finalizedBlock, this.vss);
-        } catch (error) {
-            this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}`);
-            throw error;
-        }
-
+        if (finalizedBlock.hash !== hex) throw new Error(`!banBlock! !applyOffense! Invalid pow hash (not corresponding): ${finalizedBlock.hash} - expected: ${hex}`);
+        timer.endPhase('miner-hash');
+    
+        try {
+            timer.startPhase('height-timestamp-hash');
+            [BlockValidation.validateBlockIndex(finalizedBlock, this.blockchain.currentHeight), 
+             BlockValidation.validateBlockHash(finalizedBlock, this.blockchain.lastBlock),
+             BlockValidation.validateTimestamps(finalizedBlock, this.blockchain.lastBlock, this.timeSynchronizer.getCurrentTime())];
+            timer.endPhase('height-timestamp-hash');
+            
+            timer.startPhase('legitimacy'); await BlockValidation.validateLegitimacy(finalizedBlock, this.vss); timer.endPhase('legitimacy');
+        } catch (error) { this.logger.error(`luid-74fcfb49 [NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} -> ${error.message} ~ Miner: ${minerId} | Validator: ${validatorId}`); throw error; }
+    
+        timer.startPhase('difficulty-check');
         const hashConfInfo = utils.mining.verifyBlockHashConformToDifficulty(bitsArrayAsString, finalizedBlock);
-        if (!hashConfInfo.conform) { throw new Error(`!banBlock! !applyOffense! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`); }
-        performance.mark('validation coinbase-rewards');
+        if (!hashConfInfo.conform) throw new Error(`!banBlock! !applyOffense! Invalid pow hash (difficulty): ${finalizedBlock.hash} -> ${hashConfInfo.message}`);
+        timer.endPhase('difficulty-check');
+    
+        timer.startPhase('rewards-validation');
         const expectedCoinBase = utils.mining.calculateNextCoinbaseReward(this.blockchain.lastBlock || finalizedBlock);
-        if (finalizedBlock.coinBase !== expectedCoinBase) { throw new Error(`!banBlock! !applyOffense! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`); }
-
+        if (finalizedBlock.coinBase !== expectedCoinBase) throw new Error(`!banBlock! !applyOffense! Invalid #${finalizedBlock.index} coinbase: ${finalizedBlock.coinBase} - expected: ${expectedCoinBase}`);
         const { powReward, posReward, totalFees } = await BlockUtils.calculateBlockReward(this.utxoCache, finalizedBlock);
-        try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); }
-        catch (error) { throw new Error('!banBlock! !applyOffense! Invalid rewards'); }
-
-        performance.mark('validation double-spending');
+        try { await BlockValidation.areExpectedRewards(powReward, posReward, finalizedBlock); } 
+        catch { throw new Error('!banBlock! !applyOffense! Invalid rewards'); }
+        timer.endPhase('rewards-validation');
+    
+        timer.startPhase('double-spending-check');
         try { BlockValidation.isFinalizedBlockDoubleSpending(finalizedBlock); }
-        catch (error) { throw new Error('!banBlock! !applyOffense! Double spending detected'); }
-
-        performance.mark('validation fullTxsValidation');
+        catch { throw new Error('!banBlock! !applyOffense! Double spending detected'); }
+        timer.endPhase('double-spending-check');
+    
+        timer.startPhase('full-txs-validation');
         const allDiscoveredPubKeysAddresses = await BlockValidation.fullBlockTxsValidation(finalizedBlock, this.utxoCache, this.memPool, this.workers, this.useDevArgon2);
         this.memPool.addNewKnownPubKeysAddresses(allDiscoveredPubKeysAddresses);
+        timer.endPhase('full-txs-validation');
+    
+        timer.endPhase('total-validation');
         this.blockchainStats.state = "idle";
-        performance.mark('validation fullTxsValidation end');
-        
+        timer.displayResults();
+    
         return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
     }
     /**
@@ -325,120 +322,84 @@ export class Node {
      * @param {boolean} [options.storeAsFiles] - default: false
      */
     async digestFinalizedBlock(finalizedBlock, options = {}, byteLength) {
+        const timer = new BlockDigestionTimer();
         this.blockchainStats.state = "digesting finalized block";
-        if (this.restartRequested) { return; }
-        const blockBytes = byteLength ? byteLength : utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;
-        const {
-            skipValidation = false,
-            broadcastNewCandidate = true,
-            isSync = false,
-            isLoading = false,
-            persistToDisk = true,
-            storeAsFiles = false
-        } = options;
-
-        if (!finalizedBlock) { throw new Error('Invalid block candidate'); }
-        if (!this.roles.includes('validator')) { throw new Error('Only validator can process PoW block'); }
-        if (this.syncHandler.isSyncing && !isSync) { throw new Error("Node is syncing, can't process block"); }
-
-        const startTime = Date.now();
-
-        let validationResult;
-        let hashConfInfo = false;
-        let totalFees = undefined; // will be recalculated if undefined by: addConfirmedBlocks()
+        if (this.restartRequested) return;
+    
+        timer.startPhase('initialization');
+        const blockBytes = byteLength || utils.serializer.block_finalized.toBinary_v4(finalizedBlock).byteLength;
+        const { skipValidation = false, broadcastNewCandidate = true, isSync = false, isLoading = false, persistToDisk = true, storeAsFiles = false } = options;
+        if (!finalizedBlock || !this.roles.includes('validator') || (this.syncHandler.isSyncing && !isSync)) 
+            throw new Error(!finalizedBlock ? 'Invalid block candidate' : !this.roles.includes('validator') ? 'Only validator can process PoW block' : "Node is syncing, can't process block");
+        timer.endPhase('initialization');
+    
+        let validationResult, hashConfInfo = false, totalFees;
         if (!skipValidation) {
-            const vResult = await this.#validateBlockProposal(finalizedBlock, blockBytes); // Can throw an error
-            validationResult = vResult;
-            hashConfInfo = vResult.hashConfInfo;
-
-            if (!hashConfInfo || !hashConfInfo.conform) {
-                //const validatorAddress = finalizedBlock.Txs[1].inputs[0].split(':')[0]; // dangerous
-                //console.info(`block validator ${validatorAddress} rejected`); 
-                throw new Error('Failed to validate block');
-            }
+            timer.startPhase('block-validation');
+            validationResult = await this.#validateBlockProposal(finalizedBlock, blockBytes);
+            hashConfInfo = validationResult.hashConfInfo;
+            if (!hashConfInfo?.conform) throw new Error('Failed to validate block');
+            timer.endPhase('block-validation');
         }
-
-        performance.mark('add-confirmed-block');
-        if (!skipValidation && (!hashConfInfo || !hashConfInfo.conform)) { throw new Error('Failed to validate block'); }
+    
+        timer.startPhase('add-confirmed-block');
+        if (!skipValidation && !hashConfInfo?.conform) throw new Error('Failed to validate block');
         const blockInfo = await this.blockchain.addConfirmedBlocks(this.utxoCache, [finalizedBlock], persistToDisk, this.wsCallbacks.onBlockConfirmed, totalFees);
-
-        performance.mark('apply-blocks');
-        await this.blockchain.applyBlocks(this.utxoCache, this.vss, [finalizedBlock], this.roles.includes('observer'));
-
-        performance.mark('digest-finalized-blocks');
-        this.memPool.removeFinalizedBlocksTransactions([finalizedBlock]);
-
-        performance.mark('store-confirmed-block');
-        if (!skipValidation && this.wsCallbacks.onBlockConfirmed) { this.wsCallbacks.onBlockConfirmed.execute(blockInfo); }
-        if (storeAsFiles) { this.#storeConfirmedBlock(finalizedBlock); } // Used by developer to check the block data manually
-
-        performance.mark('end');
-
-        //#region - log
-        // > 100Mo -- PERFORMANCE LOGS
+        timer.endPhase('add-confirmed-block');
+    
+        timer.startPhase('apply-blocks'),
+        await this.blockchain.applyBlocks(this.utxoCache, this.vss, [finalizedBlock], this.roles.includes('observer')),
+        timer.endPhase('apply-blocks'),
+        timer.startPhase('mempool-cleanup'),
+        this.memPool.removeFinalizedBlocksTransactions([finalizedBlock]),
+        timer.endPhase('mempool-cleanup');
+    
+        timer.startPhase('block-storage');
+        if (!skipValidation && this.wsCallbacks.onBlockConfirmed) this.wsCallbacks.onBlockConfirmed.execute(blockInfo);
+        if (storeAsFiles) this.#storeConfirmedBlock(finalizedBlock);
+        timer.endPhase('block-storage');
+    
         if (blockBytes > 102_400 && !skipValidation) {
-            console.log(`#${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${(Date.now() - startTime)}ms`);
-
-            performance.measure('validation height-timestamp-hash', 'validation height-timestamp-hash', 'validation legitimacy');
-            performance.measure('validation legitimacy', 'validation legitimacy', 'validation coinbase-rewards');
-            performance.measure('validation coinbase-rewards', 'validation coinbase-rewards', 'validation double-spending');
-            performance.measure('validation double-spending', 'validation double-spending', 'validation fullTxsValidation');
-            performance.measure('validation fullTxsValidation', 'validation fullTxsValidation', 'validation fullTxsValidation end');
-
-            // total validation
-            performance.measure('total-validation', 'validation start', 'add-confirmed-block');
-
-            performance.measure('add-confirmed-block', 'add-confirmed-block', 'apply-blocks');
-            performance.measure('apply-blocks', 'apply-blocks', 'digest-finalized-blocks');
-            performance.measure('digest-finalized-blocks', 'digest-finalized-blocks', 'store-confirmed-block');
-            performance.measure('store-confirmed-block', 'store-confirmed-block', 'end');
-
-            performance.measure('total', 'validation start', 'end');
-
-            performance.clearMarks();
+            this.logger.info(`luid-f1779d54 #${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${timer.getTotalTime()}s`);
+            timer.displayResults();
         }
-        const timeBetweenPosPow = ((finalizedBlock.timestamp - finalizedBlock.posTimestamp) / 1000).toFixed(2);
-        const minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6);
-        const validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
-
-        //if (isLoading && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
-        //if (isLoading && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
-
-        if (isSync && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
-        if (isSync && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
-
+    
+        const timeBetweenPosPow = ((finalizedBlock.timestamp - finalizedBlock.posTimestamp) / 1000).toFixed(2),
+              minerId = finalizedBlock.Txs[0].outputs[0].address.slice(0, 6),
+              validatorId = finalizedBlock.Txs[1].outputs[0].address.slice(0, 6);
+    
         if (!isLoading && !isSync) {
-            console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> validator: ${validatorId} | miner: ${minerId}
-( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | gap_PosPow: ${timeBetweenPosPow}s | digest: ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
+            this.logger.important(`luid-baafdc71 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> validator: ${validatorId} | miner: ${minerId}\n` +
+                `( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | ` +
+                `z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | gap_PosPow: ${timeBetweenPosPow}s | digest: ${timer.getTotalTime()}s`);
         }
-        //#endregion
-
-        // SNAPSHOT
-        if (!isLoading) { await this.#saveSnapshot(finalizedBlock); }
-
+    
+        timer.startPhase('snapshot-and-peer-wait');
+        if (!isLoading) await this.#saveSnapshot(finalizedBlock);
         const waitStart = Date.now();
         const nbOfPeers = await this.#waitSomePeers();
-        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
-        if (!broadcastNewCandidate) { return true; }
-
+        if (!nbOfPeers || nbOfPeers < 1) { this.logger.error('luid-74541797 Failed to connect to peers, stopping the node'); return; }
+        timer.endPhase('snapshot-and-peer-wait');
+    
+        if (!broadcastNewCandidate) return true;
+    
+        timer.startPhase('candidate-creation');
         this.blockCandidate = await this.#createBlockCandidate();
-        if (this.blockCandidate === null) { return true; }
-        if (this.roles.includes('miner')) { this.miner.updateBestCandidate(this.blockCandidate); }
-
-        const delay = Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart));
+        if (this.blockCandidate === null) return true;
+        if (this.roles.includes('miner')) this.miner.updateBestCandidate(this.blockCandidate);
+        timer.endPhase('candidate-creation');
+    
         setTimeout(async () => {
             try {
-                // delay before broadcasting the new block candidate to ensure anyone digested the new block
-                //await new Promise(resolve => setTimeout(resolve, delay));
-                if (!this.blockCandidate) { throw new Error('No block candidate to broadcast'); }
+                if (!this.blockCandidate) throw new Error('No block candidate to broadcast');
                 await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
-                if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
+                if (this.wsCallbacks.onBroadcastNewCandidate) 
+                    this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate));
             } catch (error) {
-                //this.requestRestart('broadcastNewCandidate - error'); //TODO ACTIVE IN PROD
-                console.error(`Failed to broadcast new block candidate: ${error.message}`);
+                this.logger.error(`luid-2fb4ecd4 Failed to broadcast new block candidate: ${error.message}`);
             }
-        }, delay);
-
+        }, Math.max(0, this.delayBeforeSendingCandidate - (Date.now() - waitStart)));
+    
         return true;
     }
     /** Aggregates transactions from mempool, creates a new block candidate, signs it and returns it */
@@ -471,7 +432,7 @@ export class Node {
         blockCandidate.Txs.unshift(signedPosFeeTx);
         blockCandidate.powReward = powReward; // for the miner
 
-        if (blockCandidate.Txs.length > 3) { console.info(`(Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
+        if (blockCandidate.Txs.length > 3) { this.logger.info(`luid-8705e45a (Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
         this.blockchainStats.lastLegitimacy = blockCandidate.legitimacy;
         return blockCandidate;
     }
@@ -516,15 +477,15 @@ export class Node {
 
                     const lastBlockIndex = this.blockchain.lastBlock ? this.blockchain.lastBlock.index : -1;
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
+                        this.logger.info(`luid-b1e558fc [P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
                         return;
                     }
                     if (lastBlockIndex +1 > data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
+                        this.logger.info(`luid-ef83b893 [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
                     if (lastBlockIndex +1 < data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
+                        this.logger.info(`luid-59df1dde [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
 
@@ -532,7 +493,7 @@ export class Node {
                     const validatorAddress = data.Txs[0].inputs[0].split(':')[0];
                     const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
                     if (validatorLegitimacy !== data.legitimacy) {
-                        console.info(`[P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
+                        this.logger.info(`luid-bc5b2c47 [P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
                         return;
                     }
 
@@ -550,19 +511,19 @@ export class Node {
             }*/
                     if (!this.roles.includes('validator')) { break; }
                     if (this.reorganizator.isFinalizedBlockInCache(message.content)) {
-                        console.warn(`[P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
+                        this.logger.warn(`luid-b58f689b [P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
                         return;
                     }
                     this.opStack.push('digestPowProposal', message);
                     break;
                 case 'test':
-                    console.warn(`[TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}`);
+                    this.logger.warn(`luid-5ccb3f76 [TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}`);
                     break;
                 default:
-                    console.error(`[P2P-HANDLER] ${topic} -> Unknown topic`);
+                    this.logger.error(`luid-de0a77c8 [P2P-HANDLER] ${topic} -> Unknown topic`);
             }
         } catch (error) {
-            console.error(`[P2P-HANDLER] ${topic} -> Failed! `, error);
+            this.logger.error(`luid-ce83715d [P2P-HANDLER] ${topic} -> Failed! `, error);
         }
     }
     /** @param {string} topic @param {any} message */
@@ -586,7 +547,7 @@ export class Node {
             await this.p2pNetwork.broadcast('new_block_finalized', block);
             sentSequence.push(block.index);
         }
-        console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
+        this.logger.info(`luid-32f01c6b [NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
     }
     //#region - API -------------------------------------------------------------------------------
     getStatus() {
@@ -607,7 +568,7 @@ export class Node {
             const consumedUTXOs = transaction.inputs;
             return { broadcasted: true, pushedInLocalMempool: true, consumedUTXOs, error: null };
         } catch (error) {
-            console.error(`Tx ${transaction.id} rejected: ${error.message}`);
+            this.logger.error(`luid-71bc9641 Tx ${transaction.id} rejected: ${error.message}`);
             return { broadcasted: false, pushedInLocalMempool: false, consumedUTXOs: [], error: error.message };
         }
     }
@@ -625,7 +586,7 @@ export class Node {
 
             return blocksInfo;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-4548e3d2 ",error);
             return [];
         }
     }
@@ -646,7 +607,7 @@ export class Node {
 
             return blocksData;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-52b90003 ",error);
             return [];
         }
     }
@@ -657,7 +618,7 @@ export class Node {
 
             return this.#exhaustiveBlockFromBlockDataAndInfo(blockData, blockInfo);
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-f94f2924 ",error);
             return null;
         }
     }
@@ -712,7 +673,7 @@ export class Node {
 
             return result;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-380ae263 ",error);
             return { transaction: undefined, balanceChange: undefined };
         }
     }
@@ -726,8 +687,8 @@ export class Node {
             if (associatedMemPoolTx) { continue; } // pending spent UTXO
 
             const utxo = await this.utxoCache.getUTXO(anchor);
-            if (!utxo) { console.error(`UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
-            if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (!utxo) {this.logger.error(`luid-ba6f45e3 UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (utxo.spent) { this.logger.error(`luid-94f2bd71 UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
 
             balance += utxo.amount;
             UTXOs.push(utxo);
@@ -746,12 +707,51 @@ export class Node {
             if (associatedMemPoolTx) { continue; } // pending spent UTXO
 
             const utxo = await this.utxoCache.getUTXO(anchor);
-            if (!utxo) { console.error(`UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
-            if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (!utxo) { this.logger.error(`luid-a92cbd34 UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (utxo.spent) { this.logger.error(`luid-d5256233 UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
 
             UTXOs.push(utxo);
         }
         return UTXOs;
     }
+
     //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
+
+
+}
+
+class BaseBlockTimer {
+    constructor(type = 'Base') {
+        this.measurements = [];
+        this.startTime = Date.now();
+        this.type = type;
+    }
+
+    startPhase(phase) { performance.mark(`${phase}-start`); }
+
+    endPhase(phase) {
+        performance.mark(`${phase}-end`);
+        performance.measure(phase, `${phase}-start`, `${phase}-end`);
+        this.measurements.push({ phase, duration: performance.getEntriesByName(phase)[0].duration.toFixed(2) });
+        ['start', 'end'].forEach(t => performance.clearMarks(`${phase}-${t}`));
+        performance.clearMeasures(phase);
+    }
+
+    getTotalTime() { return ((Date.now() - this.startTime) / 1000).toFixed(2); }
+
+    displayResults() {
+        const totalDuration = this.measurements.reduce((sum, m) => sum + parseFloat(m.duration), 0);
+        console.group(`Block ${this.type} Performance Metrics`);
+        console.table(this.measurements);
+        console.log(`Total ${this.type.toLowerCase()} time: ${totalDuration.toFixed(2)}ms`);
+        console.groupEnd();
+    }
+}
+
+class BlockValidationTimer extends BaseBlockTimer {
+    constructor() { super('Validation'); }
+}
+
+class BlockDigestionTimer extends BaseBlockTimer {
+    constructor() { super('Digestion'); }
 }
