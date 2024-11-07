@@ -560,10 +560,11 @@ export class Node {
             for (const blockPromise of blocksToReSendPromises) {
                 const block = await blockPromise;
                 if (!block) { continue; }
+                await new Promise(resolve => setTimeout(resolve, 400));
                 await this.p2pNetwork.broadcast(topic, block);
                 sentSequence.push(block.index);
             }
-            console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: ${sentSequence.join(', ')}`);
+            console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
         }
     }
 
