@@ -109,7 +109,7 @@ export class Node {
 
         await this.lightHouseClient.start();
 
-        console.log(`Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
+        this.logger.info(`luid-cdb9b88e Node ${this.id} (${this.roles.join('_')}) => started at time: ${this.timeSynchronizer.getCurrentTime()}`);
 
         for (let i = 0; i < this.nbOfWorkers; i++) { this.workers.push(new ValidationWorker(i)); }
         this.opStack = OpStack.buildNewStack(this);
@@ -131,8 +131,8 @@ export class Node {
         if (this.roles.includes('miner')) { this.miner.startWithWorker(); }
 
         const nbOfPeers = await this.#waitSomePeers();
-        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
-        console.log('P2P network is ready - we are connected baby!');
+        if (!nbOfPeers || nbOfPeers < 1) { this.logger.error('luid-74daf64d Failed to connect to peers, stopping the node'); return; }
+        this.logger.info('luid-6681548e P2P network is ready - we are connected baby!');
 
         if (!this.roles.includes('validator')) { return; }
 
@@ -140,7 +140,7 @@ export class Node {
         this.opStack.pushFirst('syncWithPeers', null);
     }
     async stop() {
-        console.log(`Node ${this.id} (${this.roles.join('_')}) => stopped`);
+        this.logger.info(`luid-ffbfdf64 Node ${this.id} (${this.roles.join('_')}) => stopped`);
     }
     requestRestart(from = 'unknown') {
         this.restartRequested = from;
@@ -170,7 +170,7 @@ export class Node {
                 
                 let peerCount = checkPeerCount();
                 if (peerCount >= nbOfPeers) {
-                    console.info(`luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
+                    this.logger.info(`luid-60b1e366 Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
                     return peerCount;
                 }
     
@@ -178,12 +178,12 @@ export class Node {
                 peerCount = checkPeerCount();
                 
                 if (peerCount >= nbOfPeers) {
-                    console.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
+                    this.logger.info(`luid-ec98dc8a Connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''} after connecting to bootstrap nodes`);
                     this.opStack.pushFirst('syncWithPeers', null);
                     return peerCount;
                 }
     
-                console.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
+                this.logger.info(`luid-f97443bb Waiting for ${nbOfPeers} peer${nbOfPeers !== 1 ? 's' : ''}, currently connected to ${peerCount} peer${peerCount !== 1 ? 's' : ''}`);
             }
             //throw new Error(`Failed to connect to ${nbOfPeers} peers within ${maxAttempts} attempts`);
             return false;
@@ -197,7 +197,7 @@ export class Node {
                 )
             ]);
         } catch (error) {
-            console.warn(error.message);
+            this.logger.error(error.message);
             return false;
         }
     }
@@ -213,7 +213,7 @@ export class Node {
             await this.p2pBroadcast('new_block_candidate', this.blockCandidate);
             return true;
         } catch (error) {
-            console.error(error);
+            this.logger.error(error);
             return false;
         }
     }
@@ -223,12 +223,12 @@ export class Node {
     async loadSnapshot(snapshotIndex = 0, eraseHigher = true) {
         if (snapshotIndex < 0) { return; }
 
-        console.warn(`Last known snapshot index: ${snapshotIndex}`);
+        this.logger.warn(`luid-ae479c11 Last known snapshot index: ${snapshotIndex}`);
         this.blockchain.currentHeight = snapshotIndex;
         this.blockCandidate = null;
         await this.snapshotSystem.rollBackTo(snapshotIndex, this.utxoCache, this.vss, this.memPool);
 
-        console.warn(`Snapshot loaded: ${snapshotIndex}`);
+        this.logger.warn(`luid-0d64a766 Snapshot loaded: ${snapshotIndex}`);
         if (snapshotIndex < 1) { await this.blockchain.eraseEntireDatabase(); }
 
         this.blockchain.lastBlock = await this.blockchain.getBlockByHeight(snapshotIndex);
@@ -377,7 +377,7 @@ export class Node {
         //#region - log
         // > 100Mo -- PERFORMANCE LOGS
         if (blockBytes > 102_400 && !skipValidation) {
-            console.log(`#${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${(Date.now() - startTime)}ms`);
+            this.logger.info(`luid-f1779d54 #${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${(Date.now() - startTime)}ms`);
 
             performance.measure('validation height-timestamp-hash', 'validation height-timestamp-hash', 'validation legitimacy');
             performance.measure('validation legitimacy', 'validation legitimacy', 'validation coinbase-rewards');
@@ -404,11 +404,11 @@ export class Node {
         //if (isLoading && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
         //if (isLoading && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}] #${finalizedBlock.index} (loading) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
 
-        if (isSync && skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
-        if (isSync && !skipValidation) { console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
+        if (isSync && skipValidation) { this.logger.important(`luid-18aad738 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync - skipValidation) -> ( diff: ${finalizedBlock.difficulty} ) | processProposal: ${(Date.now() - startTime)}ms`); }
+        if (isSync && !skipValidation) { this.logger.important(`luid-73794583 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} (sync) -> ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | timeBetweenPosPow: ${timeBetweenPosPow}s | processProposal: ${(Date.now() - startTime)}ms`); }
 
         if (!isLoading && !isSync) {
-            console.info(`[NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> validator: ${validatorId} | miner: ${minerId}
+            this.logger.important(`luid-baafdc71 [NODE-${this.id.slice(0, 6)}-BLOCK] #${finalizedBlock.index} -> validator: ${validatorId} | miner: ${minerId}
 ( diff: ${hashConfInfo.difficulty} + timeAdj: ${hashConfInfo.timeDiffAdjustment} + leg: ${hashConfInfo.legitimacy} ) = finalDiff: ${hashConfInfo.finalDifficulty} | z: ${hashConfInfo.zeros} | a: ${hashConfInfo.adjust} | gap_PosPow: ${timeBetweenPosPow}s | digest: ${((Date.now() - startTime) / 1000).toFixed(2)}s`);
         }
         //#endregion
@@ -418,7 +418,7 @@ export class Node {
 
         const waitStart = Date.now();
         const nbOfPeers = await this.#waitSomePeers();
-        if (!nbOfPeers || nbOfPeers < 1) { console.error('Failed to connect to peers, stopping the node'); return; }
+        if (!nbOfPeers || nbOfPeers < 1) { this.logger.error('luid-74541797 Failed to connect to peers, stopping the node'); return; }
         if (!broadcastNewCandidate) { return true; }
 
         this.blockCandidate = await this.#createBlockCandidate();
@@ -435,7 +435,7 @@ export class Node {
                 if (this.wsCallbacks.onBroadcastNewCandidate) { this.wsCallbacks.onBroadcastNewCandidate.execute(BlockUtils.getBlockHeader(this.blockCandidate)); }
             } catch (error) {
                 //this.requestRestart('broadcastNewCandidate - error'); //TODO ACTIVE IN PROD
-                console.error(`Failed to broadcast new block candidate: ${error.message}`);
+                this.logger.error(`luid-2fb4ecd4 Failed to broadcast new block candidate: ${error.message}`);
             }
         }, delay);
 
@@ -471,7 +471,7 @@ export class Node {
         blockCandidate.Txs.unshift(signedPosFeeTx);
         blockCandidate.powReward = powReward; // for the miner
 
-        if (blockCandidate.Txs.length > 3) { console.info(`(Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
+        if (blockCandidate.Txs.length > 3) { this.logger.info(`luid-8705e45a (Height:${blockCandidate.index}) => ${blockCandidate.Txs.length} txs, block candidate created in ${(Date.now() - startTime)}ms`); }
         this.blockchainStats.lastLegitimacy = blockCandidate.legitimacy;
         return blockCandidate;
     }
@@ -516,15 +516,15 @@ export class Node {
 
                     const lastBlockIndex = this.blockchain.lastBlock ? this.blockchain.lastBlock.index : -1;
                     if (this.miner.highestBlockIndex > data.index) { // avoid processing old blocks
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
+                        this.logger.info(`luid-b1e558fc [P2P-HANDLER] ${topic} #${data.index} | highest #${this.miner.highestBlockIndex} -> skip`);
                         return;
                     }
                     if (lastBlockIndex +1 > data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
+                        this.logger.info(`luid-ef83b893 [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
                     if (lastBlockIndex +1 < data.index) {
-                        console.info(`[P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
+                        this.logger.info(`luid-59df1dde [P2P-HANDLER] ${topic} #${data.index} | lastBlockIndex #${lastBlockIndex} -> skip`);
                         return;
                     }
 
@@ -532,7 +532,7 @@ export class Node {
                     const validatorAddress = data.Txs[0].inputs[0].split(':')[0];
                     const validatorLegitimacy = this.vss.getAddressLegitimacy(validatorAddress);
                     if (validatorLegitimacy !== data.legitimacy) {
-                        console.info(`[P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
+                        this.logger.info(`luid-bc5b2c47 [P2P-HANDLER] ${topic} -> #${data.index} -> Invalid legitimacy!`);
                         return;
                     }
 
@@ -550,19 +550,19 @@ export class Node {
             }*/
                     if (!this.roles.includes('validator')) { break; }
                     if (this.reorganizator.isFinalizedBlockInCache(message.content)) {
-                        console.warn(`[P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
+                        this.logger.warn(`luid-b58f689b [P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
                         return;
                     }
                     this.opStack.push('digestPowProposal', message);
                     break;
                 case 'test':
-                    console.warn(`[TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}`);
+                    this.logger.warn(`luid-5ccb3f76 [TEST] heavy msg bytes: ${new Uint8Array(Object.values(data)).length}`);
                     break;
                 default:
-                    console.error(`[P2P-HANDLER] ${topic} -> Unknown topic`);
+                    this.logger.error(`luid-de0a77c8 [P2P-HANDLER] ${topic} -> Unknown topic`);
             }
         } catch (error) {
-            console.error(`[P2P-HANDLER] ${topic} -> Failed! `, error);
+            this.logger.error(`luid-ce83715d [P2P-HANDLER] ${topic} -> Failed! `, error);
         }
     }
     /** @param {string} topic @param {any} message */
@@ -586,7 +586,7 @@ export class Node {
             await this.p2pNetwork.broadcast('new_block_finalized', block);
             sentSequence.push(block.index);
         }
-        console.info(`[NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
+        this.logger.info(`luid-32f01c6b [NODE-${this.id.slice(0, 6)}] Re-sent blocks: [${sentSequence.join(', ')}]`);
     }
     //#region - API -------------------------------------------------------------------------------
     getStatus() {
@@ -607,7 +607,7 @@ export class Node {
             const consumedUTXOs = transaction.inputs;
             return { broadcasted: true, pushedInLocalMempool: true, consumedUTXOs, error: null };
         } catch (error) {
-            console.error(`Tx ${transaction.id} rejected: ${error.message}`);
+            this.logger.error(`luid-71bc9641 Tx ${transaction.id} rejected: ${error.message}`);
             return { broadcasted: false, pushedInLocalMempool: false, consumedUTXOs: [], error: error.message };
         }
     }
@@ -625,7 +625,7 @@ export class Node {
 
             return blocksInfo;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-4548e3d2 ",error);
             return [];
         }
     }
@@ -646,7 +646,7 @@ export class Node {
 
             return blocksData;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-52b90003 ",error);
             return [];
         }
     }
@@ -657,7 +657,7 @@ export class Node {
 
             return this.#exhaustiveBlockFromBlockDataAndInfo(blockData, blockInfo);
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-f94f2924 ",error);
             return null;
         }
     }
@@ -712,7 +712,7 @@ export class Node {
 
             return result;
         } catch (error) {
-            console.error(error);
+            this.logger.error("luid-380ae263 ",error);
             return { transaction: undefined, balanceChange: undefined };
         }
     }
@@ -726,8 +726,8 @@ export class Node {
             if (associatedMemPoolTx) { continue; } // pending spent UTXO
 
             const utxo = await this.utxoCache.getUTXO(anchor);
-            if (!utxo) { console.error(`UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
-            if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (!utxo) {this.logger.error(`luid-ba6f45e3 UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (utxo.spent) { this.logger.error(`luid-94f2bd71 UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
 
             balance += utxo.amount;
             UTXOs.push(utxo);
@@ -746,8 +746,8 @@ export class Node {
             if (associatedMemPoolTx) { continue; } // pending spent UTXO
 
             const utxo = await this.utxoCache.getUTXO(anchor);
-            if (!utxo) { console.error(`UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
-            if (utxo.spent) { console.error(`UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (!utxo) { this.logger.error(`luid-a92cbd34 UTXO not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
+            if (utxo.spent) { this.logger.error(`luid-d5256233 UTXO spent but not removed from AddressAnchors: ${anchor}`); continue; } // should not happen
 
             UTXOs.push(utxo);
         }
