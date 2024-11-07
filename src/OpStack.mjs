@@ -14,6 +14,7 @@ export class OpStack {
     /** @type {object[]} */
     tasks = [];
     syncRequested = false;
+    isReorging = false;
     terminated = false;
     paused = false;
     txBatchSize = 10; // will treat transactions in batches of 10
@@ -126,6 +127,7 @@ export class OpStack {
                     try {
                         await this.node.digestFinalizedBlock(content, options, byteLength);
                     } catch (error) {
+                        this.isReorging = false;
                         await this.#digestPowProposalErrorHandler(error, content, task);
                         return;
                     }
@@ -164,6 +166,21 @@ export class OpStack {
                     break;
                 case 'rollBackTo':
                     await this.node.loadSnapshot(content, false);
+                    break;
+                case 'reorg_start':
+                    this.isReorging = true;
+                    break;
+                case 'reorg_end':
+                    this.isReorging = false;
+                    this.healthInfo.lastReorgCheckTime = Date.now();
+                    const reorgTasks = await this.node.reorganizator.reorgIfMostLegitimateChain('reorg_end');
+                    if (!reorgTasks) {
+                        console.info(`[OpStack] Reorg ended, no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
+                        break;
+                    }
+
+                    console.info(`[OpStack] Reorg initiated by digestPowProposal, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                    this.securelyPushFirst(reorgTasks);
                     break;
                 default:
                     console.error(`[OpStack] Unknown task type: ${task.type}`);
@@ -244,9 +261,11 @@ export class OpStack {
         this.paused = true;
         for (const task of tasks) {
             //console.info(`[OpStack] securelyPushFirst: ${JSON.stringify(task)}`);
+            if (task === 'reorg_start' && this.isReorging) { return; }
+            if (task === 'reorg_start') { console.info('[OpStack] --- reorg_start'); }
             if (task.type === 'rollBackTo') { console.info(`[OpStack] --- rollBackTo -> #${task.data}`); }
             if (task.type === 'digestPowProposal') { console.info(`[OpStack] --- digestPowProposal -> #${task.data.index}`); }
-            this.tasks.unshift(task); 
+            this.tasks.unshift(task);
         }
         this.paused = false;
     }

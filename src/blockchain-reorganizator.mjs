@@ -143,7 +143,9 @@ export class Reorganizator {
             console.warn(`[REORGANIZATOR] Reorg: no legitimate branch > ${this.node.blockchain.lastBlock.index}`);
             return false;
         }
-
+        
+        legitimateReorg.tasks.push('reorg_end');
+        legitimateReorg.tasks.unshift('reorg_start');
         console.warn(`[REORGANIZATOR] ---( Possible Reorg )--- (from #${this.node.blockchain.lastBlock.index} ${reason ? `| ${reason}` : ''})`);
         return legitimateReorg.tasks;
     }

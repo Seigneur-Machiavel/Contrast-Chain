@@ -80,7 +80,7 @@ const SETTINGS = { // The Fibonacci based distribution
 
     // TRANSACTION
     minTransactionFeePerByte: 1,
-    unspendableUtxoAmount: 200,
+    unspendableUtxoAmount: 200
 };
 const UTXO_RULES_GLOSSARY = {
     sig: { code: 0, description: 'Simple signature verification' },
