@@ -9,7 +9,7 @@ import { NodeFactory } from '../src/node-factory.mjs';
 */
 
 //#region NODE INITIALIZATION -------------------------------------------
-const factory = new NodeFactory();
+const factory = new NodeFactory(27260);
 const nodePrivateKey = "0000000000000000000000000000000000000000000000000000000000000000";
 async function initMultiNode(local = false, useDevArgon2 = false) {
     const wallet = new contrast.Wallet(nodePrivateKey, useDevArgon2);
@@ -37,4 +37,4 @@ console.log(`Multi node started, account : ${multiNode.account.address}`);
 //#endregion ------------------------------------------------------------
 
 // OBSERVER APP INITIALIZATION ------------------------------------------
-new ObserverWsApp(factory, 27279); // network port 27270
+new ObserverWsApp(factory, 27270);
