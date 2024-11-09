@@ -409,7 +409,7 @@ function renderScores(scores) {
 
     scores.forEach(score => {
         const li = document.createElement('li');
-        li.textContent = score.identifier + ': ' + score.score;
+        li.textContent = score.identifier.replace('12D3KooW', '') + ': ' + score.score;
         eHTML.repScoresList.appendChild(li);
     });
 }

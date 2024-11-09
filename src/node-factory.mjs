@@ -53,13 +53,18 @@ export class NodeFactory {
      */
     async forceRestartNode(nodeId, startFromScratch = false, newAccount = null, newMinerAddress = null) {
         /** @type {Node} */
+        console.log(`°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°`);
         console.log(`Forcing restart of node ${nodeId} with account ${newAccount ? newAccount.address : 'unchanged'}`);
+        console.log(`---- Already restarted ${this.restartCounter} times ----`);
+        console.log(`°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°`);
+
         const targetNode = this.getNode(nodeId);
         if (!targetNode) { console.error(`Node ${nodeId} not found`); return; }
 
         targetNode.restarting = true;
         if (!targetNode.restartRequested) {
             targetNode.requestRestart('NodeFactory.forceRestartNode()');
+            console.log(`Node ${nodeId} has been requested to restart...`);
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
 

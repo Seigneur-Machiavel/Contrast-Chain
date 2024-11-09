@@ -169,6 +169,15 @@ export class MinerWorker {
                 console.log(`MinerWorker stopped with exit code ${code}`);
                 resolve();
             });
+            this.worker.on('close', () => {
+                console.log('MinerWorker closed');
+                resolve();
+            });
+
+            setTimeout(() => {
+                console.error('MinerWorker termination timeout');
+                resolve();
+            }, 5000);
         });
     }
 }
