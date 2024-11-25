@@ -91,6 +91,7 @@ export class Node {
         this.ignoreIncomingBlocks = false;
         this.lightHouseClient = new LightHouseClient(this.id);
         this.lighthouseServer = new LighthouseServer(3001, this.logger);
+        this.logValidationTime = false;
     }
 
     async start(startFromScratch = false) {
@@ -307,7 +308,7 @@ export class Node {
     
         timer.endPhase('total-validation');
         this.blockchainStats.state = "idle";
-        timer.displayResults();
+        if (this.logValidationTime){ timer.displayResults();}
     
         return { hashConfInfo, powReward, posReward, totalFees, allDiscoveredPubKeysAddresses };
     }
@@ -361,7 +362,7 @@ export class Node {
     
         if (blockBytes > 102_400 && !skipValidation) {
             this.logger.info(`luid-f1779d54 #${finalizedBlock.index} blockBytes: ${blockBytes} | Txs: ${finalizedBlock.Txs.length} | digest: ${timer.getTotalTime()}s`);
-            timer.displayResults();
+            if (this.logValidationTime){ timer.displayResults();}
         }
     
         const timeBetweenPosPow = ((finalizedBlock.timestamp - finalizedBlock.posTimestamp) / 1000).toFixed(2),
