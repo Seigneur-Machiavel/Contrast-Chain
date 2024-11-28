@@ -26,7 +26,8 @@ export class OpStack {
         lastSyncTime: null,
         lastReorgCheckTime: null,
         delayBeforeReorgCheck: utils.SETTINGS.targetBlockTime,
-        delayBeforeSyncCheck: utils.SETTINGS.targetBlockTime * 2.5
+        delayBeforeSyncCheck: utils.SETTINGS.targetBlockTime * 2.5,
+        delayBeforeRestart: utils.SETTINGS.targetBlockTime * 5
     }
 
     /** @param {Node} node */
@@ -42,6 +43,13 @@ export class OpStack {
         while (!this.terminated) {
             await new Promise(resolve => setTimeout(resolve, delayBetweenChecks));
             const now = Date.now();
+
+            if (timeSinceLastDigestOrSync > this.healthInfo.delayBeforeRestart) {
+                console.warn(`[OpStack] Restart requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
+                this.node.requestRestart('OpStack.healthCheckLoop() -> delayBeforeRestart reached!');
+                this.terminate();
+                continue;
+            }
             
             if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
             const lastDigestTime = this.healthInfo.lastDigestTime || 0;

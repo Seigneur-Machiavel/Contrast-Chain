@@ -185,7 +185,6 @@ export class Transaction_Builder {
         transaction.id = Transaction_Builder.hashId(transaction);
 
         return transaction;
-
     }
     /** @param {string} nonceHex @param {string} address @param {number} amount */
     static async createCoinbase(nonceHex, address, amount) {

@@ -446,7 +446,6 @@ export class Node {
     } // Used by developer to check the block data manually
     //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
 
-    //testRejectedIndexes = [];
     /** @param {string} topic @param {object} message */
     async p2pHandler(topic, message) {
         // test fork
@@ -503,12 +502,7 @@ export class Node {
                     try { BlockValidation.checkBlockIndexIsNumber(data); } catch (error) { throw error; }
                     if (this.ignoreIncomingBlocks) { return; }
                     if (this.syncHandler.isSyncing || this.opStack.syncRequested) { return; }
-                    //TODO: remove this test code
-                    /*if (data.index % 2 === 0 && !this.testRejectedIndexes.includes(data.index)) {
-                this.testRejectedIndexes.push(data.index);
-                console.warn(`[TEST] rejecting block #${data.index} -> rejected: ${this.testRejectedIndexes}`);
-                return;
-            }*/
+
                     if (!this.roles.includes('validator')) { break; }
                     if (this.reorganizator.isFinalizedBlockInCache(message.content)) {
                         this.logger.warn(`luid-b58f689b [P2P-HANDLER] ${topic} -> Already processed #${message.content.index} -> skip`);
@@ -716,8 +710,6 @@ export class Node {
     }
 
     //#endregion °°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°
-
-
 }
 
 class BaseBlockTimer {
@@ -747,11 +739,9 @@ class BaseBlockTimer {
         console.groupEnd();
     }
 }
-
 class BlockValidationTimer extends BaseBlockTimer {
     constructor() { super('Validation'); }
 }
-
 class BlockDigestionTimer extends BaseBlockTimer {
     constructor() { super('Digestion'); }
 }
