@@ -43,6 +43,12 @@ export class OpStack {
         while (!this.terminated) {
             await new Promise(resolve => setTimeout(resolve, delayBetweenChecks));
             const now = Date.now();
+            
+            if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
+            const lastDigestTime = this.healthInfo.lastDigestTime || 0;
+            const lastSyncTime = this.healthInfo.lastSyncTime || 0;
+            const lastDigestOrSyncTime = Math.max(lastDigestTime, lastSyncTime);
+            const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
             if (timeSinceLastDigestOrSync > this.healthInfo.delayBeforeRestart) {
                 console.warn(`[OpStack] Restart requested by healthCheck, lastBlockData.index: ${this.node.blockchain.lastBlock === null ? 0 : this.node.blockchain.lastBlock.index}`);
@@ -50,12 +56,6 @@ export class OpStack {
                 this.terminate();
                 continue;
             }
-            
-            if (this.healthInfo.lastDigestTime === null && this.healthInfo.lastSyncTime === null) { continue; }
-            const lastDigestTime = this.healthInfo.lastDigestTime || 0;
-            const lastSyncTime = this.healthInfo.lastSyncTime || 0;
-            const lastDigestOrSyncTime = Math.max(lastDigestTime, lastSyncTime);
-            const timeSinceLastDigestOrSync = now - lastDigestOrSyncTime;
 
             if (!this.syncRequested && timeSinceLastDigestOrSync > this.healthInfo.delayBeforeSyncCheck) {
                 this.pushFirst('syncWithPeers', null);

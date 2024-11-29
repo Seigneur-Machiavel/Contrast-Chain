@@ -613,6 +613,7 @@ button.classy.clicked:not(.disabled) {
     }
 }
 .accountLabelInfoWrap {
+    pointer-events: none;
     width: calc(100% - 64px);
 }
 .accountLabelNameAndValueWrap {
@@ -622,13 +623,20 @@ button.classy.clicked:not(.disabled) {
     margin-top: 2px;
 }
 .accountLabelNameAndValueWrap h2 {
+    pointer-events: all;
     color: var(--color2);
     opacity: .7;
 }
 .accountLabelNameAndValueWrap h3 {
+    pointer-events: all;
     color: var(--color2);
 }
+.accountLabelAddress {
+    display: flex;
+    justify-content: flex-end;
+}
 .accountLabelAddress h3 {
+    pointer-events: all;
     color: var(--color2);
     text-align: right;
     font-size: 1.6em;

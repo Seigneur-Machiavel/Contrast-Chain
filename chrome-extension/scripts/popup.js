@@ -1235,6 +1235,20 @@ document.addEventListener('mousedown', function(e) { // hold click
             break;
     }
 });
+/** @param {HTMLInputElement} input */
+function selectAccountLabel(accountLabel) {
+    const accountIndex = Array.from(accountLabel.parentElement.children).indexOf(accountLabel);
+
+    //console.log(`accountIndex: ${accountIndex}`);
+    activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
+    updateActiveAccountLabel();
+    updateMiniFormsInfoRelatedToActiveAccount();
+
+    const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
+    if (!explorerOpenned) { return; }
+        
+    updateAddressExhaustiveDataFromNode(activeWallet.accounts[activeAddressPrefix][accountIndex].address);
+}
 document.addEventListener('click', async function(e) {
     let target = e.target;
     if (target.tagName === 'TD') { target = target.parentElement; }
@@ -1341,20 +1355,13 @@ document.addEventListener('click', async function(e) {
     }
 
     switch (target.className) {
+        case 'accountLabel':
+            selectAccountLabel(target);
+            break;
         case 'accountImgWrap':
             //console.log('accountImgWrap clicked');
             const accountLabel = target.parentElement;
-            const accountIndex = Array.from(accountLabel.parentElement.children).indexOf(accountLabel);
-
-            //console.log(`accountIndex: ${accountIndex}`);
-            activeAccountIndexByPrefix[activeAddressPrefix] = accountIndex;
-            updateActiveAccountLabel();
-            updateMiniFormsInfoRelatedToActiveAccount();
-
-            const explorerOpenned = !eHTML.popUpExplorer.classList.contains('hidden');
-            if (!explorerOpenned) { return; }
-                
-            updateAddressExhaustiveDataFromNode(activeWallet.accounts[activeAddressPrefix][accountIndex].address);
+            selectAccountLabel(accountLabel);
 
             break;
         case 'foldBtn':
@@ -1375,6 +1382,7 @@ document.addEventListener('click', async function(e) {
             blockExplorerWidget.navigateUntilTarget(true);
             break;
         default:
+            console.log(`clicked: ${target.className}`);
             break;
     }
 });
