@@ -245,6 +245,24 @@ class Logger {
             this.logStream.write(formattedMessage);
         } else {
             console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
+            this.attemptStreamRecovery();
+        }
+    }
+
+    attemptStreamRecovery() {
+        console.warn('[LOGGER] Attempting stream recovery...');
+        try {
+            // Close existing stream if any
+            if (this.logStream) {
+                this.logStream.end();
+            }
+
+            // Reinitialize stream
+            this.initializeLogStream();
+            console.warn('[LOGGER] Stream recovery successful');
+        } catch (error) {
+            console.error('[LOGGER] Stream recovery failed:', error);
+            this.lastError = error;
         }
     }
         
