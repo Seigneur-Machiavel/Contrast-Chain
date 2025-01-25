@@ -54,8 +54,8 @@ const SETTINGS = {
     AUTO_CHOSE_BEST_NODES: true,
     CURRENT_NODE_INDEX: 0,
     NODES_LIST: [ // used for redondant connections
+        'ws://localhost:27270',
         'wss://contrast.observer',
-        'ws://pariah.monster:27270',
         'ws://pinkparrot.science:27270',
         'ws://pinkparrot.observer'
     ],
@@ -66,20 +66,9 @@ const SETTINGS = {
 function onOpen() {
     console.log('Connection opened');
 }
-function onClose(url = '') {
-    console.info(`Connection closed: ${url}`);
-    
-   /* ws = undefined;
-    setTimeout(() => {
-        console.info('--- reseting blockExplorerWidget >>>');
-
-        const clonedData = blockExplorerWidget.getCloneBeforeReset();
-        blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
-
-        if (clonedData.modalContainer) {
-            blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);
-        }
-    }, SETTINGS.RECONNECT_INTERVAL);*/
+function onClose() {
+    console.info(`Connection closed`);
+    ws = undefined;
 }
 function onError(error) {
     console.info('WebSocket error: ' + error);
@@ -180,7 +169,7 @@ function connectWS() {
     console.log(`Connecting to ${url}`);
     ws = new WebSocket(url);
     ws.onopen = onOpen;
-    ws.onclose = onClose(url);
+    ws.onclose = onClose;
     ws.onerror = onError;
     ws.onmessage = onMessage;
 }
@@ -189,17 +178,12 @@ async function connectWSLoop() {
     while (true) {
         await new Promise((resolve) => { setTimeout(() => { resolve(); }, SETTINGS.RECONNECT_INTERVAL); });
         if (ws && ws.readyState === 1) { continue; }
-        // if connecting await 
-        while(ws && ws.readyState === 0) { await new Promise(resolve => setTimeout(resolve, 100)); }
 
-        console.info('--- reseting blockExplorerWidget >>>');
-
-        const clonedData = blockExplorerWidget.getCloneBeforeReset();
-        blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
-
-        if (clonedData.modalContainer) {
-            blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer);
-        }
+         console.info('--- reseting blockExplorerWidget >>>');
+        
+                const clonedData = blockExplorerWidget.getCloneBeforeReset();
+                blockExplorerWidget = new BlockExplorerWidget('cbe-contrastBlocksWidget', clonedData.blocksDataByHash, clonedData.blocksDataByIndex, clonedData.blocksInfo);
+                if (clonedData.modalContainer) { blockExplorerWidget.cbeHTML.containerDiv.appendChild(clonedData.modalContainer); }
 
         connectWS();
     }

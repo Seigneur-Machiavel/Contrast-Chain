@@ -84,7 +84,6 @@ class AppStaticFncs {
         result.peers = node.p2pNetwork?.getPeers() ?? 'No Peers';
         result.ignoreIncomingBlocks = node.ignoreIncomingBlocks;
         result.disabledSync = node.syncHandler.syncDisabled;
-        result.lightHouseClientLogs = node.lightHouseClient?.logs;
         return result;
     }
     /** @param {Node} node */
@@ -638,11 +637,11 @@ export class ObserverWsApp {
                 case 'address_utxos':
                     ws.send(JSON.stringify({ type: 'address_utxos_requested', data: { address: data, UTXOs: await this.node.getAddressUtxos(data) } }));
                 case 'get_transaction_by_reference': // DEPRECATED
-                    console.log('get_transaction_by_reference: DISABLED');
-                    break;
+                    //console.log('get_transaction_by_reference: DISABLED');
+                    //break;
                     const resTx = await this.node.getTransactionByReference(data);
-                    if (!res) { console.error(`[OBSERVER] Transaction not found: ${data}`); return; }
-                    ws.send(JSON.stringify({ type: 'transaction_requested', data: res.transaction }));
+                    if (!resTx) { console.error(`[OBSERVER] Transaction not found: ${data}`); return; }
+                    ws.send(JSON.stringify({ type: 'transaction_requested', data: resTx.transaction }));
                     break;
                 case 'get_transaction_with_balanceChange_by_reference':
                     //const result = { transaction, balanceChange, inAmount, outAmount, fee };

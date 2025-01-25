@@ -11,7 +11,7 @@ import crypto from 'crypto';
 
 const colors = {
     reset: '\x1b[0m',
-    
+
     // Base colors (more muted, like Neovim defaults)
     red: '\x1b[38;2;234;105;98m',      // Soft red
     green: '\x1b[38;2;152;187;108m',   // Sage green
@@ -19,7 +19,7 @@ const colors = {
     blue: '\x1b[38;2;69;133;136m',     // Muted blue
     magenta: '\x1b[38;2;177;98;134m',  // Soft purple
     cyan: '\x1b[38;2;104;157;106m',    // Forest cyan
-    
+
     // Bright variants
     brightRed: '\x1b[38;2;251;73;52m',    // Vibrant red
     brightGreen: '\x1b[38;2;184;187;38m',  // Lime green
@@ -216,7 +216,7 @@ class Logger {
     formatConsoleLog(type, message) {
         const color = this.getColorForType(type);
 
-        if( type=== 'important') {
+        if (type === 'important') {
             return `${color}["!"]${colors.reset} ${message}`;
         }
         return `${color}[${type.toUpperCase()}]${colors.reset} ${message}`;
@@ -247,7 +247,7 @@ class Logger {
             console.warn(`Log stream is not writable. Message not logged to file: ${message}`);
         }
     }
-        
+
     /**
      * Logs data based on the type and configuration
      * @param {string} type - The type of log (e.g., info, error)

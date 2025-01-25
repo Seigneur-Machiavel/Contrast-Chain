@@ -531,8 +531,12 @@ export class Blockchain {
     async getTransactionByReference(txReference) {
         const [height, txId] = txReference.split(':');
         try {
+            const startTime = performance.now();
             const serializedTx = await this.db.get(`${height}:${txId}`);
-            return this.deserializeTransaction(serializedTx);
+            const tx = this.deserializeTransaction(serializedTx);
+            const elapsedTime = (performance.now() - startTime).toFixed(5);
+            console.warn(`[DB] Transaction ${txReference} retrieved in ${elapsedTime}ms`);
+            return tx;
         } catch (error) {
             // If the transaction is not found or deserialization fails, return null.
             this.logger.error({ txReference }, 'Transaction not found or failed to deserialize');

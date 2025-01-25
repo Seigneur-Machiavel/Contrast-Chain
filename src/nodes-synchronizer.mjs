@@ -47,7 +47,7 @@ export class SyncHandler {
      * @param {P2PNetwork} p2pNetwork - The P2P network instance */
     async start(p2pNetwork) {
         try {
-            p2pNetwork.p2pNode.handle(P2PNetwork.SYNC_PROTOCOL, this.handleIncomingStream.bind(this));
+            p2pNetwork.p2pNode.handle(P2PNetwork.SYNC_PROTOCOL, this.#handleIncomingStream.bind(this));
             this.logger.info('luid-feea692e Sync node started', { protocol: P2PNetwork.SYNC_PROTOCOL });
         } catch (error) {
             this.logger.error('luid-91503910 Failed to start sync node', { error: error.message });
@@ -55,10 +55,7 @@ export class SyncHandler {
         }
     }
 
-    /** Handles incoming streams from peers.
-     * @param {Object} param0 - The stream object.
-     * @param {import('libp2p').Stream} param0.stream - The libp2p stream. */
-    async handleIncomingStream(lstream) {
+    async #handleIncomingStream(lstream) {
         const stream = lstream.stream;
         const peerId = lstream.connection.remotePeer.toString();
         this.node.p2pNetwork.reputationManager.recordAction({ peerId }, ReputationManager.GENERAL_ACTIONS.SYNC_INCOMING_STREAM);
@@ -93,7 +90,6 @@ export class SyncHandler {
             }
         }
     }
-
     /** Handles incoming messages based on their type.
      * @param {Object} message - The incoming message.
      * @returns {Promise<Object>} The response to the message. */
@@ -125,7 +121,6 @@ export class SyncHandler {
         const peerStatusMessage = { type: 'getStatus' };
         try {
             const response = await p2pNetwork.sendMessage(peerMultiaddr, peerStatusMessage);
-
             if (response === undefined) { return false; }
             if (response.status !== 'success') { return false; }
             if (typeof response.currentHeight !== 'number') { return false; }
@@ -476,7 +471,6 @@ export class SyncHandler {
         // Sort peers by currentHeight in descending order
         peerStatuses.sort((a, b) => b.currentHeight - a.currentHeight);
         const highestPeerHeight = peerStatuses[0].currentHeight;
-    
         if (highestPeerHeight <= this.node.blockchain.currentHeight) {
             this.logger.debug(`luid-ff391762 [SYNC] Already at the highest height, no need to sync`);
             this.isSyncing = false;
